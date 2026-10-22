@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CuMill</title>
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+<script src="clipper.js"></script>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><img src="icon.svg" alt=""><span>Cu<b>Mill</b></span></div>
+  <div class="seg tabs" id="mainTab">
+    <button data-tab="board" class="on" title="Náhled desky a drah (F2)">Deska</button>
+    <button data-tab="gcode" title="Vizualizace G-kódu jako v Candle – 3D, přehrávání, výpis (F3)">G-kód</button>
+    <button data-tab="machine" title="Ovládání stroje – náhrada UGS a Candle: posílání programu, výšková mapa, průvodce (F4)">Stroj</button>
+  </div>
+  <div class="boardinfo" id="boardInfo"><span class="muted">Žádná deska</span></div>
+  <div class="actions">
+    <button class="btn" id="btnOpen" title="Otevřít .kicad_pcb, nebo gerbery + vrtací soubor (Ctrl+O)">
+      <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Otevřít</button>
+    <button class="btn" id="btnReload" title="Znovu načíst ze souboru (F5)" disabled>
+      <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>Načíst znovu</button>
+    <label class="toggle" title="Při uložení desky v KiCadu se náhled i G-kódy samy přepočítají"><input type="checkbox" id="chkWatch"><span></span>Sledovat změny</label>
+    <button class="btn" id="btnProject" title="Uložit projekt – deska, nastavení, úpravy a výšková mapa v jednom souboru .cumill (Ctrl+Shift+S)" disabled>
+      <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg>Projekt</button>
+    <button class="btn" id="btnLaser" title="Export pro laser – SVG potisku / masky se stejnou nulou jako frézování" disabled>
+      <svg viewBox="0 0 24 24"><path d="M12 2v6M12 16v6M2 12h6M16 12h6"/><circle cx="12" cy="12" r="3"/></svg>Laser</button>
+    <button class="iconbtn" id="btnSettings" title="Nastavení a barevná témata (Ctrl+,)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    <button class="btn primary" id="btnSave" title="Uložit vybrané G-kódy do složky (Ctrl+S)" disabled>
+      <svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14"/></svg>Uložit G-kódy</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="left" id="settings"></aside>
+
+  <section class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="toolbar">
+      <div class="seg" id="viewMode">
+        <button data-mode="design" class="on" title="Deska jak ji vidíš v KiCadu (shora)">Návrh</button>
+        <button data-mode="machine" title="Souřadnice stroje vybrané operace – takhle to uvidí UGS/Candle">Stroj</button>
+      </div>
+      <div class="seg" id="toolMode">
+        <button data-tool="pan" title="Posun a výběr kliknutím (H)"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3m3-3 3 3M12 21l-3-3m3 3 3-3M3 12l3-3m-3 3 3 3M21 12l-3-3m3 3-3 3"/></svg></button>
+        <button data-tool="select" title="Výběr – klik, Shift+klik, obdélník (V)"><svg viewBox="0 0 24 24"><path d="M5 3l14 7-6 2-2 6z"/></svg></button>
+        <button data-tool="clear" title="Odfrézovat oblast mědi (O)"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 12h8M12 8v8"/></svg></button>
+        <button data-tool="pin" title="Kolíčky přípravku – přidat, posunout (K)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v5M12 16v5M3 12h5M16 12h5"/></svg></button>
+        <button data-tool="tab" title="Můstky ořezu – přidat, posunout po dráze (M)"><svg viewBox="0 0 24 24"><path d="M3 8h6v8H3M21 8h-6v8h6"/><path d="M9 12h6" stroke-dasharray="2 2"/></svg></button>
+        <button data-tool="block" title="Zakázat frézování v oblasti (Z)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m6.5 6.5 11 11"/></svg></button>
+      </div>
+      <div class="chips" id="layerChips"></div>
+      <button class="iconbtn" id="btnFit" title="Celá deska (dvojklik do náhledu)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
+    <div class="toolhint" id="toolHint"></div>
+    <div class="readout" id="readout"></div>
+    <div class="inspector" id="inspector"></div>
+    <div class="empty" id="empty">
+      <div class="drop">
+        <img src="icon.svg" alt="">
+        <h1>Přetáhni sem desku</h1>
+        <p><b>.kicad_pcb</b> přímo z KiCadu (bez exportu), nebo gerbery&nbsp;+&nbsp;vrtací soubor.</p>
+        <button class="btn primary big" id="btnOpen2">Otevřít soubor…</button>
+        <div class="recent" id="recent"></div>
+      </div>
+    </div>
+    <div class="busy" id="busy"><i></i>Počítám dráhy…</div>
+  </section>
+
+  <section class="gcode" id="gcode" hidden></section>
+  <section class="machine" id="machine" hidden></section>
+
+  <aside class="right">
+    <section class="panel">
+      <div class="phead"><h2>Výstupy</h2><span class="muted" id="totalTime"></span></div>
+      <div id="ops" class="ops"><p class="muted pad">Po načtení desky se tu objeví programy.</p></div>
+    </section>
+    <section class="panel">
+      <div class="phead"><h2>Kontroly</h2><span id="checkBadge"></span></div>
+      <div id="checks" class="checks"></div>
+    </section>
+    <section class="panel">
+      <div class="phead"><h2>Postup výroby</h2></div>
+      <ol id="steps" class="steps"></ol>
+    </section>
+  </aside>
+</main>
+
+<dialog id="codeDlg">
+  <div class="dlghead"><b id="codeTitle"></b><button class="iconbtn" id="codeClose" title="Zavřít">✕</button></div>
+  <pre id="codeBody"></pre>
+</dialog>
+<dialog id="toolDlg" class="wide">
+  <div class="dlghead"><b>Knihovna nástrojů</b><button class="iconbtn" id="toolClose" title="Zavřít">✕</button></div>
+  <div id="toolBody" class="dlgbody"></div>
+</dialog>
+<div class="toast" id="toast"></div>
+<input type="file" id="gcodeInput" multiple hidden accept=".nc,.ngc,.gcode,.gc,.tap,.cnc,.txt">
+<input type="file" id="fileInput" multiple hidden accept=".kicad_pcb,.cumill,.gbr,.gtl,.gbl,.gko,.gm1,.gml,.drl,.xln,.exc,.txt">
+</body>
+</html>

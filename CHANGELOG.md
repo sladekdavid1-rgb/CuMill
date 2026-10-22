@@ -1,0 +1,24 @@
+# Changelog
+
+## 1.3 – 2026-10
+- **Machine tab** – GRBL sender replacing UGS/Candle: connection, DRO, jog, overrides (feed XY, plunge Z, spindle, rapid),
+  pause/stop, start from line, check mode, skipping paths (also while running), GRBL settings editor, console, simulator
+- **Height map** – grid / grid with centers, hole avoidance, probe settings, editable Candle-like point table,
+  2D and 3D color gradient view, Candle `.map` files, automatic leveling of isolation programs
+- Tool setter (fixed Z probe), XY zero with touch probe (hole center, corner), Z probe with copper clip
+- Pre-start checks, resume after interruption, production journal and tool-wear meters, self-calibrating time estimate
+- Production wizard; pendant support (F13–F24, UGS compatible)
+- **G-code viewer** – 3D, playback, linked listing, material-removal simulation on a board-thickness solid
+- Board cut-out **tabs** (automatic or manual), silkscreen engraving, laser SVG export
+- `.cumill` project file, undo/redo, settings dialog, 8 color themes and custom theme editor
+
+## 1.2
+- Arcs as G2/G3, merged segments (6–10× shorter programs), background computation
+- Pin jig modes (auto/always/never), manual pins, step-down for isolation and cut-out
+
+## 1.1
+- Tool library with per-program overrides, V-bit width override, per-hole and per-net settings,
+  geometry from extra layers, clearing / no-mill areas, net colors, own window (WebView2)
+
+## 1.0
+- First version: KiCad / Gerber import, isolation, drilling, cut-out, checks, production steps
