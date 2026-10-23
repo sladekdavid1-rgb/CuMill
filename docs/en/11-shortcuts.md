@@ -26,6 +26,7 @@
 | `Z` | No-mill area |
 | `K` | Pin |
 | `M` | Tab |
+| `P` | Panel – move boards (panels only; `R` rotates the selected one, arrows move it) |
 | `Del`, `Backspace` | delete the selected pin / tab / area |
 | `Enter` | close the polygon being drawn |
 | `Backspace` | while drawing an area, remove the last point |

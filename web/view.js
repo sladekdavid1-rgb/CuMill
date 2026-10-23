@@ -79,6 +79,7 @@ export class Viewer {
       const pan = e.button === 1 || e.button === 2 || (e.button === 0 && tool === 'pan');
       drag = { x: e.clientX, y: e.clientY, cx: this.cx, cy: this.cy, pan, moved: false, w0: this.toWorld(e.clientX - r.left, e.clientY - r.top), btn: e.button, shift: e.shiftKey || e.ctrlKey, pin: null };
       if ((tool === 'pin' || tool === 'tab') && e.button === 0) { const i = this.onPinDown?.(this.toDesign(drag.w0), this.scale); if (i !== null && i !== undefined) drag.pin = i; }
+      if (tool === 'panel' && e.button === 0) { const i = this.onPanelDown?.(this.toDesign(drag.w0)); if (i !== null && i !== undefined) drag.panel = i; else { drag.pan = true; c.classList.add('grabbing'); } }
       c.setPointerCapture(e.pointerId);
       if (pan) c.classList.add('grabbing');
     });
@@ -87,7 +88,8 @@ export class Viewer {
       const wp = this.toWorld(e.clientX - r.left, e.clientY - r.top);
       if (drag) {
         if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4) drag.moved = true;
-        if (drag.pin !== null && drag.moved) { this.onPinMove?.(drag.pin, this.toDesign(wp), this.scale); }
+        if (drag.panel != null) { if (drag.moved) this.onPanelMove?.(drag.panel, this.toDesign(drag.w0), this.toDesign(wp), e.shiftKey); }
+        else if (drag.pin !== null && drag.moved) { this.onPinMove?.(drag.pin, this.toDesign(wp), this.scale); }
         else if (drag.pan) {
           this.cx = drag.cx - (e.clientX - drag.x) / this.scale;
           this.cy = drag.cy + (e.clientY - drag.y) / this.scale;
@@ -103,7 +105,8 @@ export class Viewer {
       const tool = this.opts.tool || 'pan';
       const r = c.getBoundingClientRect();
       const wp = this.toWorld(e.clientX - r.left, e.clientY - r.top);
-      if (drag.pin !== null) { if (drag.moved) this.onPinUp?.(); }
+      if (drag.panel != null) this.onPanelUp?.(drag.panel, this.toDesign(drag.w0), this.toDesign(wp), drag.moved, e.shiftKey);
+      else if (drag.pin !== null) { if (drag.moved) this.onPinUp?.(); }
       else if ((tool === 'pin' || tool === 'tab') && drag.btn === 0 && !drag.moved) this.onPinAdd?.(this.toDesign(wp), this.scale);
       else if (drag.btn === 0 && !drag.moved) {
         if (tool === 'clear' || tool === 'block') this._draftPoint(wp);
@@ -165,8 +168,8 @@ export class Viewer {
   _bounds() {
     if (!this.board) return null;
     const t = this._tf();
-    const ol = t ? this.board.outline.map(t.fwd) : this.board.outline;
-    const bb = G.bbox([ol]);
+    const ols = (this.board.outlines || [this.board.outline]).map(l => t ? l.map(t.fwd) : l);
+    const bb = G.bbox(ols);
     if (t) { G.bbox([[[0, 0]]], bb); }
     return bb;
   }
@@ -241,7 +244,7 @@ export class Viewer {
     if (t && this.res) {
       const st = this.res.settings?.setup;
       if (st) {
-        const bb = G.bbox([b.outline.map(tf)]);
+        const bb = G.bbox((b.outlines || [b.outline]).map(l => tf ? l.map(tf) : l));
         const cx = (bb.minX + bb.maxX) / 2, cy = (bb.minY + bb.maxY) / 2;
         const rot = (bb.maxX - bb.minX > bb.maxY - bb.minY) !== (st.blankW > st.blankH);
         const W = rot ? st.blankH : st.blankW, H = rot ? st.blankW : st.blankH;
@@ -250,7 +253,7 @@ export class Viewer {
       }
     }
     // deska
-    const boardP = this._geom(key + 'board', () => pathFrom([b.outline, ...b.inner], tf));
+    const boardP = this._geom(key + 'board', () => pathFrom([...(b.outlines || [b.outline]), ...b.inner], tf));
     ctx.fillStyle = COL.board; ctx.fill(boardP, 'evenodd');
     // měď – spodní pod horní; v režimu stroje zvýrazni obráběnou stranu
     const order = t?.side === 'bottom' ? ['F.Cu', 'B.Cu'] : ['B.Cu', 'F.Cu'];
@@ -415,7 +418,7 @@ export class Viewer {
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }
   _overlay(ctx) {
-    if (!this.board || (!this.draft?.length && !this.rubber && !this.opts.pinPreview && !this.opts.tabPreview)) return;
+    if (!this.board || (!this.draft?.length && !this.rubber && !this.opts.pinPreview && !this.opts.tabPreview && !this.opts.ghost && !this.opts.panelSel && !this.board.panel)) return;
     const s = this.scale, px = 1 / s, t = this._tf(), tf = t ? t.fwd : null;
     ctx.setTransform(this.dpr * s, 0, 0, -this.dpr * s, this.dpr * (this.w / 2 - this.cx * s), this.dpr * (this.h / 2 + this.cy * s));
     if (this.opts.tabPreview && this.res?.cutTabs) drawTab(ctx, this.res.cutTabs, this.opts.tabPreview, true, true, px, tf);
@@ -425,6 +428,27 @@ export class Viewer {
       ctx.fillStyle = COL.selFill; ctx.strokeStyle = COL.sel; ctx.lineWidth = 2 * px;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.moveTo(x - r * 1.8, y); ctx.lineTo(x + r * 1.8, y); ctx.moveTo(x, y - r * 1.8); ctx.lineTo(x, y + r * 1.8); ctx.stroke();
+    }
+    // panel: vybraná deska a „duch“ při posunu
+    for (const [loops, dash] of [[this.opts.panelSel, false], [this.opts.ghost, true]]) {
+      if (!loops) continue;
+      ctx.strokeStyle = COL.sel; ctx.fillStyle = COL.selFill; ctx.lineWidth = (dash ? 2 : 2.5) * px; if (dash) ctx.setLineDash([6 * px, 4 * px]);
+      ctx.beginPath(); for (const l of loops) { const P = l.map(p => tf ? tf(p) : p); ctx.moveTo(P[0][0], P[0][1]); for (const v of P) ctx.lineTo(v[0], v[1]); ctx.closePath(); }
+      if (dash) ctx.fill('evenodd'); ctx.stroke(); ctx.setLineDash([]);
+    }
+    // panel: písmena desek
+    if (this.board.panel && this.board.instances?.length) {
+      ctx.save(); ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      const fs = Math.max(12, Math.min(40, 6 * s));
+      ctx.font = `700 ${fs}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (const it of this.board.instances) {
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        for (const p of it.outer) { const q = tf ? tf(p) : p; x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
+        const sx = ((x0 + x1) / 2 - this.cx) * s + this.w / 2, sy = -((y0 + y1) / 2 - this.cy) * s + this.h / 2;
+        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.65)'; ctx.fillStyle = '#ffd9b0';
+        ctx.strokeText(it.label, sx, sy); ctx.fillText(it.label, sx, sy);
+      }
+      ctx.restore();
     }
     // rozkreslená oblast a obdélník
     if (this.draft?.length) {

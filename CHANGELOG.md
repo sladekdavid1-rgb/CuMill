@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5 – 2026-10
+- **Panel** – several boards (different ones or copies of the same) on one blank as one project:
+  add from saved projects or files, drag with the mouse (snap 0.5 mm), rotate by 90°, arrow-key nudge,
+  automatic arrangement onto the blank, overlap / cut-gap and blank checks, pins around the panel,
+  shared tool-by-tool programs, one height map and one cut-out with tabs for all boards
+- New orange application icon that stays visible on a dark taskbar
+
 ## 1.4 – 2026-10
 - **Projects** – projects folder (Documents\CuMill\Projekty), Projects window (save as, open, rename, duplicate, delete, thumbnails),
   continuous autosave of the open project (settings, edits, checked programs, height map), recent projects on the start screen

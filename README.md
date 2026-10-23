@@ -28,6 +28,7 @@ step-by-step production wizard.
 - **Design checks** – too-narrow gaps, pin and tab placement, vias and top-soldered THT pins
 - Watch mode – re-computes when you save the board in KiCad; undo/redo
 - **Projects** – each board with its own settings, edits and height map in a projects folder, saved continuously, listed with thumbnails on the start screen
+- **Panel** – several boards (or copies of one) on a single blank: drag and rotate them with the mouse, automatic arrangement, overlap and blank checks, then everything is milled at once, tool by tool, with one height map and one cut-out
 - **Laser export** – SVG of silkscreen / solder-mask openings in machine coordinates (LightBurn colors)
 
 **G-code viewer**
@@ -71,6 +72,7 @@ Microsoft Edge WebView2 (preinstalled on current Windows).
 | Quick start | [First board in 10 minutes](docs/en/02-first-board.md) | [První deska za 10 minut](docs/cs/02-prvni-deska.md) |
 | Two-sided board step by step | [Production walkthrough](docs/en/09-step-by-step.md) | [Výroba krok za krokem](docs/cs/09-vyroba-krok-za-krokem.md) |
 | Material test | [Material test and Tools tab](docs/en/14-material-test.md) | [Test materiálu](docs/cs/14-test-materialu.md) |
+| Panel | [Several boards at once](docs/en/15-panel.md) | [Víc desek naráz](docs/cs/15-panel.md) |
 
 ## Building from source
 

@@ -10,6 +10,7 @@ import { initMachine } from './machine.js';
 import * as T from './theme.js';
 import { textToLines } from './text.js';
 import * as MAT from './materials.js';
+import * as PN from './panel.js';
 T.apply();
 
 const $ = s => document.querySelector(s);
@@ -120,28 +121,171 @@ function buildBoard(files) {
 async function loadSources(sources, { keepView = false } = {}) {
   const prjSrc = sources.find(s => /\.cumill$/i.test(s.name));
   if (prjSrc) { try { await openProject((await readSource(prjSrc)).text, prjSrc.path || null); } catch (e) { toast(e.message, true); } return; }
+  if (!sources.length && st.panel) return reloadPanel({ keepView });
   busy(true);
   try {
     const files = [];
     for (const s of sources) files.push(await readSource(s));
-    const board = buildBoard(files);
-    const sameBoard = st.board && st.board.name === board.name;
-    st.board = board; st.sources = sources;
-    loadBoardSettings();
-    viewer.setBoard(board);
-    $('#empty').classList.add('hidden');
-    $('#btnReload').disabled = false; $('#btnSave').disabled = false; $('#btnProject').disabled = false; $('#btnLaser').disabled = false;
-    if (!sameBoard) { st.project = null; st.sel = null; st.enabled = {}; st.visible = {}; st.pick = null; st.groupSel.clear(); hist.list = []; hist.pos = -1; }
-    renderBoardInfo(); renderSettings();
-    recompute(true);
-    if (!keepView || !sameBoard) requestAnimationFrame(() => viewer.fit());
-    addRecent(board.name, sources);
-    document.title = `${board.name} – CuMill`;
-    st.outDir = await db.get((host.native ? 'outp:' : 'out:') + board.name);
+    st.panel = null;
+    await applyBoard(buildBoard(files), sources, { keepView });
+    addRecent(st.board.name, sources);
   } catch (e) {
     console.error(e);
     toast('Nepodařilo se načíst: ' + e.message, true);
   } finally { busy(false); }
+}
+async function applyBoard(board, sources, { keepView = false } = {}) {
+  const sameBoard = st.board && st.board.name === board.name;
+  st.board = board; st.sources = sources;
+  loadBoardSettings();
+  viewer.setBoard(board);
+  $('#empty').classList.add('hidden');
+  $('#btnReload').disabled = false; $('#btnSave').disabled = false; $('#btnProject').disabled = false; $('#btnLaser').disabled = false;
+  if (!sameBoard) { st.project = null; st.sel = null; st.enabled = {}; st.visible = {}; st.pick = null; st.groupSel.clear(); hist.list = []; hist.pos = -1; }
+  document.querySelector('#toolMode [data-tool=panel]').hidden = !board.panel;
+  if (!board.panel && st.tool === 'panel') setTool('pan');
+  if (board.panel) showPanelSel(); else viewer.setOpts({ panelSel: null, ghost: null });
+  renderBoardInfo(); renderSettings();
+  recompute(true);
+  if (!keepView || !sameBoard) requestAnimationFrame(() => viewer.fit());
+  document.title = `${board.name} – CuMill`;
+  st.outDir = await db.get((host.native ? 'outp:' : 'out:') + board.name);
+}
+
+// ---------- panel: víc desek na jednom polotovaru ----------
+const panelCache = new Map(); // id instance -> {sig, board}
+const fileSig = files => files.map(f => f.name + ':' + f.text.length + ':' + f.text.slice(0, 64) + f.text.slice(-64)).join('|');
+function instBoard(inst) {
+  const sig = fileSig(inst.files), c = panelCache.get(inst.id);
+  if (c && c.sig === sig) return c.board;
+  const board = buildBoard(inst.files);
+  panelCache.set(inst.id, { sig, board });
+  return board;
+}
+function panelBoard() {
+  const P = st.panel;
+  const insts = P.insts.map((it, i) => ({ ...it, label: PN.label(i), board: instBoard(it) }));
+  const b = PN.buildPanelBoard(P.name, insts);
+  const cutD = (CAM.getTool(S, S.cut.tool, ['end'])?.dia || 1.8);
+  const gapMin = S.cut.enabled ? cutD + 0.2 : 0.2;
+  for (const [a, c] of PN.panelOverlaps(b, gapMin)) b.warnings.push({ level: 'error', text: `Desky ${a} a ${c} jsou příliš blízko nebo se překrývají – mezi nimi musí projet fréza ořezu (mezera aspoň ${cz(gapMin, 1)} mm).` });
+  if (insts.length) b.warnings.push({ level: 'info', text: `Panel: ${insts.length} ${pl(insts.length, 'deska', 'desky', 'desek')} (${insts.map(i => i.label + ' = ' + i.name).join(', ')}) – programy jdou po nástrojích přes všechny desky naráz.` });
+  return b;
+}
+async function reloadPanel({ keepView = true } = {}) {
+  busy(true);
+  try {
+    const b = panelBoard();
+    if (st.panel.pinFit !== false && b.instances.length) {
+      const m = 4 + (S.pins.dia || 2.5) / 2, w = +((b.bb.maxX - b.bb.minX) + 2 * m).toFixed(1), h = +((b.bb.maxY - b.bb.minY) + 2 * m).toFixed(1);
+      if (S.pins.source !== 'pattern' || S.pins.patW !== w || S.pins.patH !== h) { S.pins.source = 'pattern'; S.pins.patW = w; S.pins.patH = h; saveSettings(); }
+    }
+    await applyBoard(b, [], { keepView });
+  }
+  catch (e) { console.error(e); toast('Panel se nepodařilo sestavit: ' + e.message, true); }
+  finally { busy(false); }
+}
+let panelT = null;
+function panelChanged(now) { clearTimeout(panelT); panelT = setTimeout(() => reloadPanel({ keepView: true }), now ? 10 : 250); }
+async function newPanel() {
+  const name = prompt('Název panelu:', 'Panel ' + new Date().toLocaleDateString('cs-CZ'));
+  if (!name) return;
+  const insts = [];
+  if (st.board && !st.panel && st.sources.length) {
+    const files = []; for (const src of st.sources) { const f = await readSource(src); files.push({ name: f.name, text: f.text }); }
+    insts.push({ id: Date.now().toString(36), name: st.project?.name || st.board.name, files, x: 0, y: 0, rot: 0 });
+  }
+  st.panel = { name, gap: 4, insts, pinFit: true };
+  st.board = null;
+  await reloadPanel({ keepView: false });
+  st.project = null; renderBoardInfo();
+  toast(insts.length ? `Panel „${name}“ založen s deskou ${insts[0].name}. Přidej další desky v sekci Panel vlevo.` : `Panel „${name}“ založen – přidej desky v sekci Panel vlevo.`);
+}
+function panelItems() { return st.panel.insts.map(it => { const b = instBoard(it), pl = PN.placement(b, it); return { w: pl.w, h: pl.h }; }); }
+function addInstance(name, files) {
+  const P = st.panel; if (!P) return;
+  const it = { id: Date.now().toString(36) + P.insts.length, name, files, x: 0, y: 0, rot: 0 };
+  // vedle poslední desky
+  if (P.insts.length) {
+    const items = panelItems(); let maxX = 0;
+    P.insts.forEach((q, i) => { maxX = Math.max(maxX, q.x + items[i].w); });
+    it.x = +(maxX + P.gap).toFixed(2); it.y = P.insts[P.insts.length - 1].y;
+  }
+  P.insts.push(it); panelChanged(true);
+}
+async function addProjectToPanel(path) {
+  const prj = JSON.parse(await (await api('read?path=' + encodeURIComponent(path))).text());
+  if (prj.panel) { toast('Panel nejde vložit do panelu – vlož jednotlivé desky.', true); return; }
+  addInstance(prj.meta?.name || prjBase(path), prj.files.map(f => ({ name: f.name, text: f.text })));
+}
+async function addFileToPanel() {
+  let sources = [];
+  if (host.native) {
+    const j = await (await api('open', { start: '', kind: 'board' })).json();
+    sources = (j.paths || []).map(p => ({ path: p, name: p.split(/[\\/]/).pop() }));
+  } else {
+    sources = await new Promise(res => { const i = el('input', { type: 'file', multiple: true, accept: '.kicad_pcb,.gbr,.gtl,.gbl,.gko,.gm1,.gml,.drl,.xln,.exc,.txt' }); i.addEventListener('change', () => res([...i.files].map(f => ({ file: f, name: f.name })))); i.click(); });
+  }
+  sources = pickSources(sources).filter(s => !/\.cumill$/i.test(s.name));
+  if (!sources.length) return;
+  const files = []; for (const src of sources) { const f = await readSource(src); files.push({ name: f.name, text: f.text }); }
+  addInstance(files[0].name.replace(/\.[^.]+$/, ''), files);
+}
+function arrangePanel() {
+  const P = st.panel, items = panelItems();
+  const mg = 2 * (6 + (S.pins.dia || 2.5) / 2), pos = PN.autoArrange(items, P.gap, S.setup.blankW - mg, S.setup.blankH - mg);
+  P.insts.forEach((it, i) => { it.x = +pos[i].x.toFixed(2); it.y = +pos[i].y.toFixed(2); });
+  clearTimeout(panelT); reloadPanel({ keepView: true }).then(() => viewer.fit());
+}
+function pinsAroundPanel(on) {
+  st.panel.pinFit = on;
+  if (on) reloadPanel({ keepView: true }); else renderSettings();
+}
+function renderPanelSection() {
+  const P = st.panel;
+  const d = el('details', { class: 'sec panelsec', open: true });
+  const bb = st.board?.bb, W = bb ? bb.maxX - bb.minX : 0, H = bb ? bb.maxY - bb.minY : 0;
+  d.append(el('summary', {}, el('span', { class: 'ico', html: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>' }), 'Panel', el('span', { class: 'sum' }, `${P.insts.length} ${pl(P.insts.length, 'deska', 'desky', 'desek')} · ${cz(W, 1)} × ${cz(H, 1)} mm`)));
+  const box = el('div', { class: 'fields' });
+  const nm = el('input', { type: 'text', value: P.name });
+  nm.addEventListener('keydown', e => e.stopPropagation());
+  nm.addEventListener('change', () => { P.name = nm.value.trim() || P.name; panelChanged(true); });
+  box.append(el('div', { class: 'f wide' }, el('label', {}, 'Název panelu'), el('div', { class: 'inp' }, nm)));
+  const list = el('div', { class: 'f wide panellist' });
+  P.insts.forEach((it, i) => {
+    const sel = st.pick?.kind === 'inst' && st.pick.idx === i;
+    list.append(el('div', { class: 'pinst' + (sel ? ' on' : '') },
+      el('span', { class: 'plabel', onclick: () => { st.pick = { kind: 'inst', idx: i }; showPanelSel(); renderSettings(); } }, PN.label(i)),
+      el('span', { class: 'pname', title: it.name }, it.name),
+      el('div', { class: 'pxy' }, el('span', { class: 'muted small' }, 'X'), numInput(() => it.x, v => { it.x = v; panelChanged(); }, { unit: 'mm' }), el('span', { class: 'muted small' }, 'Y'), numInput(() => it.y, v => { it.y = v; panelChanged(); }, { unit: 'mm' })),
+      el('div', { class: 'pbtns' },
+        el('button', { class: 'iconbtn', title: `Otočit o 90° (teď ${it.rot || 0}°)`, onclick: () => { it.rot = ((it.rot || 0) + 90) % 360; panelChanged(true); } }, '⟳'),
+        el('button', { class: 'iconbtn', title: 'Duplikovat desku', onclick: () => addInstance(it.name, it.files) }, '⧉'),
+        el('button', { class: 'iconbtn', title: 'Odebrat z panelu', onclick: () => { P.insts.splice(i, 1); st.pick = null; panelChanged(true); } }, '✕'))));
+  });
+  if (!P.insts.length) list.append(el('div', { class: 'hint' }, 'Panel je prázdný. Přidej uložený projekt nebo desku ze souboru.'));
+  box.append(list);
+  const gap = numInput(() => P.gap, v => { P.gap = Math.max(0, v); }, { unit: 'mm' });
+  box.append(el('div', { class: 'f wide pbar' },
+    el('button', { class: 'btn small', onclick: () => openProjectsDlg({ pickForPanel: true }) }, '+ Projekt…'),
+    el('button', { class: 'btn small', onclick: () => addFileToPanel().catch(e => toast(e.message, true)) }, '+ Deska ze souboru…')),
+    el('div', { class: 'f' }, el('label', {}, 'Mezera mezi deskami'), gap),
+    el('div', { class: 'f mrow', style: 'align-self:end' }, el('button', { class: 'btn small', title: 'Rozmístí desky do řad podle velikosti polotovaru', onclick: arrangePanel }, 'Rozmístit')),
+    (() => { const c = el('input', { type: 'checkbox' }); c.checked = P.pinFit !== false; c.addEventListener('change', () => pinsAroundPanel(c.checked)); return el('label', { class: 'f wide check', title: 'Vzor 4 kolíčků se sám přizpůsobí velikosti panelu (4 mm od okraje). Vypni, když chceš kolíčky nastavit ručně v sekci Kolíčky.' }, c, 'Kolíčky automaticky kolem panelu'); })(),
+    el('div', { class: 'f wide pbar' }, el('button', { class: 'btn small' + (st.tool === 'panel' ? ' primary' : ''), onclick: () => setTool('panel') }, 'Posouvat desky myší (P)')),
+    el('div', { class: 'hint' }, `Desky posouvej nástrojem Panel (P) – táhni desku, R otočí vybranou o 90°, šipky posunou o 0,5 mm (Shift 5 mm). X / Y = levý dolní roh desky. Nastavení, úpravy a výšková mapa platí pro celý panel; programy jdou po nástrojích přes všechny desky.`));
+  d.append(box);
+  return d;
+}
+function instAt(p) {
+  const parts = st.board?.panelParts || [];
+  for (let i = parts.length - 1; i >= 0; i--) if (G.pointInPoly(p[0], p[1], parts[i].outer)) return i;
+  return null;
+}
+function showPanelSel() {
+  const i = st.pick?.kind === 'inst' ? st.pick.idx : null;
+  const part = i != null ? st.board?.panelParts?.[i] : null;
+  viewer.setOpts({ panelSel: part ? [part.outer] : null });
 }
 async function addRecent(name, sources) {
   const rec = { name, time: Date.now() };
@@ -379,6 +523,7 @@ const SECTIONS = [
 const inputs = {}; // k -> funkce pro obnovu hodnoty v políčku
 function renderSettings() {
   const root = $('#settings'); const scroll = root.scrollTop; root.innerHTML = '';
+  if (st.panel) root.append(renderPanelSection());
   for (const sec of SECTIONS) {
     const d = el('details', { class: 'sec', 'data-id': sec.id });
     const openKey = 'cumill.open.' + sec.id;
@@ -903,6 +1048,7 @@ function renderBoardInfo() {
   if (!b) { box.append(el('span', { class: 'muted' }, 'Žádná deska')); return; }
   if (st.project) box.append(el('span', { class: 'chip prjchip', title: 'Otevřený projekt – ukládá se průběžně (klik = Projekty)', onclick: openProjectsDlg }, '▣ ' + st.project.name));
   box.append(el('span', { class: 'name', title: b.fileName }, b.name));
+  if (b.panel) box.append(el('span', { class: 'chip panelchip', title: b.instances.map(i => i.label + ' = ' + i.name).join('\n') }, `Panel · ${b.instances.length} ${pl(b.instances.length, 'deska', 'desky', 'desek')}`));
   box.append(el('span', { class: 'chip' }, `${cz(b.size.w)} × ${cz(b.size.h)} mm`));
   for (const [l, c] of [['F.Cu', '#de5648'], ['B.Cu', '#548ce0']]) if (b.used[l]) box.append(el('span', { class: 'chip' }, el('i', { style: `background:${c}` }), l));
   box.append(el('span', { class: 'chip' }, `${b.holes.length} děr`));
@@ -922,6 +1068,17 @@ const viewer = new Viewer($('#cv'), (p, hole) => {
   if (hole) { const a = st.res.holeActs?.get(CAM.holeKey(hole)); t += `\n${hole.ref ? hole.ref + '  ' : ''}díra Ø${cz(hole.d)}${hole.slot ? ' (drážka)' : ''}${hole.plated === false ? ' NPTH' : ''}${a ? '  → ' + CAM.actLabel(S, a) : ''}`; }
   r.textContent = t;
 });
+const snap = (v, k) => Math.round(v / k) * k;
+viewer.onPanelDown = p => { const i = instAt(p); if (i == null) return null; st.pick = { kind: 'inst', idx: i }; showPanelSel(); return i; };
+viewer.onPanelMove = (i, p0, p, fine) => { const part = st.board.panelParts[i]; if (!part) return; const k = fine ? 0.1 : 0.5; const dx = snap(p[0] - p0[0], k), dy = snap(p[1] - p0[1], k); viewer.setOpts({ ghost: [part.outer.map(([x, y]) => [x + dx, y + dy])] }); };
+viewer.onPanelUp = (i, p0, p, moved, fine) => {
+  viewer.setOpts({ ghost: null });
+  if (!moved) { renderSettings(); return; }
+  const it = st.panel.insts[i]; if (!it) return;
+  const k = fine ? 0.1 : 0.5;
+  it.x = +(it.x + snap(p[0] - p0[0], k)).toFixed(2); it.y = +(it.y + snap(p[1] - p0[1], k)).toFixed(2);
+  panelChanged(true);
+};
 const distSeg = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1]; const L = dx * dx + dy * dy; let t = L ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); };
 const nearLine = (p, pts, closed, tol) => { for (let i = 1; i < pts.length + (closed ? 1 : 0); i++) if (distSeg(p, pts[i - 1], pts[i % pts.length]) < tol) return true; return false; };
 function hitTest(p, scale) {
@@ -1083,7 +1240,7 @@ function setTool(t) {
   document.querySelectorAll('#toolMode button').forEach(x => x.classList.toggle('on', x.dataset.tool === t));
   viewer.cancelDraft(); viewer.setOpts({ tool: t });
   $('#cv').dataset.tool = t;
-  const hint = { pan: '', select: 'Klik = výběr díry, kusu mědi, tvaru nebo oblasti · Shift = přidat · tažení = obdélník děr · Esc = zpět na posun', clear: 'Táhni obdélník, nebo klikej body mnohoúhelníku (uzavři klikem na první bod / Enter) · Esc zruší / zpět na posun', block: 'Oblast, kde se nemá frézovat: obdélník tažením, nebo body klikáním · Enter dokončí · Esc zruší / zpět na posun', pin: 'Klik = přidat kolíček (přichytí se k díře nebo na rastr 0,5 mm) · tažení kolíčku = posun · Del = smazat vybraný · Esc = zpět na posun', tab: 'Klik na dráhu ořezu = přidat můstek · tažení můstku = posun po dráze · Del = smazat vybraný · Esc = zpět na posun' }[t];
+  const hint = { pan: '', select: 'Klik = výběr díry, kusu mědi, tvaru nebo oblasti · Shift = přidat · tažení = obdélník děr · Esc = zpět na posun', clear: 'Táhni obdélník, nebo klikej body mnohoúhelníku (uzavři klikem na první bod / Enter) · Esc zruší / zpět na posun', block: 'Oblast, kde se nemá frézovat: obdélník tažením, nebo body klikáním · Enter dokončí · Esc zruší / zpět na posun', pin: 'Klik = přidat kolíček (přichytí se k díře nebo na rastr 0,5 mm) · tažení kolíčku = posun · Del = smazat vybraný · Esc = zpět na posun', panel: 'Táhni desku = posun (rastr 0,5 mm, Shift 0,1 mm) · klik = výběr · R = otočit vybranou o 90° · šipky = posun 0,5 mm (Shift 5 mm) · Esc = zpět na posun', tab: 'Klik na dráhu ořezu = přidat můstek · tažení můstku = posun po dráze · Del = smazat vybraný · Esc = zpět na posun' }[t];
   $('#toolHint').textContent = hint; $('#toolHint').classList.toggle('on', !!hint);
 }
 document.querySelectorAll('#toolMode button').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
@@ -1169,7 +1326,8 @@ function busy(on) { $('#busy').classList.toggle('on', on); }
 $('#btnOpen').addEventListener('click', openDialog);
 $('#btnOpen2').addEventListener('click', openDialog);
 $('#fileInput').addEventListener('change', e => { const fs = [...e.target.files]; if (fs.length) loadSources(pickSources(fs.map(f => ({ file: f, name: f.name })))); e.target.value = ''; });
-$('#btnReload').addEventListener('click', () => st.sources.length && loadSources(st.sources, { keepView: true }));
+$('#btnReload').addEventListener('click', reloadCurrent);
+function reloadCurrent() { if (st.panel) { panelCache.clear(); reloadPanel({ keepView: true }); } else if (st.sources.length) loadSources(st.sources, { keepView: true }); }
 $('#btnSave').addEventListener('click', () => saveAll(false));
 const stage = $('#stage');
 stage.addEventListener('dragover', e => { e.preventDefault(); stage.classList.add('dragover'); });
@@ -1196,7 +1354,7 @@ document.addEventListener('keydown', e => {
   else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') { e.preventDefault(); saveProject(); }
   else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); gvs.tab === 'gcode' ? openGcodeDialog() : openDialog(); }
   else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveAll(e.shiftKey); }
-  else if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) { e.preventDefault(); if (st.sources.length) loadSources(st.sources, { keepView: true }); }
+  else if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) { e.preventDefault(); reloadCurrent(); }
   else if (e.key === 'F2') { e.preventDefault(); setTab('board'); }
   else if (e.key === 'F3') { e.preventDefault(); setTab('gcode'); }
   else if (e.key === 'F4') { e.preventDefault(); setTab('machine'); }
@@ -1215,6 +1373,14 @@ document.addEventListener('keydown', e => {
   else if ((e.key === 'Delete' || e.key === 'Backspace') && st.pick?.kind === 'pin') { removePin(st.pick.idx); }
   else if ((e.key === 'Delete' || e.key === 'Backspace') && st.pick?.kind === 'tab') { removeTab(st.pick.idx); }
   else if ((e.key === 'Delete' || e.key === 'Backspace') && st.pick?.kind === 'area') { for (const a of st.pick.items) B.areas.splice(B.areas.indexOf(a), 1); st.pick = null; boardChanged(); }
+  else if (st.panel && st.pick?.kind === 'inst' && !e.ctrlKey && !e.altKey && (e.key.toLowerCase() === 'r' || e.key.startsWith('Arrow'))) {
+    e.preventDefault();
+    const it = st.panel.insts[st.pick.idx]; if (!it) return;
+    if (e.key.toLowerCase() === 'r') it.rot = ((it.rot || 0) + 90) % 360;
+    else { const k = e.shiftKey ? 5 : 0.5, d = { ArrowLeft: [-k, 0], ArrowRight: [k, 0], ArrowUp: [0, k], ArrowDown: [0, -k] }[e.key]; it.x = +(it.x + d[0]).toFixed(2); it.y = +(it.y + d[1]).toFixed(2); }
+    panelChanged();
+  }
+  else if (st.panel && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'p') setTool('panel');
   else if (!e.ctrlKey && !e.altKey) { const m = { h: 'pan', v: 'select', o: 'clear', z: 'block', k: 'pin', m: 'tab' }[e.key.toLowerCase()]; if (m) setTool(m); }
 });
 
@@ -1312,10 +1478,10 @@ function projectThumb() {
 }
 async function projectText(name) {
   const files = [];
-  for (const src of st.sources) { const f = await readSource(src); files.push({ name: f.name, path: src.path || null, text: f.text }); }
+  if (!st.panel) for (const src of st.sources) { const f = await readSource(src); files.push({ name: f.name, path: src.path || null, text: f.text }); }
   const map = machineUI?.getMap?.() || null;
-  const meta = { name, board: st.board.name, size: st.board.size, ops: st.res?.ops.filter(o => st.enabled[o.id] !== false).length || 0, map: !!map, thumb: projectThumb() };
-  return JSON.stringify({ cumillProject: 1, meta, version: CAM.VERSION, saved: new Date().toISOString(), board: st.board.name, files, S, B, enabled: st.enabled, map });
+  const meta = { name, board: st.board.name, size: st.board.size, ops: st.res?.ops.filter(o => st.enabled[o.id] !== false).length || 0, map: !!map, thumb: projectThumb(), panel: st.panel ? st.panel.insts.length : undefined };
+  return JSON.stringify({ cumillProject: 1, meta, version: CAM.VERSION, saved: new Date().toISOString(), board: st.board.name, files, panel: st.panel || undefined, S, B, enabled: st.enabled, map });
 }
 async function saveProjectAs(name) {
   if (!st.board) throw new Error('Nejdřív načti desku.');
@@ -1338,7 +1504,7 @@ async function openProjectFile(path) {
   const r = await api('read?path=' + encodeURIComponent(path));
   await openProject(await r.text(), path);
 }
-async function openProjectsDlg() {
+async function openProjectsDlg({ pickForPanel = false } = {}) {
   let d = $('#prjDlg');
   if (!d) { d = el('dialog', { id: 'prjDlg', class: 'wide prjdlg' }); document.body.append(d); }
   const draw = async () => {
@@ -1346,9 +1512,10 @@ async function openProjectsDlg() {
     let data = { projects: [], dir: prjDir() };
     try { data = await (await api('projects?dir=' + encodeURIComponent(prjDir()))).json(); } catch (e) { toast(e.message, true); }
     const body = el('div', { class: 'dlgbody' });
-    d.append(el('div', { class: 'dlghead' }, el('b', {}, 'Projekty'), el('button', { class: 'iconbtn', title: 'Zavřít (Esc)', onclick: () => d.close() }, '✕')), body);
+    d.append(el('div', { class: 'dlghead' }, el('b', {}, pickForPanel ? 'Přidat projekt do panelu' : 'Projekty'), el('button', { class: 'iconbtn', title: 'Zavřít (Esc)', onclick: () => d.close() }, '✕')), body);
     // aktuální deska
-    if (st.board) {
+    if (pickForPanel) body.append(el('p', { class: 'muted small' }, 'Vyber projekt – jeho deska se přidá do panelu (můžeš přidat i víckrát).'));
+    if (st.board && !pickForPanel) {
       if (st.project) body.append(el('div', { class: 'prjcur' }, el('span', {}, 'Otevřený projekt: ', el('b', {}, st.project.name), el('span', { class: 'muted' }, ' – ukládá se průběžně')),
         el('button', { class: 'btn small', onclick: async () => { await saveProjectNow(false); draw(); } }, 'Uložit teď')));
       const nm = el('input', { type: 'text', value: st.project ? st.project.name + ' (kopie)' : st.board.name, placeholder: 'název projektu' });
@@ -1356,6 +1523,7 @@ async function openProjectsDlg() {
       const go = async () => { try { await saveProjectAs(nm.value.trim()); draw(); } catch (e) { toast(e.message, true); } };
       body.append(el('div', { class: 'prjnew' }, el('span', {}, st.project ? 'Uložit jako nový projekt' : 'Uložit desku jako projekt'), el('div', { class: 'inp' }, nm), el('button', { class: 'btn primary small', onclick: go }, 'Uložit')));
     }
+    if (!pickForPanel) body.append(el('div', { class: 'prjnew prjpanel' }, el('span', {}, 'Panel – víc desek na jednom polotovaru'), el('span', { class: 'muted small' }, st.board && !st.panel ? 'otevřená deska se vloží jako první' : 'desky přidáš v sekci Panel vlevo'), el('button', { class: 'btn small', onclick: () => { d.close(); newPanel().catch(e => toast(e.message, true)); } }, 'Nový panel…')));
     // složka
     body.append(el('div', { class: 'prjdir' }, el('span', { class: 'muted small' }, 'Složka projektů: '), el('code', {}, data.dir),
       host.native ? el('button', { class: 'btn small', onclick: async () => { try { const j = await (await api('pick-dir', { start: data.dir })).json(); if (j.path) { localStorage.setItem(PRJ_DIR_LS, j.path); draw(); } } catch (e) { toast(e.message, true); } } }, 'Změnit…') : null,
@@ -1368,10 +1536,11 @@ async function openProjectsDlg() {
       const name = prjBase(p.path), cur = st.project && st.project.path === p.path;
       list.append(el('div', { class: 'prjcard' + (cur ? ' cur' : '') },
         el('button', { class: 'prjthumb', title: 'Otevřít', onclick: async () => { d.close(); try { await openProjectFile(p.path); } catch (e) { toast(e.message, true); } } }, meta.thumb ? el('img', { src: meta.thumb, alt: '' }) : el('span', { class: 'muted' }, 'bez náhledu')),
-        el('div', { class: 'prjinfo' }, el('b', {}, name), el('span', { class: 'muted small' }, [p.board || meta.board, meta.size ? `${cz(meta.size.w)} × ${cz(meta.size.h)} mm` : null, meta.map ? 's mapou' : null].filter(Boolean).join(' · ')),
+        el('div', { class: 'prjinfo' }, el('b', {}, name), el('span', { class: 'muted small' }, [meta.panel ? `Panel · ${meta.panel} ${pl(meta.panel, 'deska', 'desky', 'desek')}` : (p.board || meta.board), meta.size ? `${cz(meta.size.w)} × ${cz(meta.size.h)} mm` : null, meta.map ? 's mapou' : null].filter(Boolean).join(' · ')),
           el('span', { class: 'muted small' }, new Date(p.mtime).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + (cur ? ' · otevřený' : ''))),
         el('div', { class: 'prjbtns' },
-          el('button', { class: 'btn small primary', onclick: async () => { d.close(); try { await openProjectFile(p.path); } catch (e) { toast(e.message, true); } } }, 'Otevřít'),
+          st.panel && !meta.panel ? el('button', { class: 'btn small' + (pickForPanel ? ' primary' : ''), title: 'Přidat desku z projektu do otevřeného panelu', onclick: async () => { try { await addProjectToPanel(p.path); toast(`${name} přidán do panelu.`); } catch (e) { toast(e.message, true); } } }, '+ Do panelu') : null,
+          pickForPanel ? null : el('button', { class: 'btn small primary', onclick: async () => { d.close(); try { await openProjectFile(p.path); } catch (e) { toast(e.message, true); } } }, 'Otevřít'),
           el('button', { class: 'btn small', onclick: async () => { const n = prompt('Nový název projektu:', name); if (!n || n === name) return; try { const j = await (await api('projects/rename', { dir: data.dir, path: p.path, name: n.trim() })).json(); if (cur) { st.project = { path: j.path, name: prjBase(j.path) }; renderBoardInfo(); } draw(); } catch (e) { toast(e.message, true); } } }, 'Přejmenovat'),
           el('button', { class: 'btn small', onclick: async () => { const n = prompt('Název kopie:', name + ' (kopie)'); if (!n) return; try { const t = await (await api('read?path=' + encodeURIComponent(p.path))).text(); await api('projects/save', { dir: data.dir, name: n.trim(), text: t, noOverwrite: true }); draw(); } catch (e) { toast(e.message, true); } } }, 'Duplikovat'),
           el('button', { class: 'iconbtn', title: 'Smazat projekt', onclick: async () => { if (!confirm(`Smazat projekt „${name}“? Soubor se smaže ze složky projektů.`)) return; try { await api('projects/delete', { dir: data.dir, path: p.path }); if (cur) { st.project = null; renderBoardInfo(); } draw(); } catch (e) { toast(e.message, true); } } }, '✕'))));
@@ -1400,15 +1569,20 @@ async function openProject(text, path = null) {
   try { localStorage.setItem('cumill.board.' + prj.board, JSON.stringify(prj.B)); } catch {}
   // deska: aktuální soubor z KiCadu, pokud ještě existuje (a jde sledovat změny), jinak uložená kopie
   let sources = null;
+  if (prj.panel) {
+    st.panel = prj.panel; panelCache.clear(); st.board = null;
+    await reloadPanel({ keepView: false });
+  } else {
   if (host.native && prj.files.every(f => f.path)) {
     try { for (const f of prj.files) await api('stat?path=' + encodeURIComponent(f.path)); sources = prj.files.map(f => ({ path: f.path, name: f.name })); } catch { sources = null; }
   }
   if (!sources) sources = prj.files.map(f => ({ file: new File([f.text], f.name), name: f.name }));
   await loadSources(sources);
+  }
   if (prj.enabled) { st.enabled = prj.enabled; renderOps(); }
   if (prj.map) getMachine().setMap(prj.map);
   st.project = path ? { path, name: prjBase(path) } : null; renderBoardInfo();
-  toast(`Projekt ${st.project?.name || prj.board} načten${prj.map ? ' i s výškovou mapou' : ''}${st.project ? ' – změny se ukládají průběžně' : ''}.`);
+  toast(`${prj.panel ? 'Panel' : 'Projekt'} „${st.project?.name || prj.board}“ načten${prj.map ? ' i s výškovou mapou' : ''}${st.project ? ' – změny se ukládají průběžně' : ''}.`);
 }
 
 // ---------- export pro laser (SVG, stejná nula jako frézování) ----------
@@ -1454,9 +1628,9 @@ function exportLaser(o) {
       if (o.maskGrow) pads = G.offset(pads, o.maskGrow);
       groups.push(`<g id="maska" fill="#0000FF" stroke="none"><path fill-rule="evenodd" d="${pathD(pads, true)}"/></g>`);
     }
-    if (o.outline) groups.push(`<g id="obrys" fill="none" stroke="#FF0000" stroke-width="0.1"><path d="${pathD([b.outline, ...b.inner], true)}"/></g>`);
+    if (o.outline) groups.push(`<g id="obrys" fill="none" stroke="#FF0000" stroke-width="0.1"><path d="${pathD([...(b.outlines || [b.outline]), ...b.inner], true)}"/></g>`);
     // rozsah: obrys desky a nula stroje
-    pathD([b.outline], true);
+    pathD(b.outlines || [b.outline], true);
     x0 -= 2; y0 -= 2; x1 += 2; y1 += 2;
     if (o.origin) groups.push(`<g id="nula" fill="none" stroke="#00E000" stroke-width="0.1"><path d="M-1.5,0L1.5,0M0,-1.5L0,1.5"/><circle cx="0" cy="0" r="0.6"/></g>`);
     const W = x1 - x0, H = y1 - y0;
@@ -1588,7 +1762,7 @@ function getMachine() {
     applyToolValues: (id, v) => { const t = S.tools.find(x => x.id === id); if (!t) return; Object.assign(t, v); toolsChanged(); flushTools(); },
     getS: () => S, getRes: () => st.res, boardName: () => st.board?.name || '',
     isEnabled: op => st.enabled[op.id] !== false, originDesc: originCz,
-    boardOutlineBB: side => st.board && st.res ? G.bbox([st.board.outline.map(st.res.sides[side].fwd)]) : null,
+    boardOutlineBB: side => st.board && st.res ? G.bbox((st.board.outlines || [st.board.outline]).map(l => l.map(st.res.sides[side].fwd))) : null,
     boardHoles: side => st.board && st.res ? st.board.holes.filter(h => !h.slot).map(h => { const [x, y] = st.res.sides[side].fwd([h.x, h.y]); return { x, y, d: h.d }; }) : [],
     openGcodeFiles: async () => {
       if (host.native) {
@@ -1604,7 +1778,7 @@ function getMachine() {
 function boardSimInfo(op) {
   const b = st.board, res = st.res; if (!b || !res) return {};
   const tf = res.sides[op.side].fwd;
-  const obb = G.bbox([b.outline.map(tf)]);
+  const obb = G.bbox((b.outlines || [b.outline]).map(l => l.map(tf)));
   const su = S.setup;
   const cx = (obb.minX + obb.maxX) / 2, cy = (obb.minY + obb.maxY) / 2;
   const rot = (obb.maxX - obb.minX > obb.maxY - obb.minY) !== (su.blankW > su.blankH);
@@ -1614,7 +1788,7 @@ function boardSimInfo(op) {
   const v = [];
   const lines = (polys, z) => { for (const poly of polys) for (let i = 0; i < poly.length; i++) { const p = tf(poly[i]), q = tf(poly[(i + 1) % poly.length]); v.push(p[0], p[1], z, q[0], q[1], z); } };
   lines(b.copper[layer] || [], 0.005);
-  lines([b.outline, ...b.inner], 0.005);
+  lines([...(b.outlines || [b.outline]), ...b.inner], 0.005);
   const tool = S.tools.find(t => t.id === op.toolId) || { type: op.kind === 'iso' ? 'v' : 'end', dia: op.toolDia || 0.2, vTip: 0.1, vAngle: 30 };
   // dřívější programy na téže straně (simulace navazuje)
   const i = res.ops.indexOf(op);
@@ -1719,7 +1893,7 @@ viewer.onPinAdd = (p, scale) => {
 
 }
 bindPinHandlers();
-window._cm = { saveProject, openProject, exportLaser, undoRedo, getMachine: () => getMachine(), recompute, gvs, setTab, addGcodeFiles, st, viewer, hitTest, loadSources, saveAll, host, get B() { return B; }, get S() { return S; } }; // ladění
+window._cm = { newPanel, addInstance, arrangePanel, reloadPanel, pinsAroundPanel, saveProject, openProject, exportLaser, undoRedo, getMachine: () => getMachine(), recompute, gvs, setTab, addGcodeFiles, st, viewer, hitTest, loadSources, saveAll, host, get B() { return B; }, get S() { return S; } }; // ladění
 (async () => {
   await detectHost();
   renderSettings();

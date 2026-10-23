@@ -129,4 +129,4 @@ logged in the **Journal** (with a note for which material it was saved).
    the feed you found.
 5. Finally a **Circle** *Inside* at the hole size you need – measure the real diameter.
 
-[← Glossary](13-glossary.md) · [Contents](README.md)
+[← Glossary](13-glossary.md) · [Contents](README.md) · [Panel →](15-panel.md)

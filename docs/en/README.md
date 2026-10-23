@@ -29,6 +29,7 @@ FlatCAM + UGS + Candle trio.
 | 12 | [Troubleshooting and tips](12-troubleshooting.md) | when something does not work |
 | 13 | [Glossary](13-glossary.md) | V-bit, zero, homing, GRBL… for complete beginners |
 | 14 | [Material test and Tools tab](14-material-test.md) | test cuts for F / S / Z, tool library and results |
+| 15 | [Panel – several boards at once](15-panel.md) | several boards on one blank, mouse arrangement, tool-by-tool production |
 
 ## Who is it for
 

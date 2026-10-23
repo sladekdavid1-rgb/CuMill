@@ -26,6 +26,7 @@
 | `Z` | Zakázat frézování |
 | `K` | Kolíček |
 | `M` | Můstek |
+| `P` | Panel – posun desek (jen u panelu; `R` otočí vybranou, šipky posunou) |
 | `Del`, `Backspace` | smazat vybraný kolíček / můstek / oblast |
 | `Enter` | uzavřít kreslenou oblast |
 | `Backspace` | při kreslení oblasti vrátit poslední bod |

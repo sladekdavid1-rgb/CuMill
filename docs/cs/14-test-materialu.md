@@ -129,4 +129,4 @@ i v **Deníku** (s poznámkou, pro jaký materiál se uložil).
    nalezeného posuvu.
 5. Na závěr **Kruh** *Uvnitř* na rozměr díry, kterou potřebuješ – změř skutečný průměr.
 
-[← Slovníček](13-slovnicek.md) · [Obsah](README.md)
+[← Slovníček](13-slovnicek.md) · [Obsah](README.md) · [Panel →](15-panel.md)

@@ -33,6 +33,7 @@ export function chainEdges(lines, loops) {
 
 // dokončí desku: obrys, plocha desky, rozměry, varování
 export function finalizeBoard(b) {
+  if (b.panelParts) return finalizePanel(b);
   const { loops, open } = chainEdges(b.edge.lines, b.edge.loops);
   if (open.length) b.warnings.push({ level: 'error', text: `Obrys desky (Edge.Cuts) není uzavřený – ${open.length} volných konců. Beru obdélník kolem mědi.` });
   let outline = null, inner = [];
@@ -58,8 +59,20 @@ export function finalizeBoard(b) {
   if (G.area(outline) < 0) outline = outline.slice().reverse();
   inner = inner.map(l => G.area(l) > 0 ? l.slice().reverse() : l);
   b.outline = outline;
+  b.outlines = [outline];
   b.inner = inner;
   b.bb = G.bbox([outline]);
+  return finishBoard(b);
+}
+// panel: víc samostatných obrysů (každá deska svůj), výřezy všech desek
+function finalizePanel(b) {
+  b.outlines = b.panelParts.map(p => G.area(p.outer) < 0 ? p.outer.slice().reverse() : p.outer);
+  b.outline = b.outlines[0];
+  b.inner = b.panelParts.flatMap(p => p.inner).map(l => G.area(l) > 0 ? l.slice().reverse() : l);
+  b.bb = G.bbox(b.outlines);
+  return finishBoard(b);
+}
+function finishBoard(b) {
   b.size = { w: b.bb.maxX - b.bb.minX, h: b.bb.maxY - b.bb.minY };
   b.hasCopper = { 'F.Cu': b.copper['F.Cu'].length > 0, 'B.Cu': b.copper['B.Cu'].length > 0 };
   // vrstva je „použitá“, má-li cesty/zóny; samotné pady THT na druhé straně jednostranné desky se nefrézují

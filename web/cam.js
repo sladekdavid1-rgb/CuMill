@@ -3,7 +3,7 @@ import * as G from './geom.js';
 import { textToLines } from './text.js';
 
 export const APP = 'CuMill';
-export const VERSION = '1.4';
+export const VERSION = '1.5';
 
 export const TOOL_TYPES = { v: 'V-fréza', end: 'Fréza', drill: 'Vrták' };
 export function defaultTools() {
@@ -79,8 +79,7 @@ export function makeSides(board, s, pinsDesign) {
   const mk = (mirror) => {
     const m = mirror ? (axis === 'h' ? ([x, y]) => [x, 2 * cy - y] : ([x, y]) => [2 * cx - x, y]) : (p => p);
     // nula
-    const outT = board.outline.map(m);
-    const bb = G.bbox([outT]);
+    const bb = G.bbox((board.outlines || [board.outline]).map(l => l.map(m)));
     let o, desc;
     switch (s.setup.origin) {
       case 'pin-ll': {
@@ -389,10 +388,10 @@ function pinChecks(board, S, pins, checks, markers) {
   const blank = blankRect(board, S);
   const cutTool = getTool(S, S.cut.tool, ['end']);
   const cutR = S.cut.enabled ? (cutTool?.dia || 1.8) / 2 : 0;
-  const distOutline = (x, y) => { let m = Infinity; for (const loop of [board.outline, ...board.inner]) for (let i = 0; i < loop.length; i++) { const a = loop[i], b = loop[(i + 1) % loop.length]; const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy; let t = L ? ((x - a[0]) * dx + (y - a[1]) * dy) / L : 0; t = Math.max(0, Math.min(1, t)); m = Math.min(m, Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy)); } return m; };
+  const distOutline = (x, y) => { let m = Infinity; for (const loop of [...(board.outlines || [board.outline]), ...board.inner]) for (let i = 0; i < loop.length; i++) { const a = loop[i], b = loop[(i + 1) % loop.length]; const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy; let t = L ? ((x - a[0]) * dx + (y - a[1]) * dy) / L : 0; t = Math.max(0, Math.min(1, t)); m = Math.min(m, Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy)); } return m; };
   pins.forEach((p, i) => {
     const probs = [];
-    const onBoard = G.pointInPoly(p.x, p.y, board.outline) && !board.inner.some(h => G.pointInPoly(p.x, p.y, h));
+    const onBoard = (board.outlines || [board.outline]).some(o => G.pointInPoly(p.x, p.y, o)) && !board.inner.some(h => G.pointInPoly(p.x, p.y, h));
     if (onBoard && !p.fromHole) probs.push('leží na desce mimo díru');
     if (!p.fromHole) {
       const disk = [G.circle(p.x, p.y, r)];
@@ -537,7 +536,7 @@ export function computeAll(board, S, B) {
     const before = lines.reduce((a, l) => a + G.pathLength(l, false), 0);
     if (avoid.length && lines.length) lines = G.clipLinesOutside(lines, G.offset(avoid, tw));
     // jen uvnitř desky
-    const inside = G.offset([board.outline], -0.2);
+    const inside = G.offset(board.outlines || [board.outline], -0.2);
     if (inside.length) lines = G.clipLinesInside(lines, inside);
     const after = lines.reduce((a, l) => a + G.pathLength(l, false), 0);
     if (!lines.length) { checks.push({ level: 'warn', text: `${SL}: po vynechání mědi nezbylo nic k gravírování.` }); return; }
@@ -554,8 +553,8 @@ export function computeAll(board, S, B) {
     const key = 'iso-' + L;
     const prm = opParams(S, key, isoTool, { depth: S.iso.depth, step: S.iso.step });
     const copperT = tPaths(board.copper[L], tf.fwd);
-    const outlineT = board.outline.map(tf.fwd);
-    const region = S.iso.clip ? G.offset([outlineT], w * 0.75) : null;
+    const outlinesT = (board.outlines || [board.outline]).map(l => l.map(tf.fwd));
+    const region = S.iso.clip ? G.offset(outlinesT, w * 0.75) : null;
     const isl = board.islands[L] || [];
     // průjezdy každého ostrůvku: úprava kusu > úprava sítě > výchozí
     const passOf = isl.map(it => {
@@ -815,9 +814,9 @@ export function computeAll(board, S, B) {
     const prm = opParams(S, 'cut', tool, { depth: S.cut.depth, step: S.cut.step });
     const D = tool?.dia || 1.8, r = D / 2;
     const items = [];
-    const outT = board.outline.map(sdw.fwd);
+    const outT = (board.outlines || [board.outline]).map(l => l.map(sdw.fwd));
     const innT = board.inner.map(l => l.map(sdw.fwd));
-    const tree = G.polyTree(G.offset(G.difference([outT], innT), r));
+    const tree = G.polyTree(G.offset(G.difference(outT, innT), r));
     for (const node of tree) {
       let o = node.outer; if ((G.area(o) > 0) === S.cut.climb) o = o.slice().reverse();
       for (let hh of node.holes) { if ((G.area(hh) < 0) === S.cut.climb) hh = hh.slice().reverse(); items.push({ pts: hh, closed: true, kind: 'inner' }); }
