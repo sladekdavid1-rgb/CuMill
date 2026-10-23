@@ -28,6 +28,7 @@ FlatCAM + UGS + Candle trio.
 | 11 | [Keyboard shortcuts and pendant](11-shortcuts.md) | all shortcuts in one place |
 | 12 | [Troubleshooting and tips](12-troubleshooting.md) | when something does not work |
 | 13 | [Glossary](13-glossary.md) | V-bit, zero, homing, GRBL… for complete beginners |
+| 14 | [Material test and Tools tab](14-material-test.md) | test cuts for F / S / Z, tool library and results |
 
 ## Who is it for
 
@@ -47,6 +48,7 @@ FlatCAM + UGS + Candle trio.
 - **Viewer** with a 3D material-removal simulation.
 - **Machine** – G-code streaming to GRBL, jogging, zero, probes, height map,
   resume after interruption, production wizard, journal and tool meters, pendant.
+- **Material test** – test cuts (also a matrix of F / S / depth variants) and a library of proven values.
 
 > **Safety:** a CNC machine can hurt you. For the first tests run without a tool and high
 > above the board, keep your hand near the power switch and wear safety glasses.

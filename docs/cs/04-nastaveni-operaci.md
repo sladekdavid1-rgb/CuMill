@@ -27,9 +27,10 @@ Obsah kapitoly:
 ![Knihovna nástrojů](../img/b_tools.png)
 
 Seznam nástrojů, které máš. Každá operace si z nich vybírá. Tlačítkem **Upravit knihovnu…**
-otevřeš tabulku, kde nástroje přidáš, smažeš nebo upravíš:
+(nebo hlavní záložkou **Nástroje**, `F6`) otevřeš tabulku, kde nástroje přidáš, smažeš nebo upravíš
+(podrobně v [kapitole 14](14-test-materialu.md)):
 
-![Úprava knihovny nástrojů](../img/c_knihovna.png)
+![Záložka Nástroje](../img/t_nastroje.png)
 
 | Sloupec | Význam |
 |---------|--------|

@@ -1,6 +1,6 @@
 # 13. Slovníček pojmů
 
-[← Řešení problémů](12-problemy.md) · [Obsah](README.md)
+[← Řešení problémů](12-problemy.md) · [Obsah](README.md) · [Další: Test materiálu →](14-test-materialu.md)
 
 | Pojem | Vysvětlení |
 |-------|------------|

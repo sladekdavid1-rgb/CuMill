@@ -48,6 +48,12 @@ step-by-step production wizard.
 - **Pendant support** – F13–F24 key mapping compatible with UGS
   (see [cnc-pendant-ugs-rp2040](https://github.com/sladekdavid1-rgb/cnc-pendant-ugs-rp2040))
 
+**Material test & tools**
+- **Tools tab** – the whole tool library at a glance, plus saved material test results per tool
+- **Test cuts** – line, rectangle, triangle, circle, pocket or drilling; single test or a matrix of
+  feed / spindle / depth / step-down / plunge variants, gentlest first; origin here or typed in,
+  after the test go up / back / next to it / to a park position; save the best cell as material + tool
+
 **Look & feel** – 8 color themes (incl. KiCad-like) and a full custom theme editor, UI scaling, backup/restore.
 
 ## Download
@@ -63,6 +69,7 @@ Microsoft Edge WebView2 (preinstalled on current Windows).
 | Contents | [docs/en](docs/en/README.md) | [docs/cs](docs/cs/README.md) |
 | Quick start | [First board in 10 minutes](docs/en/02-first-board.md) | [První deska za 10 minut](docs/cs/02-prvni-deska.md) |
 | Two-sided board step by step | [Production walkthrough](docs/en/09-step-by-step.md) | [Výroba krok za krokem](docs/cs/09-vyroba-krok-za-krokem.md) |
+| Material test | [Material test and Tools tab](docs/en/14-material-test.md) | [Test materiálu](docs/cs/14-test-materialu.md) |
 
 ## Building from source
 

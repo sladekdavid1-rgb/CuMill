@@ -12,7 +12,7 @@
 | `Ctrl+Z` | zpět |
 | `Ctrl+Y`, `Ctrl+Shift+Z` | znovu |
 | `Ctrl+,` | nastavení |
-| `F2` / `F3` / `F4` | záložka Deska / G-kód / Stroj |
+| `F2` / `F3` / `F4` / `F6` | záložka Deska / G-kód / Stroj / Nástroje |
 | `F5`, `Ctrl+R` | znovu načíst desku ze souboru |
 | `Esc` | zrušit výběr, nástroj zpět na Posun, zavřít okno |
 

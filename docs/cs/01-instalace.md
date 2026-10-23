@@ -50,7 +50,7 @@ Pod tlačítkem se časem objeví seznam **naposledy otevřených desek** – st
 
 | # | Prvek | K čemu slouží |
 |---|-------|---------------|
-| 1 | **Deska / G-kód / Stroj** | tři hlavní záložky (také `F2`, `F3`, `F4`) |
+| 1 | **Deska / G-kód / Stroj / Nástroje** | hlavní záložky (také `F2`, `F3`, `F4`, `F6`); Nástroje = knihovna nástrojů a výsledky testů ([kapitola 14](14-test-materialu.md)) |
 | 2 | **Otevřít** | načíst desku `.kicad_pcb`, gerbery nebo projekt `.cumill` |
 | 3 | **Sledovat změny** | když v KiCadu desku uložíš, CuMill ji sám znovu načte a přepočítá |
 | 4 | **Projekt** | uloží vše (desku, nastavení, úpravy, výškovou mapu) do jednoho souboru `.cumill` |

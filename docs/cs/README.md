@@ -24,6 +24,7 @@ mapy, průvodce výrobou a ovládání pendantem. Nahrazuje tak trojici FlatCAM 
 | 11 | [Klávesové zkratky a pendant](11-klavesy.md) | všechny zkratky na jednom místě |
 | 12 | [Řešení problémů a tipy](12-problemy.md) | když něco nejde |
 | 13 | [Slovníček pojmů](13-slovnicek.md) | V-fréza, nula, homing, GRBL… pro úplné začátečníky |
+| 14 | [Test materiálu a záložka Nástroje](14-test-materialu.md) | zkušební řezy F / S / Z, knihovna nástrojů a výsledků |
 
 ## Pro koho to je
 
@@ -43,6 +44,7 @@ mapy, průvodce výrobou a ovládání pendantem. Nahrazuje tak trojici FlatCAM 
 - **Vizualizér** s 3D simulací odebírání materiálu.
 - **Stroj** – posílání G-kódu do GRBL, pojezd, nula, sondy, výšková mapa,
   pokračování po přerušení, průvodce výrobou, deník a počítadla nástrojů, pendant.
+- **Test materiálu** – zkušební řezy (i matice variant F / S / hloubka) a knihovna osvědčených hodnot.
 
 > **Bezpečnost:** frézka je stroj, který umí ublížit. Při prvních zkouškách jezdi
 > bez nástroje a vysoko nad deskou, měj ruku u vypínače a nos ochranné brýle.

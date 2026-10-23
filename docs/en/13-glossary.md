@@ -1,6 +1,6 @@
 # 13. Glossary
 
-[← Troubleshooting](12-troubleshooting.md) · [Contents](README.md)
+[← Troubleshooting](12-troubleshooting.md) · [Contents](README.md) · [Next: Material test →](14-material-test.md)
 
 Czech terms you will see in the program are in parentheses.
 

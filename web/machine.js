@@ -2,6 +2,8 @@
 // výšková mapa, průvodce výrobou desky a pendant (klávesy F13–F24).
 import { GcodeViewer } from './gview.js';
 import * as HM from './hmap.js';
+import * as TC from './testcut.js';
+import * as MAT from './materials.js';
 
 const LS = 'cumill.machine.v1';
 const $ = s => document.querySelector(s);
@@ -54,8 +56,9 @@ export function initMachine(ctx) {
     useMap: true, skips: [], stream: { done: 0, total: 0, streaming: false, paused: false },
     hmap: null, hmapMeta: null, mapping: false, mapAbort: false, mapSel: -1,
     checkRun: false, files: [], wizard: { i: 0, done: {} }, log: [],
+    test: { toolId: '', material: '', thickness: 3, shape: 'rect', len: 20, w: 10, h: 10, side: 12, dia: 8, pocketShape: 'rect', overlap: 40, comp: 'center', climb: true, base: null, matrix: { on: false, rows: { key: 'feed', from: 200, to: 600, n: 3 }, cols: { key: 'depth', from: 0.2, to: 1, n: 3 } }, gap: 3, x: null, y: null, after: 'next', nextDX: null, nextDY: 0, park: null, skip: [], ...(saved.test || {}) },
   };
-  const save = () => { try { localStorage.setItem(LS, JSON.stringify({ port: M.port, jog: M.jog, probe: M.probe, mapCfg: M.mapCfg, keymap: M.keymap, setter: M.setter, lastTool: M.lastTool, zTool: M.zTool, lastRun: M.lastRun })); } catch {} };
+  const save = () => { try { localStorage.setItem(LS, JSON.stringify({ test: M.test, port: M.port, jog: M.jog, probe: M.probe, mapCfg: M.mapCfg, keymap: M.keymap, setter: M.setter, lastTool: M.lastTool, zTool: M.zTool, lastRun: M.lastRun })); } catch {} };
 
   // ---------- API ----------
   const call = async (path, body) => {
@@ -199,12 +202,12 @@ export function initMachine(ctx) {
   // vpravo: průvodce / mapa / konzole / nastavení
   const tabs = el('div', { class: 'seg mtabs' });
   const panes = {};
-  for (const [k, t] of [['wiz', 'Průvodce'], ['map', 'Mapa'], ['log', 'Deník'], ['con', 'Konzole'], ['set', 'Nastavení']]) {
+  for (const [k, t] of [['wiz', 'Průvodce'], ['map', 'Mapa'], ['test', 'Test'], ['log', 'Deník'], ['con', 'Konzole'], ['set', 'Nastavení']]) {
     tabs.append(el('button', { 'data-k': k, onclick: () => showPane(k) }, t));
     panes[k] = k === 'log' ? journalPane : el('div', { class: 'mpane', hidden: true });
   }
   right.append(tabs, ...Object.values(panes));
-  const showPane = k => { mapPreview = k === 'map'; renderMapOverlay(); for (const [kk, p] of Object.entries(panes)) p.hidden = kk !== k; tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === k)); if (k === 'map') renderMap(); if (k === 'wiz') renderWizard(); if (k === 'log') renderJournal(); if (k === 'set') renderSettings(); };
+  const showPane = k => { mapPreview = k === 'map'; renderMapOverlay(); for (const [kk, p] of Object.entries(panes)) p.hidden = kk !== k; tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === k)); if (k === 'map') renderMap(); if (k === 'wiz') renderWizard(); if (k === 'log') renderJournal(); if (k === 'set') renderSettings(); if (k === 'test') renderTest(); };
 
   // konzole
   const conLog = el('div', { class: 'mcon' });
@@ -627,6 +630,7 @@ export function initMachine(ctx) {
     const res = ctx.getRes(), list = [];
     if (res) for (const op of res.ops) list.push({ id: 'op:' + op.id, label: `${op.no} · ${op.title}`, op });
     for (const f of M.files) list.push({ id: f.id, label: 'Soubor · ' + f.name, file: f });
+    if (M.testProg) list.push({ id: 'test', label: 'Test · ' + M.testProg.name, test: M.testProg });
     return list;
   }
   function renderProgList() {
@@ -639,7 +643,8 @@ export function initMachine(ctx) {
     if (M.stream.streaming) { ctx.toast('Během běhu programu nejde přepnout program.', true); renderProgList(); return; }
     const it = programList().find(x => x.id === id);
     if (!it) { M.prog = null; gv.clear('Vyber program nahoře.'); renderStream(); return; }
-    if (it.op) {
+    if (it.test) M.prog = { ...it.test };
+    else if (it.op) {
       const op = it.op;
       M.prog = { src: id, name: ctx.fileName(op), orig: op.gcode, op, side: op.side, iso: op.kind === 'iso' || op.kind === 'silk', sim: ctx.boardSimInfo(op) };
     } else M.prog = { src: id, name: it.file.name, orig: it.file.text, iso: true, ext: true };
@@ -784,6 +789,7 @@ export function initMachine(ctx) {
       ['Začátek', from ? `od řádku ${from + 1} (najetí nad místo, pak dolů)` : 'od začátku'],
       ['Odhad času', `${Math.max(1, Math.round(g.total * (ctx.timeFactor?.(p.op?.kind || 'soubor') || 1)))} min${ctx.timeFactor && ctx.timeFactor(p.op?.kind || 'soubor') !== 1 ? ' (podle předchozích běhů)' : ''}`],
     ];
+    if (p.test) rows.splice(1, 0, ['Test', `${p.test.res.run.length} ${p.test.res.run.length === 1 ? 'tvar' : 'tvarů'} · ${TC.SHAPES[p.test.t.shape]} · ${cz(p.test.res.size.w, 1)} × ${cz(p.test.res.size.h, 1)} mm od X ${cz(p.test.t.x, 2)} Y ${cz(p.test.t.y, 2)}`], ['Materiál', p.test.t.material || '—'], ...p.test.res.warn.map(w => ['Pozor', w, true]));
     if (check) rows.unshift(['Režim', 'KONTROLNÍ BĚH – bez pohybu']);
     for (const w of preChecks(p, g, from)) rows.push(['Pozor', w, true]);
     if (!await confirmDlg(check ? 'Kontrolní běh' : 'Spustit program', rows, check ? 'Zkontrolovat' : 'Spustit')) return;
@@ -820,6 +826,11 @@ export function initMachine(ctx) {
     }
     journalEnd(result, active, done / total);
     renderResume();
+    const p = M.prog;
+    if (p?.test && (result === 'hotovo' || result === 'zastaveno')) {
+      if (result === 'hotovo' && p.test.res.next && M.test.after === 'next') { M.test.x = +p.test.res.next.x.toFixed(3); M.test.y = +p.test.res.next.y.toFixed(3); save(); if (!panes.test.hidden) renderTest(); }
+      setTimeout(() => saveTestDialog(p.test, result), 400);
+    }
   }
   function journalStart(p, from) {
     const J = ctx.journal();
@@ -1176,6 +1187,182 @@ export function initMachine(ctx) {
     P.append(el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: () => { M.wizard = { i: 0, done: {} }; renderWizard(); } }, 'Začít znovu')));
   }
 
+  // ---------- test materiálu: zkušební řezy, matice F / S / hloubka / krok / zanoření ----------
+  const testTools = () => ctx.getS().tools || [];
+  const testTool = () => testTools().find(t => t.id === M.test.toolId) || testTools().find(t => t.type === 'end') || testTools()[0];
+  const toolBase = t => ({ feed: t?.feed || 300, plunge: t?.plunge || 100, spindle: t?.spindle || 12000, depth: t?.type === 'v' ? 0.1 : t?.type === 'drill' ? 2 : 1, step: Math.max(TC.Z_MIN, TC.roundZ(t?.step || 0.3)) });
+  function testSpec() {
+    const T = M.test, tool = testTool();
+    if (!tool) throw new Error('Knihovna nástrojů je prázdná.');
+    if (!T.base) T.base = toolBase(tool);
+    if (T.x == null || T.y == null) { const w = M.st.wpos || [0, 0, 0]; T.x = +w[0].toFixed(3); T.y = +w[1].toFixed(3); }
+    const mc = ctx.getS().machine, wco = M.st.wco || [0, 0, 0];
+    const park = T.after === 'park' && T.park ? { parkX: T.park[0] - wco[0], parkY: T.park[1] - wco[1] } : {};
+    return { ...T, ...park, tool: { ...tool, name: toolName(tool) }, skip: new Set(T.skip || []), M: { zTravel: mc.zTravel ?? 2, zApproach: mc.zApproach ?? 0.3, zEnd: mc.zEnd ?? 15, dwell: mc.dwell ?? 2 } };
+  }
+  const toolName = t => t ? (t.name || (t.type === 'v' ? `V-fréza ${t.vAngle || 30}° hrot ${cz(t.vTip ?? t.dia, 2)}` : `${t.type === 'drill' ? 'Vrták' : 'Fréza'} Ø${cz(t.dia, 2)}`)) : '';
+  function buildTestProg() {
+    const t = testSpec(), res = TC.buildTest(t, t.M);
+    const tool = t.tool, pad = 4;
+    const name = `test_${(t.material || 'material').replace(/[^\w\-]+/g, '_')}_${TC.SHAPES[t.shape]}.nc`;
+    const op = { id: 'test', kind: 'test', tool: toolName(tool), toolId: tool.id, prm: { feed: t.base.feed, plunge: t.base.plunge, spindle: t.base.spindle } };
+    const sim = { tool: { type: tool.type, dia: tool.dia, vTip: tool.vTip, vAngle: tool.vAngle }, stock: { minX: res.bbox.minX - pad, minY: res.bbox.minY - pad, maxX: res.bbox.maxX + pad, maxY: res.bbox.maxY + pad }, T: t.thickness || 3, prev: [], motif: null };
+    M.testProg = { src: 'test', name, orig: res.text, op, iso: false, test: { t, res }, sim };
+    return M.testProg;
+  }
+  function previewTest() {
+    if (M.stream.streaming) throw new Error('Během běhu programu nejde test připravit.');
+    buildTestProg(); renderProgList(); progSel.value = 'test'; selectProgram('test');
+  }
+  async function startTest() { previewTest(); await startProgram(); }
+
+  function renderTest() {
+    const P = panes.test; if (!P || P.hidden) return; const sc = P.scrollTop; P.innerHTML = '';
+    const T = M.test, tool = testTool();
+    if (tool && T.toolId !== tool.id) T.toolId = tool.id;
+    if (!T.base) T.base = toolBase(tool);
+    const re = () => { save(); renderTest(); };
+    const fld = (label, obj, key, opt = {}) => {
+      const i = el('input', { value: obj[key] == null ? '' : String(obj[key]).replace('.', ','), placeholder: opt.ph || '' });
+      i.addEventListener('change', () => { let v = num(i.value); if (v == null && opt.allowNull) v = null; else if (v == null) { i.value = obj[key]; return; } if (v != null && opt.z) v = TC.roundZ(v); if (v != null && opt.int) v = Math.round(v); if (v != null && opt.min != null) v = Math.max(opt.min, v); obj[key] = v; re(); });
+      i.addEventListener('keydown', e => e.stopPropagation());
+      return el('label', { class: 'mf' }, el('span', {}, label), el('span', { class: 'inp' }, i, opt.unit ? el('span', { class: 'u' }, opt.unit) : null));
+    };
+    const seg = (opts, obj, key, after) => el('div', { class: 'seg2' }, ...opts.map(([v, t]) => el('button', { class: obj[key] === v ? 'on' : '', onclick: () => { obj[key] = v; after?.(); re(); } }, t)));
+    // nástroj a materiál
+    const tSel = el('select', {}, ...testTools().map(t => el('option', { value: t.id, selected: t.id === T.toolId }, toolName(t))));
+    tSel.addEventListener('change', () => { T.toolId = tSel.value; const nt = testTool(); const b = MAT.best(T.material, nt.id); T.base = b ? { feed: b.feed, plunge: b.plunge, spindle: b.spindle, depth: b.depth, step: b.step } : toolBase(nt); if (nt.type === 'drill') T.shape = 'drill'; re(); });
+    const mat = el('input', { value: T.material || '', placeholder: 'např. hliník 6061, MDF, PMMA…', list: 'cmMatList' });
+    mat.addEventListener('keydown', e => e.stopPropagation());
+    mat.addEventListener('change', () => { T.material = mat.value.trim(); const b = MAT.best(T.material, T.toolId); if (b) { T.base = { feed: b.feed, plunge: b.plunge, spindle: b.spindle, depth: b.depth, step: b.step }; ctx.toast(`Předvyplněno z uloženého testu (${new Date(b.t).toLocaleDateString('cs-CZ')}).`); } re(); });
+    const dl = el('datalist', { id: 'cmMatList' }, ...MAT.names().map(n => el('option', { value: n })));
+    const saved = MAT.byTool(T.toolId);
+    P.append(el('h4', {}, 'Nástroj a materiál'),
+      el('label', { class: 'mf' }, el('span', {}, 'Nástroj'), el('span', { class: 'inp' }, tSel)),
+      el('div', { class: 'mgrid' }, el('label', { class: 'mf' }, el('span', {}, 'Materiál'), el('span', { class: 'inp' }, mat)), fld('Tloušťka materiálu', T, 'thickness', { unit: 'mm', min: 0.1 })), dl);
+    // tvar
+    P.append(el('h4', {}, 'Tvar'), seg(Object.entries(TC.SHAPES).slice(0, 3), T, 'shape'), el('div', { style: 'height:4px' }), seg(Object.entries(TC.SHAPES).slice(3), T, 'shape'));
+    const g = el('div', { class: 'mgrid' });
+    if (T.shape === 'line') g.append(fld('Délka', T, 'len', { unit: 'mm', min: 1 }));
+    if (T.shape === 'rect' || (T.shape === 'pocket' && T.pocketShape !== 'circle')) g.append(fld('Šířka', T, 'w', { unit: 'mm', min: 0.5 }), fld('Výška', T, 'h', { unit: 'mm', min: 0.5 }));
+    if (T.shape === 'tri') g.append(fld('Strana', T, 'side', { unit: 'mm', min: 1 }));
+    if (T.shape === 'circle' || (T.shape === 'pocket' && T.pocketShape === 'circle')) g.append(fld('Průměr', T, 'dia', { unit: 'mm', min: 0.5 }));
+    if (T.shape === 'pocket') g.append(fld('Překrytí', T, 'overlap', { unit: '%', min: 5 }));
+    if (T.shape === 'pocket') P.append(seg([['rect', 'Obdélníková kapsa'], ['circle', 'Kruhová kapsa']], T, 'pocketShape'));
+    if (g.children.length) P.append(g);
+    if (['rect', 'tri', 'circle'].includes(T.shape)) P.append(el('div', { class: 'mlabel' }, 'Dráha nástroje'), seg([['center', 'Po středu'], ['inside', 'Uvnitř'], ['outside', 'Vně']], T, 'comp'),
+      el('div', { class: 'muted small' }, T.comp === 'inside' ? 'Uvnitř = otvor přesně na zadaný rozměr.' : T.comp === 'outside' ? 'Vně = díl přesně na zadaný rozměr.' : 'Po středu = střed nástroje jede po zadaném tvaru.'));
+    if (!['line', 'drill'].includes(T.shape)) P.append(el('div', { class: 'mlabel' }, 'Směr frézování'), seg([[true, 'Sousledně'], [false, 'Nesousledně']], T, 'climb'));
+    if (T.shape === 'drill') P.append(el('div', { class: 'muted small' }, 'Vrtání na místě – krok Z = hloubka jednoho zavrtání (výplach třísek), mezi kroky vyjede nad materiál.'));
+    // parametry
+    const B = T.base;
+    P.append(el('h4', {}, 'Parametry'),
+      el('div', { class: 'mgrid' }, fld('Posuv F', B, 'feed', { unit: 'mm/min', min: 1 }), fld('Zanoření', B, 'plunge', { unit: 'mm/min', min: 1 }), fld('Otáčky S', B, 'spindle', { unit: 'ot/min', int: true, min: 0 }), fld('Hloubka', B, 'depth', { unit: 'mm', z: true }), fld('Krok Z', B, 'step', { unit: 'mm', z: true })),
+      el('div', { class: 'muted small' }, `Hloubka a krok se zaokrouhlují na ${cz(TC.Z_MIN, 2)} mm. Z0 = povrch materiálu.`));
+    if (saved.length) P.append(el('div', { class: 'mrow' }, el('span', { class: 'muted small' }, 'Uložené:'), ...saved.slice(0, 6).map(r => el('button', { class: 'btn small', title: `F${r.feed} · zanoření ${r.plunge} · S${r.spindle} · hloubka ${cz(r.depth, 2)} · krok ${cz(r.step, 2)}${r.note ? ' · ' + r.note : ''}`, onclick: () => { T.base = { feed: r.feed, plunge: r.plunge, spindle: r.spindle, depth: r.depth, step: r.step }; T.material = r.material; re(); } }, r.material || '?'))));
+    // matice
+    const mx = T.matrix;
+    const mchk = el('input', { type: 'checkbox', checked: !!mx.on }); mchk.addEventListener('change', () => { mx.on = mchk.checked; T.skip = []; re(); });
+    P.append(el('h4', {}, 'Matice variant'), el('label', { class: 'f check small' }, mchk, 'Víc variant najednou (řádky × sloupce)'));
+    if (mx.on) {
+      const axRow = (label, ax) => {
+        const ks = el('select', {}, ...Object.entries(TC.VARS).map(([k, t]) => el('option', { value: k, selected: ax.key === k }, t)));
+        ks.addEventListener('change', () => { ax.key = ks.value; const b = B[ax.key]; ax.from = ax.key === 'depth' || ax.key === 'step' ? TC.roundZ(b / 2) : Math.round(b * 0.6); ax.to = ax.key === 'depth' || ax.key === 'step' ? TC.roundZ(b * 1.5) : Math.round(b * 1.4); T.skip = []; re(); });
+        const z = ax.key === 'depth' || ax.key === 'step';
+        return [el('label', { class: 'mf' }, el('span', {}, label), el('span', { class: 'inp' }, ks)),
+          el('div', { class: 'mgrid three' }, fld('od', ax, 'from', { z, min: z ? TC.Z_MIN : 1, unit: TC.UNITS[ax.key] }), fld('do', ax, 'to', { z, min: z ? TC.Z_MIN : 1, unit: TC.UNITS[ax.key] }), fld('počet', ax, 'n', { int: true, min: 1 }))];
+      };
+      P.append(...axRow('Řádky', mx.rows), ...axRow('Sloupce', mx.cols), el('div', { class: 'mgrid' }, fld('Mezera mezi tvary', T, 'gap', { unit: 'mm', min: 0 })));
+    }
+    // výpočet
+    let res = null, err = null;
+    try { const sp = testSpec(); res = TC.buildTest(sp, sp.M); } catch (e) { err = e.message; }
+    if (mx.on && res) {
+      const rows = res.rowsV, cols = res.colsV, skip = new Set(T.skip || []);
+      const tb = el('table', { class: 'tgrid' }, el('tr', {}, el('th', { class: 'corner' }, `${TC.VARS[mx.rows.key]} \\ ${TC.VARS[mx.cols.key]}`), ...cols.map(v => el('th', {}, fmtV(mx.cols.key, v)))));
+      const order = new Map(res.run.map((c, i) => [`${c.r},${c.c}`, i + 1]));
+      for (let r = rows.length - 1; r >= 0; r--) tb.append(el('tr', {}, el('th', {}, fmtV(mx.rows.key, rows[r])), ...cols.map((_, c) => {
+        const k = `${r},${c}`, sk = skip.has(k);
+        return el('td', {}, el('button', { class: 'tcell' + (sk ? ' skip' : ''), title: sk ? 'Vynecháno – klik vrátí' : `Pořadí ${order.get(k)} – klik vynechá`, onclick: () => { const s2 = new Set(T.skip || []); s2.has(k) ? s2.delete(k) : s2.add(k); T.skip = [...s2]; re(); } }, sk ? '✕' : String(order.get(k) ?? '')));
+      })));
+      P.append(el('div', { class: 'muted small' }, 'Číslo = pořadí (od nejšetrnější varianty). Klik na buňku ji vynechá. Spodní řádek je v materiálu nejblíž počátku.'), el('div', { class: 'tgridwrap' }, tb));
+    }
+    // počátek a po konci
+    P.append(el('h4', {}, 'Počátek (levý dolní roh testu)'),
+      el('div', { class: 'mgrid three' }, fld('X', T, 'x', { unit: 'mm' }), fld('Y', T, 'y', { unit: 'mm' }),
+        el('button', { class: 'btn small', style: 'align-self:end;height:30px', title: 'Počátek = aktuální poloha nástroje', onclick: () => { const w = M.st.wpos; if (!w) { ctx.toast('Poloha stroje není známá – připoj stroj.', true); return; } T.x = +w[0].toFixed(3); T.y = +w[1].toFixed(3); re(); } }, 'Tady')),
+      el('div', { class: 'muted small' }, 'Relativní souřadnice. Z0 nastav na povrch materiálu (Změřit Z sondou).'));
+    const aft = el('select', {}, ...[['up', 'Nahoru (Z na konci)'], ['start', 'Zpět nad počátek'], ['next', 'Posunout vedle na další test'], ['park', 'Na parkovací pozici']].map(([v, t]) => el('option', { value: v, selected: T.after === v }, t)));
+    aft.addEventListener('change', () => { T.after = aft.value; re(); });
+    P.append(el('h4', {}, 'Po konci testu'), el('label', { class: 'mf' }, el('span', {}, 'Kam vyjet'), el('span', { class: 'inp' }, aft)));
+    if (T.after === 'next') P.append(el('div', { class: 'mgrid' }, fld('Posun X', T, 'nextDX', { unit: 'mm', allowNull: true, ph: res ? cz(res.size.w + (T.gap ?? 3), 1) + ' (auto)' : 'auto' }), fld('Posun Y', T, 'nextDY', { unit: 'mm' })),
+      el('div', { class: 'muted small' }, 'Po dokončení se počátek posune – další test jde hned spustit vedle.'));
+    if (T.after === 'park') P.append(el('div', { class: 'mrow' }, el('span', { class: 'muted small' }, T.park ? `Parkovací pozice X ${cz(T.park[0], 2)} Y ${cz(T.park[1], 2)} (strojově)` : 'Parkovací pozice není uložená.'),
+      el('button', { class: 'btn small', onclick: () => { const m = M.st.mpos; if (!m) { ctx.toast('Poloha stroje není známá – připoj stroj.', true); return; } T.park = [m[0], m[1]]; re(); } }, 'Parkovací pozice = tady')));
+    // souhrn a spuštění
+    if (err) P.append(el('div', { class: 'tsum err' }, err));
+    else {
+      P.append(el('div', { class: 'tsum' }, `${res.run.length} ${res.run.length === 1 ? 'tvar' : res.run.length < 5 ? 'tvary' : 'tvarů'} · ${cz(res.size.w, 1)} × ${cz(res.size.h, 1)} mm · X ${cz(T.x, 1)}…${cz(T.x + res.size.w, 1)} · Y ${cz(T.y, 1)}…${cz(T.y + res.size.h, 1)}`,
+        ...res.warn.map(w => el('div', { class: 'warn' }, '⚠ ' + w))));
+    }
+    P.append(el('div', { class: 'mrow' },
+      el('button', { class: 'btn small', disabled: !!err, onclick: safeRun(previewTest) }, 'Náhled'),
+      el('button', { class: 'btn primary', disabled: !!err || !M.on, title: M.on ? '' : 'Připoj stroj', onclick: safeRun(startTest) }, '▶ Spustit test')));
+    P.scrollTop = sc;
+  }
+  const fmtV = (k, v) => k === 'depth' || k === 'step' ? cz(v, 2) : String(Math.round(v));
+
+  // po testu: uložit nejlepší variantu jako materiál + nástroj
+  function saveTestDialog(test, result) {
+    const { t, res } = test;
+    const cells = res.cells.filter(c => !c.skip);
+    let pick = cells.length === 1 ? cells[0] : null;
+    const vals = { ...(pick ? pick.p : t.base) };
+    const d = el('dialog', { class: 'mdlg tsave' });
+    const matI = el('input', { value: t.material || '', placeholder: 'název materiálu', list: 'cmMatList2' });
+    const note = el('textarea', { rows: 2, placeholder: 'poznámka (kvalita hrany, třísky, zvuk…)' });
+    for (const i of [matI, note]) i.addEventListener('keydown', e => e.stopPropagation());
+    const inputs = {};
+    const fields = el('div', { class: 'mgrid' });
+    const fill = () => { for (const [k, i] of Object.entries(inputs)) i.value = k === 'depth' || k === 'step' ? String(vals[k]).replace('.', ',') : vals[k]; };
+    for (const [k, label] of Object.entries(TC.VARS)) {
+      const i = el('input', {}); inputs[k] = i;
+      i.addEventListener('keydown', e => e.stopPropagation());
+      i.addEventListener('change', () => { let v = num(i.value); if (v == null) { fill(); return; } if (k === 'depth' || k === 'step') v = +TC.roundZ(v).toFixed(2); vals[k] = v; fill(); });
+      fields.append(el('label', { class: 'mf' }, el('span', {}, label), el('span', { class: 'inp' }, i, el('span', { class: 'u' }, TC.UNITS[k]))));
+    }
+    fill();
+    const body = el('div', { class: 'dlgbody' },
+      el('p', { class: 'muted small' }, `Test ${result === 'hotovo' ? 'dokončen' : 'zastaven'} – ${TC.SHAPES[t.shape]}, nástroj ${t.tool.name}. ${cells.length > 1 ? 'Klikni na nejlepší buňku, hodnoty se předvyplní (jdou upravit).' : 'Uprav hodnoty, pokud je chceš doladit.'}`));
+    if (cells.length > 1) {
+      const mx = t.matrix, tb = el('table', { class: 'tgrid big' }, el('tr', {}, el('th', { class: 'corner' }, `${TC.VARS[mx.rows.key]} \\ ${TC.VARS[mx.cols.key]}`), ...res.colsV.map(v => el('th', {}, fmtV(mx.cols.key, v)))));
+      for (let r = res.rowsV.length - 1; r >= 0; r--) tb.append(el('tr', {}, el('th', {}, fmtV(mx.rows.key, res.rowsV[r])), ...res.colsV.map((_, c) => {
+        const cell = res.cells.find(x => x.r === r && x.c === c);
+        const b = el('button', { class: 'tcell' + (cell.skip ? ' skip' : ''), disabled: cell.skip, onclick: () => { pick = cell; Object.assign(vals, cell.p); fill(); tb.querySelectorAll('.tcell').forEach(x => x.classList.toggle('on', x === b)); } }, cell.skip ? '✕' : '✓');
+        return el('td', {}, b);
+      })));
+      body.append(el('div', { class: 'tgridwrap' }, tb));
+    }
+    const apply = el('input', { type: 'checkbox' });
+    body.append(el('label', { class: 'mf' }, el('span', {}, 'Materiál'), el('span', { class: 'inp' }, matI)), el('datalist', { id: 'cmMatList2' }, ...MAT.names().map(n => el('option', { value: n }))),
+      fields, el('label', { class: 'mf' }, el('span', {}, 'Poznámka'), note),
+      el('label', { class: 'f check small' }, apply, `Zapsat F, zanoření, S a krok i jako výchozí hodnoty nástroje „${t.tool.name}“`));
+    d.append(el('div', { class: 'dlghead' }, el('b', {}, 'Uložit výsledek testu?')), body,
+      el('div', { class: 'dlgfoot' }, el('button', { class: 'btn', onclick: () => d.close() }, 'Neukládat'),
+        el('button', { class: 'btn primary', onclick: () => {
+          const material = matI.value.trim();
+          if (!material) { ctx.toast('Zadej název materiálu.', true); matI.focus(); return; }
+          if (cells.length > 1 && !pick) { ctx.toast('Vyber nejlepší buňku (nebo uprav hodnoty ručně a vyber libovolnou).', true); return; }
+          const rec = MAT.add({ material, toolId: t.tool.id, toolName: t.tool.name, feed: vals.feed, plunge: vals.plunge, spindle: vals.spindle, depth: vals.depth, step: Math.min(vals.step, vals.depth), shape: TC.SHAPES[t.shape], note: note.value.trim() });
+          if (apply.checked) ctx.applyToolValues?.(t.tool.id, { feed: rec.feed, plunge: rec.plunge, spindle: rec.spindle, step: rec.step });
+          const J = ctx.journal(); if (J.runs[0]?.prog === M.prog?.name) { J.runs[0].note = `uloženo: ${material}`; ctx.journalSave(J); }
+          M.test.material = material; M.test.base = { feed: rec.feed, plunge: rec.plunge, spindle: rec.spindle, depth: rec.depth, step: rec.step }; save();
+          ctx.toast(`Výsledek uložen: ${material} – ${t.tool.name}${apply.checked ? ' (i do knihovny nástrojů)' : ''}.`);
+          d.close(); renderTest();
+        } }, 'Uložit')));
+    document.body.append(d); d.addEventListener('close', () => d.remove()); d.showModal();
+  }
+
   // ---------- nastavení: klávesy pendantu, GRBL $$ ----------
   // klávesy pendantu – do karty Nastavení i do okna Nastavení aplikace
   let keysTarget = null;
@@ -1231,6 +1418,7 @@ export function initMachine(ctx) {
     refresh() { renderProgList(); renderWizard(); },
     getMap: () => M.hmap ? { map: M.hmap, meta: M.hmapMeta } : null,
     setMap: m => { if (!m?.map) return; M.hmap = m.map; M.hmapMeta = m.meta || null; if (M.prog) rebuildProgram(true); renderMapOverlay(); },
+    openTest(toolId, rec) { if (toolId) M.test.toolId = toolId; if (rec) { M.test.base = { feed: rec.feed, plunge: rec.plunge, spindle: rec.spindle, depth: rec.depth, step: rec.step }; M.test.material = rec.material || M.test.material; } save(); showPane('test'); },
     get M() { return M; }, gv, act, startProgram, measureMap, skipSelection, renderKeysInto, renderProbeInto, redraw: () => { gv.draw(); renderMapOverlay(); },
   };
 }

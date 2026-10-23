@@ -50,7 +50,7 @@ Below the button a list of **recently opened boards** appears over time – just
 
 | # | Element | Purpose |
 |---|---------|---------|
-| 1 | **Deska / G-kód / Stroj** | the three main tabs: Board / G-code / Machine (also `F2`, `F3`, `F4`) |
+| 1 | **Deska / G-kód / Stroj / Nástroje** | main tabs: Board / G-code / Machine / Tools (also `F2`, `F3`, `F4`, `F6`); Tools = tool library and test results ([chapter 14](14-material-test.md)) |
 | 2 | **Otevřít** (Open) | load a `.kicad_pcb` board, Gerbers or a `.cumill` project |
 | 3 | **Sledovat změny** (Watch changes) | when you save the board in KiCad, CuMill reloads and recomputes it |
 | 4 | **Projekt** (Project) | saves everything (board, settings, edits, height map) into one `.cumill` file |

@@ -16,7 +16,7 @@ streams programs, and handles jogging, zero, probes, the height map and the pend
 | 2 | **Program bar** | program selection, Start / Pause / Stop, progress, From line, Check run, Skip |
 | 3 | **3D view** | program, live tool position, removal simulation, height map |
 | 4 | **G-code listing** | sent lines, line selection |
-| 5 | **Right cards** | Průvodce (Wizard), Mapa (Map), Deník (Journal), Konzole (Console), Nastavení (Settings) |
+| 5 | **Right cards** | Průvodce (Wizard), Mapa (Map), Test, Deník (Journal), Konzole (Console), Nastavení (Settings) |
 
 ---
 
@@ -198,6 +198,10 @@ Step by step through the whole board – see [chapter 9](09-step-by-step.md).
 ### Mapa (Map)
 
 Height map – see [chapter 8](08-height-map.md).
+
+### Test
+
+Test cuts on a new material – see [chapter 14](14-material-test.md).
 
 ### Deník (Journal)
 

@@ -28,10 +28,11 @@ Sections:
 
 ![Tool library](../img/b_tools.png)
 
-The tools you own. Every operation picks from them. **Upravit knihovnu…** (Edit library…)
-opens a table to add, delete or edit tools:
+The tools you own. Every operation picks from them. **Upravit knihovnu…** (Edit library…) – or the
+**Nástroje** (Tools) main tab, `F6` – opens a table to add, delete or edit tools
+(details in [chapter 14](14-material-test.md)):
 
-![Editing the tool library](../img/c_knihovna.png)
+![Tools tab](../img/t_nastroje.png)
 
 | Column | Meaning |
 |--------|---------|

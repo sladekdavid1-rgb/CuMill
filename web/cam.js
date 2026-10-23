@@ -3,7 +3,7 @@ import * as G from './geom.js';
 import { textToLines } from './text.js';
 
 export const APP = 'CuMill';
-export const VERSION = '1.3';
+export const VERSION = '1.4';
 
 export const TOOL_TYPES = { v: 'V-fréza', end: 'Fréza', drill: 'Vrták' };
 export function defaultTools() {

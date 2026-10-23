@@ -16,7 +16,7 @@ s GRBL, posílá do ní program, ovládá pojezd, nulu, sondy, výškovou mapu i
 | 2 | **Lišta programu** | výběr programu, Start / Pauza / Stop, průběh, Od řádku, Kontrolní běh, Vynechat |
 | 3 | **3D náhled** | program, živá poloha nástroje, simulace odebrání, výšková mapa |
 | 4 | **Výpis G-kódu** | odeslané řádky, výběr řádků |
-| 5 | **Pravé karty** | Průvodce, Mapa, Deník, Konzole, Nastavení |
+| 5 | **Pravé karty** | Průvodce, Mapa, Test, Deník, Konzole, Nastavení |
 
 ---
 
@@ -200,6 +200,10 @@ Krok za krokem celou výrobou desky – viz [kapitola 9](09-vyroba-krok-za-kroke
 ### Mapa
 
 Výšková mapa – viz [kapitola 8](08-vyskova-mapa.md).
+
+### Test
+
+Zkušební řezy na novém materiálu – viz [kapitola 14](14-test-materialu.md).
 
 ### Deník
 

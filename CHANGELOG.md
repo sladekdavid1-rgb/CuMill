@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4 – 2026-10
+- **Tools tab** (F6) – tool library on a full page, material test results per tool (filter, search, apply to tool)
+- **Machine → Test** – test cuts: line, rectangle, triangle, circle, pocket, drilling; center / inside / outside path,
+  climb / conventional; single test or a matrix (rows × columns of feed, spindle, depth, step-down, plunge), skippable cells,
+  gentlest-first order; origin here / typed; after the test: up, back, next to it (origin moves), park position;
+  save-result dialog (best cell → material + tool, note, optional write to the tool library), journal entry
+
 ## 1.3 – 2026-10
 - **Machine tab** – GRBL sender replacing UGS/Candle: connection, DRO, jog, overrides (feed XY, plunge Z, spindle, rapid),
   pause/stop, start from line, check mode, skipping paths (also while running), GRBL settings editor, console, simulator

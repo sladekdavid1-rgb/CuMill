@@ -9,6 +9,7 @@ import { GcodeViewer } from './gview.js';
 import { initMachine } from './machine.js';
 import * as T from './theme.js';
 import { textToLines } from './text.js';
+import * as MAT from './materials.js';
 T.apply();
 
 const $ = s => document.querySelector(s);
@@ -510,38 +511,93 @@ function renderToolList() {
   }
   box.append(tbl, el('button', { class: 'btn small', style: 'margin-top:8px', onclick: openToolDialog }, 'Upravit knihovnu…'));
 }
-function openToolDialog() {
-  const dlg = $('#toolDlg'), body = $('#toolBody');
+// tabulka nástrojů (záložka Nástroje)
+function buildToolTable(body, changedFn) {
   const draw = () => {
     body.innerHTML = '';
     const t = el('table', { class: 'ttable' });
-    t.append(el('tr', {}, ...['Typ', 'Název', 'Ø / hrot', 'Úhel', 'Posuv F', 'Zanoření', 'Otáčky S', 'Krok', ''].map(h => el('th', {}, h))));
+    t.append(el('tr', {}, ...['Typ', 'Název', 'Ø / hrot', 'Úhel', 'Posuv F', 'Zanoření', 'Otáčky S', 'Krok', 'Testy', ''].map(h => el('th', {}, h))));
     for (const tool of S.tools) {
-      const cell = (k, opts = {}) => el('td', {}, numInput(() => tool[k], v => { tool[k] = v; if (k === 'dia' && tool.type === 'v') tool.vTip = v; }, opts));
-      const nameInp = el('input', { type: 'text', value: tool.name || '' });
-      nameInp.addEventListener('change', () => { tool.name = nameInp.value; });
+      const cell = (k, opts = {}) => el('td', {}, numInput(() => tool[k], v => { tool[k] = v; if (k === 'dia' && tool.type === 'v') tool.vTip = v; changedFn(); }, opts));
+      const nameInp = el('input', { type: 'text', value: tool.name || '', placeholder: CAM.toolLabel({ ...tool, name: '' }) });
+      nameInp.addEventListener('change', () => { tool.name = nameInp.value; changedFn(); });
+      nameInp.addEventListener('keydown', e => e.stopPropagation());
+      const nRes = MAT.byTool(tool.id).length;
       t.append(el('tr', {},
-        el('td', {}, selectBox(Object.entries(CAM.TOOL_TYPES), tool.type, v => { tool.type = v; if (v === 'v' && !tool.vAngle) { tool.vAngle = 30; tool.vTip = tool.dia || 0.1; } draw(); })),
+        el('td', {}, selectBox(Object.entries(CAM.TOOL_TYPES), tool.type, v => { tool.type = v; if (v === 'v' && !tool.vAngle) { tool.vAngle = 30; tool.vTip = tool.dia || 0.1; } changedFn(); draw(); })),
         el('td', {}, el('div', { class: 'inp' }, nameInp)),
-        tool.type === 'v' ? el('td', {}, numInput(() => tool.vTip, v => { tool.vTip = v; tool.dia = v; }, { unit: 'mm' })) : cell('dia', { unit: 'mm' }),
+        tool.type === 'v' ? el('td', {}, numInput(() => tool.vTip, v => { tool.vTip = v; tool.dia = v; changedFn(); }, { unit: 'mm' })) : cell('dia', { unit: 'mm' }),
         tool.type === 'v' ? cell('vAngle', { unit: '°' }) : el('td', { class: 'muted' }, '—'),
         cell('feed'), cell('plunge'), cell('spindle', { int: true }), cell('step', { unit: 'mm' }),
-        el('td', {}, el('button', { class: 'iconbtn', title: 'Smazat nástroj', onclick: () => { if (S.tools.length > 1) { S.tools = S.tools.filter(x => x !== tool); draw(); } } }, '✕'))));
+        el('td', {}, el('div', { class: 'mrow nowrap' },
+          el('span', { class: 'muted small', title: 'Uložené výsledky testů s tímto nástrojem' }, nRes ? `${nRes}×` : '—'),
+          el('button', { class: 'btn small', title: 'Otevřít zkušební řez s tímto nástrojem (Stroj → Test)', onclick: () => { setTab('machine'); getMachine().openTest(tool.id); } }, 'Test'))),
+        el('td', {}, el('button', { class: 'iconbtn', title: 'Smazat nástroj', onclick: () => { if (S.tools.length > 1 && confirm(`Smazat nástroj „${CAM.toolLabel(tool)}“?`)) { S.tools = S.tools.filter(x => x !== tool); changedFn(); draw(); } } }, '✕'))));
     }
     body.append(t);
     body.append(el('div', { class: 'tadd' },
       ...[['v', '+ V-fréza'], ['end', '+ Fréza'], ['drill', '+ Vrták']].map(([ty, txt]) => el('button', { class: 'btn small', onclick: () => {
         const id = ty[0] + Date.now().toString(36);
         const base = ty === 'v' ? { dia: 0.1, vTip: 0.1, vAngle: 30, feed: 400, plunge: 100, step: 0.05 } : ty === 'end' ? { dia: 1.0, feed: 100, plunge: 50, step: 0.3 } : { dia: 0.8, feed: 300, plunge: 300, step: 0.5 };
-        S.tools.push({ id, name: '', type: ty, spindle: 12000, ...base }); draw();
+        S.tools.push({ id, name: '', type: ty, spindle: 12000, ...base }); changedFn(); draw();
       } }, txt))),
-      el('p', { class: 'muted' }, 'Název můžeš nechat prázdný – vytvoří se z průměru. Hodnoty F, S, zanoření a krok se použijí ve všech programech s tímto nástrojem, pokud je u programu nepřepíšeš.'));
+      el('p', { class: 'muted small' }, 'Název můžeš nechat prázdný – vytvoří se z průměru. Hodnoty F, S, zanoření a krok se použijí ve všech programech s tímto nástrojem, pokud je u programu nepřepíšeš. Tlačítkem Test vyzkoušíš nástroj na novém materiálu (Stroj → Test).'));
   };
   draw();
-  dlg.showModal();
-  dlg.onclose = () => { saveSettings(); renderSettings(); recompute(); };
+  return draw;
 }
+// ---------- záložka Nástroje: knihovna nástrojů a výsledky testů materiálů ----------
+let toolsDirty = false, toolsFilter = { tool: '', q: '' };
+function toolsChanged() { toolsDirty = true; saveSettings(); renderToolList(); }
+function flushTools() { if (!toolsDirty) return; toolsDirty = false; renderSettings(); recompute(); }
+function renderToolsTab() {
+  const root = $('#toolsTab'); root.innerHTML = '';
+  const tblBox = el('div', { class: 'tt-body' });
+  root.append(el('section', { class: 'tt-card' },
+    el('div', { class: 'tt-head' }, el('h2', {}, 'Knihovna nástrojů'), el('span', { class: 'muted small' }, `${S.tools.length} ${pl(S.tools.length, 'nástroj', 'nástroje', 'nástrojů')} · změny platí hned pro všechny programy`)),
+    tblBox));
+  buildToolTable(tblBox, () => { toolsChanged(); });
+  // výsledky testů
+  const resBox = el('div', { class: 'tt-body' });
+  const toolSel = el('select', {}, el('option', { value: '' }, 'Všechny nástroje'), ...S.tools.map(t => el('option', { value: t.id, selected: toolsFilter.tool === t.id }, CAM.toolLabel(t))));
+  const q = el('input', { type: 'search', placeholder: 'Hledat materiál…', value: toolsFilter.q });
+  q.addEventListener('keydown', e => e.stopPropagation());
+  const drawRes = () => {
+    resBox.innerHTML = '';
+    const items = MAT.list().filter(r => (!toolsFilter.tool || r.toolId === toolsFilter.tool) && (!toolsFilter.q || (r.material || '').toLowerCase().includes(toolsFilter.q.toLowerCase())));
+    if (!items.length) { resBox.append(el('p', { class: 'muted' }, MAT.list().length ? 'Nic neodpovídá filtru.' : 'Zatím žádné uložené výsledky. Vyzkoušej materiál ve Stroji v kartě Test – po skončení testu se CuMill zeptá, jestli výsledek uložit.')); return; }
+    const t = el('table', { class: 'ttable mtable' });
+    t.append(el('tr', {}, ...['Materiál', 'Nástroj', 'Posuv F', 'Zanoření', 'Otáčky S', 'Hloubka', 'Krok', 'Test', 'Datum', 'Poznámka', ''].map(h => el('th', {}, h))));
+    for (const r of items) {
+      const tool = S.tools.find(x => x.id === r.toolId);
+      const note = el('input', { type: 'text', value: r.note || '', placeholder: '—' });
+      note.addEventListener('keydown', e => e.stopPropagation());
+      note.addEventListener('change', () => MAT.update(r.id, { note: note.value }));
+      t.append(el('tr', {},
+        el('td', {}, el('b', {}, r.material || '—')),
+        el('td', { class: tool ? '' : 'muted' }, tool ? CAM.toolLabel(tool) : (r.toolName || '?') + ' (smazán)'),
+        el('td', {}, cz(r.feed, 0)), el('td', {}, cz(r.plunge, 0)), el('td', {}, cz(r.spindle, 0)), el('td', {}, cz(r.depth, 2)), el('td', {}, cz(r.step, 2)),
+        el('td', { class: 'muted small' }, r.shape || ''),
+        el('td', { class: 'muted small' }, new Date(r.t).toLocaleDateString('cs-CZ')),
+        el('td', {}, el('div', { class: 'inp' }, note)),
+        el('td', {}, el('div', { class: 'mrow nowrap' },
+          el('button', { class: 'btn small', disabled: !tool, title: 'Zapsat F, zanoření, S a krok jako výchozí hodnoty nástroje v knihovně', onclick: () => { Object.assign(tool, { feed: r.feed, plunge: r.plunge, spindle: r.spindle, step: r.step }); toolsChanged(); renderToolsTab(); toast(`Hodnoty zapsány do nástroje ${CAM.toolLabel(tool)}.`); } }, 'Do nástroje'),
+          el('button', { class: 'btn small', disabled: !tool, title: 'Otevřít test s těmito hodnotami', onclick: () => { setTab('machine'); getMachine().openTest(r.toolId, r); } }, 'Test'),
+          el('button', { class: 'iconbtn', title: 'Smazat záznam', onclick: () => { if (confirm(`Smazat výsledek „${r.material}“?`)) { MAT.remove(r.id); renderToolsTab(); } } }, '✕')))));
+    }
+    resBox.append(t);
+  };
+  toolSel.addEventListener('change', () => { toolsFilter.tool = toolSel.value; drawRes(); });
+  q.addEventListener('input', () => { toolsFilter.q = q.value; drawRes(); });
+  root.append(el('section', { class: 'tt-card' },
+    el('div', { class: 'tt-head' }, el('h2', {}, 'Výsledky testů materiálů'), el('div', { class: 'mrow' }, el('div', { class: 'inp' }, toolSel), el('div', { class: 'inp' }, q))),
+    resBox));
+  drawRes();
+}
+MAT.onChange(() => { if (gvs.tab === 'tools') renderToolsTab(); });
+function openToolDialog() { setTab('tools'); }
 $('#toolClose').addEventListener('click', () => $('#toolDlg').close());
+
 
 // ---------- díry ----------
 function holeActControls(onApply, opts = {}) {
@@ -1142,6 +1198,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'F2') { e.preventDefault(); setTab('board'); }
   else if (e.key === 'F3') { e.preventDefault(); setTab('gcode'); }
   else if (e.key === 'F4') { e.preventDefault(); setTab('machine'); }
+  else if (e.key === 'F6') { e.preventDefault(); setTab('tools'); }
   else if (typing) return;
   else if (gvs.tab === 'machine') { /* klávesy řeší záložka Stroj */ }
   else if (gvs.tab === 'gcode') { if ([' ', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) && !$('#gcode').contains(document.activeElement)) { e.preventDefault(); $('#gcode').dispatchEvent(new KeyboardEvent('keydown', { key: e.key, bubbles: false })); } }
@@ -1197,7 +1254,9 @@ function setTab(tab) {
   $('#stage').hidden = tab !== 'board';
   $('#gcode').hidden = tab !== 'gcode';
   $('#machine').hidden = tab !== 'machine';
-  document.querySelector('main.layout').classList.toggle('mmode', tab === 'machine');
+  $('#toolsTab').hidden = tab !== 'tools';
+  document.querySelector('main.layout').classList.toggle('mmode', tab === 'machine' || tab === 'tools');
+  if (tab === 'tools') renderToolsTab(); else flushTools();
   if (tab === 'machine') getMachine().show();
   if (tab === 'gcode') { getGv(); showGcode(gvs.cur && findGSource(gvs.cur) ? gvs.cur : (st.sel ? 'op:' + st.sel : gvs.ext[0]?.id)); }
   else viewer.draw();
@@ -1431,6 +1490,7 @@ let machineUI = null;
 function getMachine() {
   if (!machineUI) machineUI = initMachine({
     api, toast, download, fileName, boardSimInfo, timeCal, timeFactor, journal, journalSave,
+    applyToolValues: (id, v) => { const t = S.tools.find(x => x.id === id); if (!t) return; Object.assign(t, v); toolsChanged(); flushTools(); },
     getS: () => S, getRes: () => st.res, boardName: () => st.board?.name || '',
     isEnabled: op => st.enabled[op.id] !== false, originDesc: originCz,
     boardOutlineBB: side => st.board && st.res ? G.bbox([st.board.outline.map(st.res.sides[side].fwd)]) : null,

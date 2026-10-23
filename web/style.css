@@ -414,3 +414,37 @@ dialog.tbldlg { width: fit-content !important; min-width: 420px; max-width: 95vw
 .jrun .jh { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .jrun .jh b { color: var(--ok); } .jrun.warn .jh b { color: var(--warn); }
 .jrun .jp { overflow-wrap: anywhere; margin: 2px 0; }
+/* záložka Nástroje */
+.toolsTab { overflow: auto; padding: 16px 20px 40px; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.toolsTab[hidden] { display: none; }
+.tt-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px 14px; max-width: 1400px; width: 100%; margin: 0 auto; }
+.tt-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.tt-head h2 { margin: 0; font-size: 15px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.tt-head .inp { height: 30px; min-width: 200px; }
+.tt-head .inp select, .tt-head .inp input { border: 0; background: transparent; height: 100%; width: 100%; padding: 0 8px; color: var(--text); outline: none; }
+.toolsTab .ttable th:nth-child(1) { width: 110px; } .toolsTab .ttable th:nth-child(2) { width: 24%; }
+.toolsTab .ttable th:nth-child(9) { width: 96px; } .toolsTab .ttable th:nth-child(10) { width: 34px; }
+.toolsTab .mtable th { width: auto !important; } .toolsTab .mtable td { vertical-align: middle; font-size: 13px; }
+.toolsTab .mtable th:nth-child(10) { width: 22% !important; } .toolsTab .mtable th:nth-child(11) { width: 200px !important; }
+.toolsTab .mtable tr:hover td { background: color-mix(in srgb, var(--cu) 5%, transparent); }
+.mrow.nowrap { flex-wrap: nowrap; }
+/* karta Test */
+.mgrid.three { grid-template-columns: 1fr 1fr 0.8fr; }
+.tgridwrap { overflow: auto; margin: 6px 0; }
+.tgrid { border-collapse: collapse; }
+.tgrid th { font: 11px ui-monospace, Consolas, monospace; color: var(--muted); font-weight: 400; padding: 2px 6px; text-align: center; white-space: nowrap; }
+.tgrid th.corner { font-family: system-ui, sans-serif; color: var(--dim); text-align: left; }
+.tgrid tr th:first-child { text-align: right; }
+.tgrid td { padding: 2px; }
+.tcell { width: 40px; height: 28px; border: 1px solid var(--line2); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer; font: 12px ui-monospace, Consolas, monospace; }
+.tgrid.big .tcell { width: 54px; height: 34px; }
+.tcell:hover { border-color: var(--cu); }
+.tcell.on { background: var(--cu); color: var(--onAccent); border-color: var(--cu); font-weight: 700; }
+.tcell.skip { opacity: .45; text-decoration: line-through; }
+.tsum { margin: 10px 0 6px; padding: 8px 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); font-size: 12px; }
+.tsum.err { border-color: var(--err); color: var(--err); }
+.tsum .warn { color: var(--warn); margin-top: 4px; }
+dialog.tsave textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line2); border-radius: 7px; padding: 6px 8px; font: inherit; resize: vertical; }
+dialog.tsave .dlgbody { display: flex; flex-direction: column; gap: 8px; }
+.mtabs button { padding: 5px 4px; font-size: 12px; }
+.mpane > * { flex-shrink: 0; }

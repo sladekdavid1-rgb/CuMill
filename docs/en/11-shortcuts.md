@@ -12,7 +12,7 @@
 | `Ctrl+Z` | undo |
 | `Ctrl+Y`, `Ctrl+Shift+Z` | redo |
 | `Ctrl+,` | settings |
-| `F2` / `F3` / `F4` | Board / G-code / Machine tab |
+| `F2` / `F3` / `F4` / `F6` | Board / G-code / Machine / Tools tab |
 | `F5`, `Ctrl+R` | reload the board from file |
 | `Esc` | clear selection, back to Pan tool, close a window |
 
