@@ -119,7 +119,7 @@ function buildBoard(files) {
 }
 async function loadSources(sources, { keepView = false } = {}) {
   const prjSrc = sources.find(s => /\.cumill$/i.test(s.name));
-  if (prjSrc) { try { await openProject((await readSource(prjSrc)).text); } catch (e) { toast(e.message, true); } return; }
+  if (prjSrc) { try { await openProject((await readSource(prjSrc)).text, prjSrc.path || null); } catch (e) { toast(e.message, true); } return; }
   busy(true);
   try {
     const files = [];
@@ -131,7 +131,7 @@ async function loadSources(sources, { keepView = false } = {}) {
     viewer.setBoard(board);
     $('#empty').classList.add('hidden');
     $('#btnReload').disabled = false; $('#btnSave').disabled = false; $('#btnProject').disabled = false; $('#btnLaser').disabled = false;
-    if (!sameBoard) { st.sel = null; st.enabled = {}; st.visible = {}; st.pick = null; st.groupSel.clear(); hist.list = []; hist.pos = -1; }
+    if (!sameBoard) { st.project = null; st.sel = null; st.enabled = {}; st.visible = {}; st.pick = null; st.groupSel.clear(); hist.list = []; hist.pos = -1; }
     renderBoardInfo(); renderSettings();
     recompute(true);
     if (!keepView || !sameBoard) requestAnimationFrame(() => viewer.fit());
@@ -155,6 +155,7 @@ async function addRecent(name, sources) {
 async function renderRecent() {
   const list = ((await db.get('recent')) || []).filter(r => host.native ? r.paths : r.handles);
   const box = $('#recent'); box.innerHTML = '';
+  await renderRecentProjects(box);
   if (!list.length) return;
   box.append(el('h3', {}, 'Nedávné'));
   for (const r of list) {
@@ -228,7 +229,7 @@ function undoRedo(d) {
 function recompute(now) {
   clearTimeout(recTimer);
   if (!st.board) return;
-  snapshot();
+  snapshot(); autosaveSoon();
   busy(true);
   recTimer = setTimeout(() => {
     const id = ++jobId;
@@ -825,7 +826,7 @@ function renderOps() {
     if (on) total += opMin(op);
     const cb = el('input', { type: 'checkbox', title: 'Uložit tento program' }); cb.checked = on;
     cb.addEventListener('click', e => e.stopPropagation());
-    cb.addEventListener('change', () => { st.enabled[op.id] = cb.checked; renderOps(); renderSteps(); });
+    cb.addEventListener('change', () => { st.enabled[op.id] = cb.checked; renderOps(); renderSteps(); autosaveSoon(); });
     const vis = st.visible[op.id] !== false;
     const selc = op.id === st.sel;
     const card = el('div', { class: 'op' + (selc ? ' sel' : '') + (on ? '' : ' off'), onclick: () => { st.sel = op.id; viewer.setOpts({ opId: op.id }); if (st.mode === 'machine') viewer.fit(); renderOps(); if (gvs.tab === 'gcode') showGcode('op:' + op.id); } },
@@ -900,6 +901,7 @@ function renderSteps() { const ol = $('#steps'); ol.innerHTML = ''; for (const s
 function renderBoardInfo() {
   const b = st.board, box = $('#boardInfo'); box.innerHTML = '';
   if (!b) { box.append(el('span', { class: 'muted' }, 'Žádná deska')); return; }
+  if (st.project) box.append(el('span', { class: 'chip prjchip', title: 'Otevřený projekt – ukládá se průběžně (klik = Projekty)', onclick: openProjectsDlg }, '▣ ' + st.project.name));
   box.append(el('span', { class: 'name', title: b.fileName }, b.name));
   box.append(el('span', { class: 'chip' }, `${cz(b.size.w)} × ${cz(b.size.h)} mm`));
   for (const [l, c] of [['F.Cu', '#de5648'], ['B.Cu', '#548ce0']]) if (b.used[l]) box.append(el('span', { class: 'chip' }, el('i', { style: `background:${c}` }), l));
@@ -1291,16 +1293,107 @@ const journal = () => { try { return { runs: [], tools: {}, ...JSON.parse(localS
 const journalSave = J => { try { localStorage.setItem(JR_LS, JSON.stringify(J)); } catch {} };
 
 // ---------- projekt (.cumill): deska + nastavení + úpravy + výšková mapa v jednom souboru ----------
-async function saveProject() {
-  if (!st.board) { toast('Nejdřív načti desku.', true); return; }
+// ---------- projekty ve složce projektů (průběžně ukládané) ----------
+const PRJ_DIR_LS = 'cumill.projdir';
+const prjDir = () => { try { return localStorage.getItem(PRJ_DIR_LS) || ''; } catch { return ''; } };
+const prjBase = p => p.split(/[\\/]/).pop().replace(/\.cumill$/i, '');
+function projectThumb() {
+  try {
+    const c = viewer.c; if (!c.width || !c.height || !st.board) return null;
+    const W = 240, H = 150, t = document.createElement('canvas'); t.width = W; t.height = H;
+    const g = t.getContext('2d'); g.fillStyle = getComputedStyle(document.body).getPropertyValue('--stage') || '#111'; g.fillRect(0, 0, W, H);
+    // výřez kolem desky z náhledu
+    const v = viewer, bb = st.board.bb, r = v.c.width / v.w;
+    const sx = (bb.minX - v.cx) * v.scale + v.w / 2, sy = -(bb.maxY - v.cy) * v.scale + v.h / 2, sw = (bb.maxX - bb.minX) * v.scale, sh = (bb.maxY - bb.minY) * v.scale;
+    const m = 8, k = Math.min((W - 2 * m) / sw, (H - 2 * m) / sh);
+    g.drawImage(c, (sx - 4) * r, (sy - 4) * r, (sw + 8) * r, (sh + 8) * r, (W - sw * k) / 2 - 4 * k, (H - sh * k) / 2 - 4 * k, (sw + 8) * k, (sh + 8) * k);
+    return t.toDataURL('image/jpeg', 0.72);
+  } catch { return null; }
+}
+async function projectText(name) {
   const files = [];
   for (const src of st.sources) { const f = await readSource(src); files.push({ name: f.name, path: src.path || null, text: f.text }); }
   const map = machineUI?.getMap?.() || null;
-  const prj = { cumillProject: 1, version: CAM.VERSION, saved: new Date().toISOString(), board: st.board.name, files, S, B, enabled: st.enabled, map };
-  download(`${CAM.fileSafe(st.board.name)}.cumill`, JSON.stringify(prj));
-  toast('Projekt uložen (deska, nastavení, úpravy' + (map ? ', výšková mapa' : '') + ').');
+  const meta = { name, board: st.board.name, size: st.board.size, ops: st.res?.ops.filter(o => st.enabled[o.id] !== false).length || 0, map: !!map, thumb: projectThumb() };
+  return JSON.stringify({ cumillProject: 1, meta, version: CAM.VERSION, saved: new Date().toISOString(), board: st.board.name, files, S, B, enabled: st.enabled, map });
 }
-async function openProject(text) {
+async function saveProjectAs(name) {
+  if (!st.board) throw new Error('Nejdřív načti desku.');
+  const j = await (await api('projects/save', { dir: prjDir(), name, text: await projectText(name), noOverwrite: true })).json();
+  st.project = { path: j.path, name: prjBase(j.path) }; renderBoardInfo();
+  toast(`Projekt „${st.project.name}“ uložen – změny se teď ukládají průběžně.`);
+}
+let prjTimer = null, prjSaving = false;
+async function saveProjectNow(quiet) {
+  if (!st.project || !st.board) return;
+  if (prjSaving) { autosaveSoon(); return; }
+  prjSaving = true;
+  try { await api('projects/save', { path: st.project.path, text: await projectText(st.project.name) }); if (!quiet) toast(`Projekt „${st.project.name}“ uložen.`); renderBoardInfo(); }
+  catch (e) { toast('Projekt se nepodařilo uložit: ' + e.message, true); }
+  finally { prjSaving = false; }
+}
+function autosaveSoon() { if (!st.project || !st.board) return; clearTimeout(prjTimer); prjTimer = setTimeout(() => saveProjectNow(true), 1500); }
+async function saveProject() { if (st.project && st.board) return saveProjectNow(false); openProjectsDlg(); }
+async function openProjectFile(path) {
+  const r = await api('read?path=' + encodeURIComponent(path));
+  await openProject(await r.text(), path);
+}
+async function openProjectsDlg() {
+  let d = $('#prjDlg');
+  if (!d) { d = el('dialog', { id: 'prjDlg', class: 'wide prjdlg' }); document.body.append(d); }
+  const draw = async () => {
+    d.innerHTML = '';
+    let data = { projects: [], dir: prjDir() };
+    try { data = await (await api('projects?dir=' + encodeURIComponent(prjDir()))).json(); } catch (e) { toast(e.message, true); }
+    const body = el('div', { class: 'dlgbody' });
+    d.append(el('div', { class: 'dlghead' }, el('b', {}, 'Projekty'), el('button', { class: 'iconbtn', title: 'Zavřít (Esc)', onclick: () => d.close() }, '✕')), body);
+    // aktuální deska
+    if (st.board) {
+      if (st.project) body.append(el('div', { class: 'prjcur' }, el('span', {}, 'Otevřený projekt: ', el('b', {}, st.project.name), el('span', { class: 'muted' }, ' – ukládá se průběžně')),
+        el('button', { class: 'btn small', onclick: async () => { await saveProjectNow(false); draw(); } }, 'Uložit teď')));
+      const nm = el('input', { type: 'text', value: st.project ? st.project.name + ' (kopie)' : st.board.name, placeholder: 'název projektu' });
+      nm.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') go(); });
+      const go = async () => { try { await saveProjectAs(nm.value.trim()); draw(); } catch (e) { toast(e.message, true); } };
+      body.append(el('div', { class: 'prjnew' }, el('span', {}, st.project ? 'Uložit jako nový projekt' : 'Uložit desku jako projekt'), el('div', { class: 'inp' }, nm), el('button', { class: 'btn primary small', onclick: go }, 'Uložit')));
+    }
+    // složka
+    body.append(el('div', { class: 'prjdir' }, el('span', { class: 'muted small' }, 'Složka projektů: '), el('code', {}, data.dir),
+      host.native ? el('button', { class: 'btn small', onclick: async () => { try { const j = await (await api('pick-dir', { start: data.dir })).json(); if (j.path) { localStorage.setItem(PRJ_DIR_LS, j.path); draw(); } } catch (e) { toast(e.message, true); } } }, 'Změnit…') : null,
+      prjDir() ? el('button', { class: 'btn small', onclick: () => { localStorage.removeItem(PRJ_DIR_LS); draw(); } }, 'Výchozí') : null));
+    // seznam
+    const list = el('div', { class: 'prjlist' });
+    if (!data.projects.length) list.append(el('p', { class: 'muted' }, data.missing ? 'Složka zatím neexistuje – vytvoří se při uložení prvního projektu.' : 'Zatím žádné projekty.'));
+    for (const p of data.projects) {
+      let meta = {}; try { meta = typeof p.meta === 'string' ? JSON.parse(p.meta) : (p.meta || {}); } catch {}
+      const name = prjBase(p.path), cur = st.project && st.project.path === p.path;
+      list.append(el('div', { class: 'prjcard' + (cur ? ' cur' : '') },
+        el('button', { class: 'prjthumb', title: 'Otevřít', onclick: async () => { d.close(); try { await openProjectFile(p.path); } catch (e) { toast(e.message, true); } } }, meta.thumb ? el('img', { src: meta.thumb, alt: '' }) : el('span', { class: 'muted' }, 'bez náhledu')),
+        el('div', { class: 'prjinfo' }, el('b', {}, name), el('span', { class: 'muted small' }, [p.board || meta.board, meta.size ? `${cz(meta.size.w)} × ${cz(meta.size.h)} mm` : null, meta.map ? 's mapou' : null].filter(Boolean).join(' · ')),
+          el('span', { class: 'muted small' }, new Date(p.mtime).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + (cur ? ' · otevřený' : ''))),
+        el('div', { class: 'prjbtns' },
+          el('button', { class: 'btn small primary', onclick: async () => { d.close(); try { await openProjectFile(p.path); } catch (e) { toast(e.message, true); } } }, 'Otevřít'),
+          el('button', { class: 'btn small', onclick: async () => { const n = prompt('Nový název projektu:', name); if (!n || n === name) return; try { const j = await (await api('projects/rename', { dir: data.dir, path: p.path, name: n.trim() })).json(); if (cur) { st.project = { path: j.path, name: prjBase(j.path) }; renderBoardInfo(); } draw(); } catch (e) { toast(e.message, true); } } }, 'Přejmenovat'),
+          el('button', { class: 'btn small', onclick: async () => { const n = prompt('Název kopie:', name + ' (kopie)'); if (!n) return; try { const t = await (await api('read?path=' + encodeURIComponent(p.path))).text(); await api('projects/save', { dir: data.dir, name: n.trim(), text: t, noOverwrite: true }); draw(); } catch (e) { toast(e.message, true); } } }, 'Duplikovat'),
+          el('button', { class: 'iconbtn', title: 'Smazat projekt', onclick: async () => { if (!confirm(`Smazat projekt „${name}“? Soubor se smaže ze složky projektů.`)) return; try { await api('projects/delete', { dir: data.dir, path: p.path }); if (cur) { st.project = null; renderBoardInfo(); } draw(); } catch (e) { toast(e.message, true); } } }, '✕'))));
+    }
+    body.append(list);
+    if (st.board) body.append(el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: async () => { download(`${CAM.fileSafe(st.project?.name || st.board.name)}.cumill`, await projectText(st.project?.name || st.board.name)); } }, 'Uložit kopii jinam (stáhnout)…'), el('span', { class: 'muted small' }, 'Projekt = deska, nastavení, úpravy, zaškrtnuté programy a výšková mapa.')));
+  };
+  await draw();
+  if (!d.open) d.showModal();
+}
+async function renderRecentProjects(box) {
+  let data; try { data = await (await api('projects?dir=' + encodeURIComponent(prjDir()))).json(); } catch { return; }
+  if (!data.projects?.length) return;
+  const wrap = el('div', { class: 'recentprj' });
+  for (const p of data.projects.slice(0, 6)) {
+    let meta = {}; try { meta = typeof p.meta === 'string' ? JSON.parse(p.meta) : (p.meta || {}); } catch {}
+    wrap.append(el('button', { title: p.path, onclick: () => openProjectFile(p.path).catch(e => toast(e.message, true)) },
+      meta.thumb ? el('img', { src: meta.thumb, alt: '' }) : el('span', { class: 'noimg' }), el('b', {}, prjBase(p.path)), el('small', {}, new Date(p.mtime).toLocaleDateString('cs-CZ'))));
+  }
+  box.prepend(el('h3', {}, 'Projekty'), wrap, el('button', { class: 'allprj', onclick: openProjectsDlg }, 'Všechny projekty…'));
+}
+async function openProject(text, path = null) {
   const prj = JSON.parse(text);
   if (!prj.cumillProject) throw new Error('Soubor není projekt CuMillu.');
   S = merge(CAM.defaults(), prj.S); saveSettings();
@@ -1314,7 +1407,8 @@ async function openProject(text) {
   await loadSources(sources);
   if (prj.enabled) { st.enabled = prj.enabled; renderOps(); }
   if (prj.map) getMachine().setMap(prj.map);
-  toast(`Projekt ${prj.board} načten${prj.map ? ' i s výškovou mapou' : ''}.`);
+  st.project = path ? { path, name: prjBase(path) } : null; renderBoardInfo();
+  toast(`Projekt ${st.project?.name || prj.board} načten${prj.map ? ' i s výškovou mapou' : ''}${st.project ? ' – změny se ukládají průběžně' : ''}.`);
 }
 
 // ---------- export pro laser (SVG, stejná nula jako frézování) ----------
@@ -1482,7 +1576,7 @@ function setBackup(B) {
       el('button', { class: 'btn small', onclick: () => { if (confirm('Smazat úplně všechna nastavení, témata a úpravy desek? Doporučuju nejdřív Exportovat vše.')) { for (const k of keys()) localStorage.removeItem(k); location.reload(); } } }, 'Smazat vše')));
 }
 $('#btnSettings').addEventListener('click', () => openSettingsDlg());
-$('#btnProject').addEventListener('click', () => saveProject());
+$('#btnProject').addEventListener('click', () => openProjectsDlg());
 $('#btnLaser').addEventListener('click', () => openLaserDlg());
 
 // ---------- záložka Stroj ----------
@@ -1490,6 +1584,7 @@ let machineUI = null;
 function getMachine() {
   if (!machineUI) machineUI = initMachine({
     api, toast, download, fileName, boardSimInfo, timeCal, timeFactor, journal, journalSave,
+    mapChanged: () => autosaveSoon(),
     applyToolValues: (id, v) => { const t = S.tools.find(x => x.id === id); if (!t) return; Object.assign(t, v); toolsChanged(); flushTools(); },
     getS: () => S, getRes: () => st.res, boardName: () => st.board?.name || '',
     isEnabled: op => st.enabled[op.id] !== false, originDesc: originCz,

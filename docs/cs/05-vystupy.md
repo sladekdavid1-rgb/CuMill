@@ -87,19 +87,36 @@ Tlačítko **Uložit G-kódy** (`Ctrl+S`):
 4. Příště ukládá rovnou do stejné složky. Jinou složku vybereš v hlášce
    po uložení tlačítkem **Jiná složka…**.
 
-## Projekt `.cumill`
+## Projekty
 
-Tlačítko **Projekt** (`Ctrl+Shift+S`) uloží do jednoho souboru:
+Nastavení v levém panelu (nula, izolace, hloubky, ořez…) je **společné pro všechny desky** – když
+mezitím připravíš jinou desku, změní se. Aby byla každá deska připravená přesně tak, jak jsi ji
+nechal, ulož ji jako **projekt**. Tlačítko **Projekt** nahoře (nebo `Ctrl+Shift+S`) otevře okno Projekty:
 
-- desku (kopii souboru KiCadu nebo gerberů),
-- všechna nastavení a knihovnu nástrojů,
-- ruční úpravy (díry, kolíčky, můstky, oblasti, sítě),
-- zaškrtnuté programy,
-- **výškovou mapu** (pokud je změřená).
+![Projekty](../img/e_projekty.png)
 
-Projekt otevřeš jako desku (Otevřít / přetažením). Když původní soubor z KiCadu ještě
-existuje, načte se jeho **aktuální** verze, jinak kopie uložená v projektu.
-Hodí se na archivaci hotové desky nebo na přenos na jiný počítač.
+| # | Část | Co dělá |
+|---|------|---------|
+| 1 | **Otevřený projekt** | název projektu, se kterým právě pracuješ; **Uložit teď** uloží hned |
+| 2 | **Uložit desku jako projekt** | napiš název a **Uložit** (u otevřeného projektu: *Uložit jako nový projekt* = kopie pod jiným názvem) |
+| 3 | **Složka projektů** | výchozí `Dokumenty\CuMill\Projekty`; **Změnit…** vybere jinou, **Výchozí** vrátí původní |
+| 4 | **Seznam projektů** | náhled, název, deska, rozměr, datum; **Otevřít**, **Přejmenovat**, **Duplikovat**, **✕** smazat |
+
+**Co je v projektu:** deska (kopie souboru KiCadu nebo gerberů), všechna nastavení a knihovna nástrojů,
+ruční úpravy (díry, kolíčky, můstky, oblasti, sítě), zaškrtnuté programy a **výšková mapa**.
+
+**Průběžné ukládání:** když je projekt otevřený, každá změna (nastavení, úprava v náhledu,
+zaškrtnutí programu, změřená nebo upravená výšková mapa) se do něj **sama uloží** asi do 2 sekund.
+V horní liště je vidět štítek **▣ název projektu** (klik otevře Projekty). Otevřením jiné desky
+se projekt zavře (zůstane uložený).
+
+**Návrat k projektu:** na úvodní obrazovce jsou poslední projekty s náhledem, nebo tlačítko **Projekt**
+→ **Otevřít**. Když původní soubor z KiCadu ještě existuje, načte se jeho **aktuální** verze
+(a funguje *Sledovat změny*), jinak kopie uložená v projektu. Výšková mapa se načte taky –
+před startem programu CuMill upozorní, pokud je stará (deska se mohla pohnout).
+
+**Uložit kopii jinam (stáhnout)…** uloží projekt jako soubor `.cumill` kamkoli (např. na flashku).
+Takový soubor otevřeš tlačítkem **Otevřít** nebo přetažením do okna.
 
 ## Export pro laser
 

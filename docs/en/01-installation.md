@@ -33,7 +33,9 @@ The start screen appears:
 **(1)** The **Otevřít soubor…** (Open file…) button – or **Otevřít** (Open) at the top, `Ctrl+O` –
 opens a board. You can also **drag the board file** from Explorer into the window.
 
-Below the button a list of **recently opened boards** appears over time – just click one.
+**(2)** Below the button are your **saved projects** with thumbnails (click = open, everything as you left it)
+and the **recently opened boards**. All projects are under the **Projekt** button at the top
+(see [chapter 5](05-outputs.md#projects)).
 
 ## What CuMill remembers
 
@@ -53,7 +55,7 @@ Below the button a list of **recently opened boards** appears over time – just
 | 1 | **Deska / G-kód / Stroj / Nástroje** | main tabs: Board / G-code / Machine / Tools (also `F2`, `F3`, `F4`, `F6`); Tools = tool library and test results ([chapter 14](14-material-test.md)) |
 | 2 | **Otevřít** (Open) | load a `.kicad_pcb` board, Gerbers or a `.cumill` project |
 | 3 | **Sledovat změny** (Watch changes) | when you save the board in KiCad, CuMill reloads and recomputes it |
-| 4 | **Projekt** (Project) | saves everything (board, settings, edits, height map) into one `.cumill` file |
+| 4 | **Projekt** (Project) | projects: save the board as a project (board, settings, edits, height map – then saved continuously) and open saved projects |
 | 5 | **Laser** | SVG export of silkscreen and mask for a laser (LightBurn) |
 | 6 | **⚙ Nastavení** (Settings) | color themes, defaults, probe, keys, backups (`Ctrl+,`) |
 | 7 | **Uložit G-kódy** (Save G-code) | saves the checked programs into a folder (`Ctrl+S`) |

@@ -82,6 +82,6 @@ The zero stayed stored in GRBL.
 - **Test the map and a new V-bit on scrap first** – mill a small piece and measure the groove width.
 - V-bits get dull quickly. Watch **Journal → Tools – distance** and press *Nový* (New) after replacing one.
 - On a two-sided board put vias **away from component bodies** – a wire under a package is hard to solder.
-- Save every finished board as a **Project** – a year later you'll know which settings it was made with.
+- Save every board as a **Project** – after closing CuMill you'll find it on the start screen exactly as you left it (map included), and a year later you'll know which settings it was made with.
 
 [← Shortcuts](11-shortcuts.md) · [Contents](README.md) · [Next: Glossary →](13-glossary.md)

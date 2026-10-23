@@ -8,7 +8,7 @@
 |---------|------|
 | `Ctrl+O` | otevřít desku / projekt (v záložce G-kód: otevřít `.nc`) |
 | `Ctrl+S` | uložit G-kódy |
-| `Ctrl+Shift+S` | uložit projekt `.cumill` |
+| `Ctrl+Shift+S` | uložit otevřený projekt (není-li otevřený, otevře okno Projekty) |
 | `Ctrl+Z` | zpět |
 | `Ctrl+Y`, `Ctrl+Shift+Z` | znovu |
 | `Ctrl+,` | nastavení |

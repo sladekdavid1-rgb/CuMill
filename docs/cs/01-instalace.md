@@ -33,7 +33,9 @@ Otevře se úvodní obrazovka:
 **(1)** Tlačítkem **Otevřít soubor…** (nebo **Otevřít** nahoře, `Ctrl+O`) vybereš desku.
 Desku můžeš také **přetáhnout myší** z Průzkumníka přímo do okna.
 
-Pod tlačítkem se časem objeví seznam **naposledy otevřených desek** – stačí kliknout.
+**(2)** Pod tlačítkem jsou **uložené projekty** s náhledem (klik = otevřít, vše jak jsi to nechal)
+a **naposledy otevřené desky**. Všechny projekty najdeš tlačítkem **Projekt** nahoře
+(viz [kapitola 5](05-vystupy.md#projekty)).
 
 ## Kde si CuMill co pamatuje
 
@@ -53,7 +55,7 @@ Pod tlačítkem se časem objeví seznam **naposledy otevřených desek** – st
 | 1 | **Deska / G-kód / Stroj / Nástroje** | hlavní záložky (také `F2`, `F3`, `F4`, `F6`); Nástroje = knihovna nástrojů a výsledky testů ([kapitola 14](14-test-materialu.md)) |
 | 2 | **Otevřít** | načíst desku `.kicad_pcb`, gerbery nebo projekt `.cumill` |
 | 3 | **Sledovat změny** | když v KiCadu desku uložíš, CuMill ji sám znovu načte a přepočítá |
-| 4 | **Projekt** | uloží vše (desku, nastavení, úpravy, výškovou mapu) do jednoho souboru `.cumill` |
+| 4 | **Projekt** | projekty: uložit desku jako projekt (deska, nastavení, úpravy, výšková mapa – pak se ukládá průběžně) a otevřít uložené projekty |
 | 5 | **Laser** | export potisku a masky do SVG pro laser (LightBurn) |
 | 6 | **⚙ Nastavení** | barevná témata, výchozí hodnoty, sonda, klávesy, zálohy (`Ctrl+,`) |
 | 7 | **Uložit G-kódy** | uloží zaškrtnuté programy do složky (`Ctrl+S`) |

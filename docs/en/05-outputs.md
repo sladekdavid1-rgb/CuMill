@@ -87,19 +87,35 @@ The same procedure, interactive (with buttons), is in **Stroj → Průvodce** (M
 4. Next time it saves straight into the same folder. Choose another one with
    **Jiná složka…** (Another folder…) in the message shown after saving.
 
-## Project `.cumill`
+## Projects
 
-**Projekt** (`Ctrl+Shift+S`) saves into one file:
+The settings in the left panel (origin, isolation, depths, cut-out…) are **shared by all boards** – if you
+prepare another board meanwhile, they change. To keep each board ready exactly as you left it, save it as a
+**project**. The **Projekt** button at the top (or `Ctrl+Shift+S`) opens the Projects window:
 
-- the board (a copy of the KiCad file or Gerbers),
-- all settings and the tool library,
-- manual edits (holes, pins, tabs, areas, nets),
-- checked programs,
-- the **height map** (if probed).
+![Projects](../img/e_projekty.png)
 
-Open a project like a board (Open / drag & drop). If the original KiCad file still exists,
-its **current** version is loaded, otherwise the copy stored in the project.
-Handy for archiving a finished board or moving to another computer.
+| # | Part | What it does |
+|---|------|--------------|
+| 1 | **Otevřený projekt** (Open project) | the project you are working on; **Uložit teď** (Save now) saves immediately |
+| 2 | **Uložit desku jako projekt** (Save board as project) | type a name and **Uložit** (Save); with a project open: *Save as new project* = a copy under another name |
+| 3 | **Složka projektů** (Projects folder) | default `Documents\CuMill\Projekty`; **Změnit…** (Change…) picks another, **Výchozí** (Default) resets it |
+| 4 | **Project list** | thumbnail, name, board, size, date; **Otevřít** (Open), **Přejmenovat** (Rename), **Duplikovat** (Duplicate), **✕** delete |
+
+**What a project contains:** the board (a copy of the KiCad file or Gerbers), all settings and the tool library,
+manual edits (holes, pins, tabs, areas, nets), checked programs and the **height map**.
+
+**Continuous saving:** while a project is open, every change (settings, preview edit, program checkbox,
+probed or edited height map) is **saved automatically** within about 2 seconds. The top bar shows a
+**▣ project name** chip (click opens Projects). Opening another board closes the project (it stays saved).
+
+**Returning to a project:** the start screen shows recent projects with thumbnails, or **Projekt** → **Otevřít**.
+If the original KiCad file still exists, its **current** version is loaded (and *Watch changes* works),
+otherwise the copy stored in the project. The height map is loaded too – before starting a program CuMill
+warns when it is old (the board may have moved).
+
+**Uložit kopii jinam (stáhnout)…** (Save a copy elsewhere) saves the project as a `.cumill` file anywhere
+(e.g. a USB stick). Open such a file with **Otevřít** or by dragging it into the window.
 
 ## Laser export
 

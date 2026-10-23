@@ -30,6 +30,7 @@ func registerAPI(mux *http.ServeMux) {
 		}
 	}
 	registerMachineAPI(mux, guard)
+	registerProjectsAPI(mux, guard)
 	mux.HandleFunc("/api/caps", guard(func(w http.ResponseWriter, r *http.Request) error {
 		return writeJSON(w, map[string]any{"native": webviewMode.Load(), "os": runtime.GOOS})
 	}))

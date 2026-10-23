@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.4 – 2026-10
+- **Projects** – projects folder (Documents\CuMill\Projekty), Projects window (save as, open, rename, duplicate, delete, thumbnails),
+  continuous autosave of the open project (settings, edits, checked programs, height map), recent projects on the start screen
 - **Tools tab** (F6) – tool library on a full page, material test results per tool (filter, search, apply to tool)
 - **Machine → Test** – test cuts: line, rectangle, triangle, circle, pocket, drilling; center / inside / outside path,
   climb / conventional; single test or a matrix (rows × columns of feed, spindle, depth, step-down, plunge), skippable cells,

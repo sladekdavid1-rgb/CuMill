@@ -938,6 +938,7 @@ export function initMachine(ctx) {
         ctx.toast(`Výšková mapa změřená (${pts.length} bodů, rozptyl ${cz(mapSpread(m), 3)} mm).` + (p.type === 'clip' ? ' Nula Z = povrch v referenčním bodě.' : ' Nasaď nástroj a změř Z v referenčním bodě.'));
       } else ctx.toast('Bod přeměřen (relativně k referenčnímu bodu).');
       M.wizard.done['map:' + (M.hmapMeta?.side || '')] = true;
+      ctx.mapChanged?.();
       rebuildProgram(true);
     } finally { M.mapping = false; M.mapSel = -1; renderMap(); renderMapOverlay(); }
   }
@@ -1036,7 +1037,7 @@ export function initMachine(ctx) {
           class: [k === 0 ? 'ref' : '', k === M.mapSel ? 'on' : '', cenPt ? 'cen' : '', moved ? 'mov' : ''].join(' '),
           title: `${cenPt ? 'Střed' : 'Bod'} X ${cz(at?.[0] ?? p.x, 2)}  Y ${cz(at?.[1] ?? p.y, 2)}${k === 0 ? ' – referenční bod' : ''}${moved ? ' (posunut kvůli díře)' : ''}` });
         inp.addEventListener('focus', () => { M.mapSel = k; renderMapOverlay(); inp.select(); });
-        inp.addEventListener('change', () => { const nv = num(inp.value); if (nv === arr[ai]) return; arr[ai] = nv; rebuildProgram(true); setTimeout(renderMapTable, 0); });
+        inp.addEventListener('change', () => { const nv = num(inp.value); if (nv === arr[ai]) return; arr[ai] = nv; rebuildProgram(true); ctx.mapChanged?.(); setTimeout(renderMapTable, 0); });
         inp.addEventListener('keydown', e => {
           e.stopPropagation();
           const mv = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1], Enter: [1, 0] }[e.key];
@@ -1117,14 +1118,14 @@ export function initMachine(ctx) {
       el('div', { class: 'mrow' },
         el('button', { class: 'btn small', disabled: !m, onclick: () => ctx.download(`${(M.prog?.name || 'mapa').replace(/\.nc$/i, '')}.map`, HM.toMapFile(m, { zBottom: c.zmin, zTop: c.clear })) }, 'Uložit .map'),
         el('button', { class: 'btn small', onclick: loadMapFile }, 'Načíst .map'),
-        el('button', { class: 'btn small', disabled: !m, onclick: () => { M.hmap = null; M.hmapMeta = null; renderMap(); rebuildProgram(true); } }, 'Smazat'))].filter(Boolean));
+        el('button', { class: 'btn small', disabled: !m, onclick: () => { M.hmap = null; M.hmapMeta = null; renderMap(); rebuildProgram(true); ctx.mapChanged?.(); } }, 'Smazat'))].filter(Boolean));
     renderMapTable();
     requestAnimationFrame(() => { if (heatSf) drawHeat(heatSf, heatPts); });
   }
   function loadMapFile() {
     const i = el('input', { type: 'file', accept: '.map,.txt' });
     i.addEventListener('change', async () => {
-      try { M.hmap = HM.fromMapFile(await i.files[0].text()); M.hmapMeta = { side: M.prog?.op?.side || null }; M.hmap.time = Date.now(); renderMap(); rebuildProgram(true); ctx.toast('Výšková mapa načtena.'); }
+      try { M.hmap = HM.fromMapFile(await i.files[0].text()); M.hmapMeta = { side: M.prog?.op?.side || null }; M.hmap.time = Date.now(); renderMap(); rebuildProgram(true); ctx.mapChanged?.(); ctx.toast('Výšková mapa načtena.'); }
       catch (e) { ctx.toast(e.message, true); }
     });
     i.click();

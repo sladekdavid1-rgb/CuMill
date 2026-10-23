@@ -8,7 +8,7 @@
 |-----|--------|
 | `Ctrl+O` | open board / project (in the G-code tab: open `.nc`) |
 | `Ctrl+S` | save G-code |
-| `Ctrl+Shift+S` | save `.cumill` project |
+| `Ctrl+Shift+S` | save the open project (if none is open, opens the Projects window) |
 | `Ctrl+Z` | undo |
 | `Ctrl+Y`, `Ctrl+Shift+Z` | redo |
 | `Ctrl+,` | settings |

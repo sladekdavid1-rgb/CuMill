@@ -83,6 +83,6 @@ Nula zůstala uložená v GRBL.
 - V-frézy se rychle tupí. Hlídej si **Deník → Nástroje – najeto** a po výměně dej *Nový*.
 - U oboustranné desky dávej průchody (via) **mimo pouzdra součástek** – pod pouzdrem
   se drátek špatně pájí.
-- Každou hotovou desku si ulož jako **Projekt** – za rok budeš vědět, s jakým nastavením vznikla.
+- Každou desku si ulož jako **Projekt** – po zavření CuMillu ji najdeš na úvodní obrazovce přesně tak, jak jsi ji nechal (i s mapou), a za rok budeš vědět, s jakým nastavením vznikla.
 
 [← Klávesy](11-klavesy.md) · [Obsah](README.md) · [Další: Slovníček →](13-slovnicek.md)

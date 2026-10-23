@@ -26,7 +26,8 @@ step-by-step production wizard.
 - **Silkscreen engraving** – KiCad texts rendered with the same stroke font
 - **Other geometry** from User/Dwgs/Cmts/Fab layers – inside/outside profile, pocket, engrave
 - **Design checks** – too-narrow gaps, pin and tab placement, vias and top-soldered THT pins
-- Watch mode – re-computes when you save the board in KiCad; undo/redo; project file `.cumill`
+- Watch mode – re-computes when you save the board in KiCad; undo/redo
+- **Projects** – each board with its own settings, edits and height map in a projects folder, saved continuously, listed with thumbnails on the start screen
 - **Laser export** – SVG of silkscreen / solder-mask openings in machine coordinates (LightBurn colors)
 
 **G-code viewer**

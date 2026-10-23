@@ -448,3 +448,28 @@ dialog.tsave textarea { width: 100%; background: var(--bg); color: var(--text); 
 dialog.tsave .dlgbody { display: flex; flex-direction: column; gap: 8px; }
 .mtabs button { padding: 5px 4px; font-size: 12px; }
 .mpane > * { flex-shrink: 0; }
+/* projekty */
+dialog.prjdlg { width: min(980px, 95vw); }
+.prjdlg .dlgbody { display: flex; flex-direction: column; gap: 12px; }
+.prjcur { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border-radius: 9px; background: var(--cuBg); border: 1px solid color-mix(in srgb, var(--cu) 40%, transparent); }
+.prjnew { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.prjnew .inp { flex: 1; min-width: 220px; height: 32px; }
+.prjnew .inp input { border: 0; background: transparent; width: 100%; height: 100%; padding: 0 8px; color: var(--text); outline: none; }
+.prjdir { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.prjdir code { font: 12px ui-monospace, Consolas, monospace; background: var(--bg); border: 1px solid var(--line); padding: 3px 7px; border-radius: 6px; overflow-wrap: anywhere; }
+.prjlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.prjcard { display: grid; grid-template-columns: 120px 1fr; grid-template-rows: auto auto; gap: 6px 10px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.prjcard.cur { border-color: var(--cu); }
+.prjthumb { grid-row: span 2; width: 120px; height: 75px; border: 1px solid var(--line); border-radius: 7px; background: var(--stage); padding: 0; overflow: hidden; cursor: pointer; display: grid; place-items: center; font-size: 11px; }
+.prjthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.prjinfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.prjinfo b { overflow-wrap: anywhere; }
+.prjbtns { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.prjchip { cursor: pointer; border-color: var(--cu) !important; color: var(--cu2) !important; }
+.recentprj { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+.recentprj button { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 6px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; text-align: left; min-width: 0; }
+.recentprj button:hover { border-color: var(--cu); }
+.recentprj img, .recentprj .noimg { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 6px; background: var(--stage); display: block; }
+.recentprj b { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.recentprj small { color: var(--dim); font-size: 11px; }
+.recent .allprj { justify-content: center; color: var(--cu2); margin-bottom: 14px; }
