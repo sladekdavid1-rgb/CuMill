@@ -1,11 +1,11 @@
-# CuMill – návod (česky)
+# KiMill – návod (česky)
 
-CuMill je program pro **domácí výrobu plošných spojů frézováním** na malé CNC frézce
-(typicky CNC 3018 s řídicí deskou GRBL). Desku nakreslíš v KiCadu, CuMill z ní spočítá
+KiMill je program pro **domácí výrobu plošných spojů frézováním** na malé CNC frézce
+(typicky CNC 3018 s řídicí deskou GRBL). Desku nakreslíš v KiCadu, KiMill z ní spočítá
 dráhy pro frézu (G-kód) a v záložce **Stroj** je rovnou pošle do frézky – včetně výškové
 mapy, průvodce výrobou a ovládání pendantem. Nahrazuje tak trojici FlatCAM + UGS + Candle.
 
-![CuMill – hlavní okno](../img/a02_prehled.png)
+![KiMill – hlavní okno](../img/a02_prehled.png)
 
 ## Obsah
 
@@ -30,10 +30,10 @@ mapy, průvodce výrobou a ovládání pendantem. Nahrazuje tak trojici FlatCAM 
 ## Pro koho to je
 
 - Máš frézku typu **CNC 3018** (nebo jinou s **GRBL 1.1**) a chceš si doma vyrábět DPS.
-- Desky kreslíš v **KiCadu** (CuMill čte přímo `.kicad_pcb`, nic neexportuješ).
+- Desky kreslíš v **KiCadu** (KiMill čte přímo `.kicad_pcb`, nic neexportuješ).
 - Nechceš skládat dohromady tři programy a pamatovat si, co kde nastavit.
 
-## Co CuMill umí v kostce
+## Co KiMill umí v kostce
 
 - **Přímý import KiCadu** (`.kicad_pcb`) nebo gerberů + vrtacího souboru.
 - **Izolace mědi** V-frézou s přesnou šířkou řezu, víc průjezdů, průjezdy podle sítí (např. GND 4×).

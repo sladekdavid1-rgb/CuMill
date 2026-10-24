@@ -9,7 +9,7 @@ deska je prohnutá, podložka nerovná, oboustranná páska nestejně tlustá. R
 na ploše desky je běžný. Bez mapy pak fréza na jednom konci desky jen škrábe
 a na druhém jde zbytečně hluboko (a dělá široké drážky).
 
-**Výšková mapa** změří výšku povrchu v síti bodů a CuMill podle ní během frézování
+**Výšková mapa** změří výšku povrchu v síti bodů a KiMill podle ní během frézování
 **zvedá a spouští frézu**, takže drží stejnou hloubku po celé desce.
 Stejně jako v programu Candle, jen pohodlněji.
 
@@ -90,7 +90,7 @@ Jeden bod můžeš **přeměřit**: vyber ho (v tabulce, ve 2D mapě) a dej **P�
 
 ### 5. Spusť program
 
-Přepínač **Výšková mapa** nahoře nad programem musí být zapnutý. CuMill program izolace
+Přepínač **Výšková mapa** nahoře nad programem musí být zapnutý. KiMill program izolace
 upraví (týká se izolace mědi i gravírování potisku): rovné úseky rozdělí na kousky max. 1 mm, oblouky nahradí úsečkami a ke každému
 bodu přičte výšku z mapy (bikubická interpolace jako v Candle; u mřížky se středy po trojúhelnících).
 
@@ -107,14 +107,14 @@ Mapa pak platí dál.
 ## Druhá strana desky
 
 Po otočení desky změř **novou mapu pro druhou stranu** – deska teď leží jinak.
-CuMill si pamatuje, pro kterou stranu je mapa změřená (je to vidět pod nastavením mapy), a Průvodce
-po otočení desky zařadí měření nové mapy samo. Před startem CuMill upozorní, když je mapa
+KiMill si pamatuje, pro kterou stranu je mapa změřená (je to vidět pod nastavením mapy), a Průvodce
+po otočení desky zařadí měření nové mapy samo. Před startem KiMill upozorní, když je mapa
 starší než 3 hodiny.
 
 ## Uložení a načtení
 
 - **Uložit .map / Načíst .map** – soubor ve formátu programu Candle.
-- Mapa se ukládá i do **projektu `.cumill`**.
+- Mapa se ukládá i do **projektu `.kimill`**.
 - **Smazat** – zahodí mapu.
 
 [← Záložka Stroj](07-stroj.md) · [Obsah](README.md) · [Další: Výroba krok za krokem →](09-vyroba-krok-za-krokem.md)

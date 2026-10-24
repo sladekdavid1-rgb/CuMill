@@ -7,7 +7,7 @@ Levý panel má sbalovací sekce. V záhlaví každé sekce je vpravo krátké s
 Každá změna se hned přepočítá a projeví v náhledu i v programech vpravo.
 
 > **Tip:** v každém číselném políčku jdou hodnoty měnit šipkami `↑` `↓`
-> (s `Shift` po desetinásobcích). Desetinnou čárku i tečku CuMill bere obě.
+> (s `Shift` po desetinásobcích). Desetinnou čárku i tečku KiMill bere obě.
 
 Obsah kapitoly:
 [Knihovna nástrojů](#knihovna-nástrojů) ·
@@ -124,7 +124,7 @@ Hlavní operace – V-fréza objede všechny cesty a plošky a tím je odizoluje
 
 > **Proč přepsat šířku řezu?** Skutečná V-fréza bývá trochu jiná, než říká výrobce,
 > a hloubka se mění podle rovnosti desky. Když po zkušebním řezu změříš drážku
-> (např. 0,2 mm), napiš ji do **Šířky řezu**. CuMill podle ní posune dráhy, aby cesty
+> (např. 0,2 mm), napiš ji do **Šířky řezu**. KiMill podle ní posune dráhy, aby cesty
 > vyšly ve správné šířce. **Hloubka se tím nemění.**
 
 ---

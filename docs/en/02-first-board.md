@@ -3,16 +3,16 @@
 [← Installation](01-installation.md) · [Contents](README.md) · [Next: Board tab →](03-board-tab.md)
 
 This chapter is the shortest way from a KiCad board to finished G-code.
-Everything else is an improvement – CuMill's defaults are tuned for a
+Everything else is an improvement – KiMill's defaults are tuned for a
 **CNC 3018, 1.2–1.6 mm FR4, 30° V-bit with a 0.1 mm tip**.
 
 ## Step 1 – open the board
 
 Click **Otevřít** (Open, `Ctrl+O`) and pick the `.kicad_pcb` file right from your KiCad project folder.
-No export – CuMill reads copper, holes, outline (Edge.Cuts) and silkscreen directly from the design.
+No export – KiMill reads copper, holes, outline (Edge.Cuts) and silkscreen directly from the design.
 
 > Only Gerbers? Select the copper files (`.gtl`, `.gbl`), the outline (`.gko`, `.gm1`)
-> and the drill file (`.drl`) together. CuMill recognizes them automatically.
+> and the drill file (`.drl`) together. KiMill recognizes them automatically.
 
 After loading you see the board, the computed paths and the list of programs on the right:
 
@@ -62,7 +62,7 @@ The name tells what the program does and which tool it needs (`V0.18` = V-bit fo
 
 Two options:
 
-- **Right in CuMill** – the **Stroj** (Machine) tab (`F4`). On the right is the **Průvodce** (Wizard)
+- **Right in KiMill** – the **Stroj** (Machine) tab (`F4`). On the right is the **Průvodce** (Wizard)
   that guides you through every step (clamping, zero, tool, height map, start…).
   See [chapter 7](07-machine-tab.md) and [chapter 9](09-step-by-step.md).
 - **In another program** (UGS, Candle, bCNC) – the `.nc` files are standard GRBL G-code.

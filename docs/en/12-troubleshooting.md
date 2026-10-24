@@ -7,15 +7,15 @@
 **Windows says "Windows protected your PC".**
 The program has no paid digital signature. Click *More info* → *Run anyway*.
 
-**An Edge window opens instead of CuMill's own window.**
-`WebView2Loader.dll` is missing next to `CuMill.exe`, or the WebView2 Runtime is missing on Windows
+**An Edge window opens instead of KiMill's own window.**
+`WebView2Loader.dll` is missing next to `KiMill.exe`, or the WebView2 Runtime is missing on Windows
 (free download from Microsoft). The program works in Edge as well.
 
 **The window is empty or doesn't load.**
-Internally CuMill runs a small local server at `127.0.0.1:47823` (only for your computer,
-not reachable from the internet). Starting CuMill a second time opens another window on the same
-program. If the window stays empty, close all CuMill windows and start it again;
-allowing CuMill in the firewall / antivirus may help.
+Internally KiMill runs a small local server at `127.0.0.1:47823` (only for your computer,
+not reachable from the internet). Starting KiMill a second time opens another window on the same
+program. If the window stays empty, close all KiMill windows and start it again;
+allowing KiMill in the firewall / antivirus may help.
 
 ## Board
 
@@ -55,7 +55,7 @@ The probe didn't touch the surface within the set distance. Jog lower above the 
 (multimeter between tool and copper while touching).
 
 **The program stopped with an error.**
-CuMill pauses the program and shows the error line in the Console. Try **Kontrolní běh** (Check run) –
+KiMill pauses the program and shows the error line in the Console. Try **Kontrolní běh** (Check run) –
 it runs the whole program without motion and shows all errors. In foreign programs the error is
 usually an unsupported command (e.g. `M6`, `T1`).
 
@@ -64,8 +64,8 @@ Probe a **height map** ([chapter 8](08-height-map.md)) and check that the *Výš
 above the program is on.
 
 **Tracks are narrower than they should be.**
-The real groove is wider than CuMill assumes. Measure it (loupe with a scale) and enter it into
-**Isolation → Šířka řezu** (Cut width). CuMill offsets the paths and the tracks come out right.
+The real groove is wider than KiMill assumes. Measure it (loupe with a scale) and enter it into
+**Isolation → Šířka řezu** (Cut width). KiMill offsets the paths and the tracks come out right.
 
 **Holes from the other side don't match.**
 The pins must fit the holes without play. Drill the pin holes with a drill of the same diameter as the pins,
@@ -82,6 +82,6 @@ The zero stayed stored in GRBL.
 - **Test the map and a new V-bit on scrap first** – mill a small piece and measure the groove width.
 - V-bits get dull quickly. Watch **Journal → Tools – distance** and press *Nový* (New) after replacing one.
 - On a two-sided board put vias **away from component bodies** – a wire under a package is hard to solder.
-- Save every board as a **Project** – after closing CuMill you'll find it on the start screen exactly as you left it (map included), and a year later you'll know which settings it was made with.
+- Save every board as a **Project** – after closing KiMill you'll find it on the start screen exactly as you left it (map included), and a year later you'll know which settings it was made with.
 
 [← Shortcuts](11-shortcuts.md) · [Contents](README.md) · [Next: Glossary →](13-glossary.md)

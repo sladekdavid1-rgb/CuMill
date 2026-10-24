@@ -107,7 +107,7 @@ Pause, Stop and feed / spindle overrides work as with any program.
 
 ## Saving the result
 
-After the test finishes (or is stopped) CuMill asks **Uložit výsledek testu?** (Save test result?)
+After the test finishes (or is stopped) KiMill asks **Uložit výsledek testu?** (Save test result?)
 
 ![Saving the result](../img/t_ulozit.png)
 

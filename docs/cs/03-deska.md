@@ -129,7 +129,7 @@ Když táhneš automaticky rozmístěný můstek, deska se sama přepne na ručn
 ## Sledování změn v KiCadu
 
 Zapni přepínač **Sledovat změny** v horní liště. Když pak v KiCadu desku uložíš (`Ctrl+S`),
-CuMill ji sám znovu načte a přepočítá. Ruční úpravy (díry, kolíčky, oblasti, můstky)
+KiMill ji sám znovu načte a přepočítá. Ruční úpravy (díry, kolíčky, oblasti, můstky)
 zůstanou zachované. Ručně se deska znovu načte klávesou `F5` nebo tlačítkem **Načíst znovu**.
 
 ## Zpět a znovu

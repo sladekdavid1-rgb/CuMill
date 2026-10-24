@@ -190,7 +190,7 @@ export function applyToGcode(text, m, { seg = 1, tol = 0.005, decimals = 4 } = {
 
 // ---------- soubory .map (formát Candle) ----------
 // 1. řádek: X;Y;šířka;výška oblasti, 2.: body X;body Y;Z dole;Z nahoře, 3.: typ interpolace;krok X;krok Y,
-// pak řádky hodnot (po Y). Středy (rozšíření CuMillu) jako řádky „C;…“ na konci – Candle je nečte.
+// pak řádky hodnot (po Y). Středy (rozšíření KiMillu) jako řádky „C;…“ na konci – Candle je nečte.
 export function toMapFile(m, { zBottom = -1, zTop = 1 } = {}) {
   const n = v => v == null ? '0' : String(+(+v).toFixed(4));
   const L = [];

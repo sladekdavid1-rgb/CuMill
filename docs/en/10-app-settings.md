@@ -43,7 +43,7 @@ geometry, silkscreen, cut-out), in one place.
 
 G-code parameters (same as the *Machine and G-code* section on the left) and
 **Kalibrace odhadu času** (Time estimate calibration): after every completed run on the machine
-CuMill compares the real time with the estimate and adjusts future estimates for that type of
+KiMill compares the real time with the estimate and adjusts future estimates for that type of
 operation (e.g. *Isolation × 1.18*). **Vynulovat kalibraci** (Reset calibration) starts over.
 
 ## Sonda a výšková mapa (Probe and height map)

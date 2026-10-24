@@ -43,7 +43,7 @@ geometrie, potisk, ořez), přehledně pod sebou na jednom místě.
 ![Nastavení – Stroj a G-kód](../img/s_stroj.png)
 
 Parametry G-kódu (stejné jako sekce *Stroj a G-kód* vlevo) a **Kalibrace odhadu času**:
-po každém dokončeném běhu na stroji CuMill porovná skutečný čas s odhadem a příští odhady
+po každém dokončeném běhu na stroji KiMill porovná skutečný čas s odhadem a příští odhady
 pro daný typ operace upraví (např. *Izolace × 1,18*). **Vynulovat kalibraci** začne znovu.
 
 ## Sonda a výšková mapa

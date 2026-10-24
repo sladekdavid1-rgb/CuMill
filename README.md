@@ -1,14 +1,16 @@
-# CuMill
+# KiMill
+
+*(formerly CuMill)*
 
 **PCB milling from KiCad to a GRBL CNC – CAM, G-code sender and height map in one Windows app.**
 
-CuMill turns a KiCad board (`.kicad_pcb`) into milling programs for a small hobby CNC
+KiMill turns a KiCad board (`.kicad_pcb`) into milling programs for a small hobby CNC
 (e.g. CNC 3018 with GRBL 1.1) and sends them straight to the machine. It replaces the usual
 FlatCAM + UGS + Candle combo with a single program that knows the whole job – isolation,
 drilling, two-sided boards on a pin jig, cut-out with tabs, height-map leveling and a
 step-by-step production wizard.
 
-![CuMill main window](docs/img/a02_prehled.png)
+![KiMill main window](docs/img/a02_prehled.png)
 
 > The user interface is in **Czech**. Documentation is available in
 > **[English](docs/en/README.md)** and **[Czech](docs/cs/README.md)**.
@@ -60,8 +62,8 @@ step-by-step production wizard.
 
 ## Download
 
-Get `CuMill.exe` and `WebView2Loader.dll` from **[Releases](https://github.com/sladekdavid1-rgb/cumill/releases)**,
-put both in one folder and run `CuMill.exe`. Nothing is installed. Windows 10/11 x64 with
+Get `KiMill.exe` and `WebView2Loader.dll` from **[Releases](https://github.com/sladekdavid1-rgb/KiMill/releases)**,
+put both in one folder and run `KiMill.exe`. Nothing is installed. Windows 10/11 x64 with
 Microsoft Edge WebView2 (preinstalled on current Windows).
 
 ## Documentation
@@ -81,12 +83,12 @@ Requires Go 1.24+. All dependencies are vendored in `third_party/` (go-webview2,
 ```sh
 # Windows executable (cross-compile works from Linux/macOS too)
 GOFLAGS=-mod=mod GOPROXY=off GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
-  go build -trimpath -ldflags "-H windowsgui -s -w" -o CuMill.exe .
+  go build -trimpath -ldflags "-H windowsgui -s -w" -o KiMill.exe .
 
 # Linux/macOS development build – serves the UI on http://127.0.0.1:47823/
 # (only the simulator port is available there)
-GOFLAGS=-mod=mod GOPROXY=off go build -o cumill .
-CUMILL_SIM_SPEED=10 ./cumill     # optional: speed up the GRBL simulator 10×
+GOFLAGS=-mod=mod GOPROXY=off go build -o kimill .
+KIMILL_SIM_SPEED=10 ./kimill     # optional: speed up the GRBL simulator 10×
 
 # tests (GRBL streaming against the simulator)
 GOFLAGS=-mod=mod GOPROXY=off go test .
@@ -94,7 +96,7 @@ GOFLAGS=-mod=mod GOPROXY=off go test .
 
 `rsrc_windows_amd64.syso` holds the icon and manifest
 (regenerate with [akavel/rsrc](https://github.com/akavel/rsrc):
-`rsrc -manifest cumill.manifest -ico cumill.ico -o rsrc_windows_amd64.syso`).
+`rsrc -manifest kimill.manifest -ico kimill.ico -o rsrc_windows_amd64.syso`).
 
 ### Project layout
 

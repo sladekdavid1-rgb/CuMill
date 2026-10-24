@@ -3,16 +3,16 @@
 [← Instalace](01-instalace.md) · [Obsah](README.md) · [Další: Záložka Deska →](03-deska.md)
 
 Tahle kapitola je nejkratší cesta od desky v KiCadu k hotovým G-kódům.
-Všechno ostatní jsou jen vylepšení – výchozí nastavení CuMillu je odladěné pro
+Všechno ostatní jsou jen vylepšení – výchozí nastavení KiMillu je odladěné pro
 **CNC 3018, cuprextit 1,2–1,6 mm, V-frézu 30° s hrotem 0,1 mm**.
 
 ## Krok 1 – otevři desku
 
 Klikni na **Otevřít** (`Ctrl+O`) a vyber soubor `.kicad_pcb` přímo ze složky projektu KiCadu.
-Nic neexportuješ – CuMill čte měď, díry, obrys (Edge.Cuts) i potisk přímo z návrhu.
+Nic neexportuješ – KiMill čte měď, díry, obrys (Edge.Cuts) i potisk přímo z návrhu.
 
 > Máš jen gerbery? Vyber najednou soubory mědi (`.gtl`, `.gbl`), obrysu (`.gko`, `.gm1`)
-> a vrtací soubor (`.drl`). CuMill je rozpozná sám.
+> a vrtací soubor (`.drl`). KiMill je rozpozná sám.
 
 Po načtení uvidíš desku, spočítané dráhy a vpravo seznam programů:
 
@@ -61,7 +61,7 @@ Název říká, co program dělá a jaký nástroj potřebuje (`V0.18` = V-fréz
 
 Máš dvě možnosti:
 
-- **Přímo v CuMillu** – záložka **Stroj** (`F4`). Vpravo je **Průvodce**, který tě provede
+- **Přímo v KiMillu** – záložka **Stroj** (`F4`). Vpravo je **Průvodce**, který tě provede
   každým krokem (upnutí, nula, nástroj, výšková mapa, spuštění…).
   Viz [kapitola 7](07-stroj.md) a [kapitola 9](09-vyroba-krok-za-krokem.md).
 - **V jiném programu** (UGS, Candle, bCNC) – soubory `.nc` jsou běžný G-kód pro GRBL.

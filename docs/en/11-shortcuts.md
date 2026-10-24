@@ -52,8 +52,8 @@ In a number field: `↑` / `↓` change the value, with `Shift` ten times more; 
 ## Pendant
 
 The pendant presents itself as a USB keyboard and sends the keys **F13–F24**
-(alone, with `Shift` or with `Ctrl`). CuMill handles them like UGS.
-The CuMill window must be active. Short jog press = step, hold = continuous jog.
+(alone, with `Shift` or with `Ctrl`). KiMill handles them like UGS.
+The KiMill window must be active. Short jog press = step, hold = continuous jog.
 
 | Key | Action |
 |-----|--------|

@@ -9,7 +9,7 @@ the board is bent, the spoilboard uneven, double-sided tape not equally thick.
 A 0.1–0.2 mm difference across the board is common. Without a map the cutter just scratches
 on one end of the board and goes needlessly deep (making wide grooves) on the other.
 
-A **height map** measures the surface height in a grid of points and CuMill then **raises and
+A **height map** measures the surface height in a grid of points and KiMill then **raises and
 lowers the cutter** while milling, keeping the same depth across the whole board.
 Like in Candle, just more convenient.
 
@@ -91,7 +91,7 @@ A single point can be **re-probed**: select it (in the table or the 2D map) and 
 
 ### 5. Run the program
 
-The **Výšková mapa** (Height map) switch above the program must be on. CuMill adjusts the isolation
+The **Výšková mapa** (Height map) switch above the program must be on. KiMill adjusts the isolation
 (and silkscreen engraving) program: splits straight moves into pieces of max. 1 mm, replaces arcs
 with lines and adds the map height to every point (bicubic interpolation like Candle; triangles
 for a grid with centers).
@@ -109,13 +109,13 @@ The map then stays valid.
 ## The other side of the board
 
 After flipping the board, probe a **new map for the other side** – the board now lies differently.
-CuMill remembers for which side the map was probed (shown below the map settings), and the Wizard
-adds probing a new map after the flip. Before starting CuMill warns when the map is older than 3 hours.
+KiMill remembers for which side the map was probed (shown below the map settings), and the Wizard
+adds probing a new map after the flip. Before starting KiMill warns when the map is older than 3 hours.
 
 ## Saving and loading
 
 - **Uložit .map / Načíst .map** (Save / Load .map) – a file in Candle's format.
-- The map is also saved in the **`.cumill` project**.
+- The map is also saved in the **`.kimill` project**.
 - **Smazat** (Delete) – discards the map.
 
 [← Machine tab](07-machine-tab.md) · [Contents](README.md) · [Next: Step by step →](09-step-by-step.md)

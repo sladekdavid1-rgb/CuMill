@@ -31,7 +31,7 @@ streams programs, and handles jogging, zero, probes, the height map and the pend
 
 | State | Meaning |
 |-------|---------|
-| **Odpojeno** (Disconnected) | CuMill is not connected |
+| **Odpojeno** (Disconnected) | KiMill is not connected |
 | **Alarm** | GRBL is locked – after power-on, an emergency stop, hitting a limit switch |
 | **Připraven** (Idle) | waiting for commands |
 | **Běží** (Run) | running a program |
@@ -109,14 +109,14 @@ Buttons:
 
 ### Fixed Z probe (tool setter) – tool change without the clip
 
-A tool setter is a fixed switch on the machine table. After a tool change CuMill measures the new tool
+A tool setter is a fixed switch on the machine table. After a tool change KiMill measures the new tool
 on it and **recomputes the Z zero by itself** – no need to find the board surface again,
 and the height map stays valid.
 
 1. Jog the tool above the center of the setter → **Poloha sondy = tady** (Setter position = here) – the machine position is stored.
 2. Set the Z zero of the first tool the usual way (clip / plate / map).
 3. **Referenční měření** (Reference measurement) – measures the same tool on the setter and remembers the difference.
-4. After every tool change: **Změřit nástroj** (Measure tool). CuMill goes up, moves above the setter,
+4. After every tool change: **Změřit nástroj** (Measure tool). KiMill goes up, moves above the setter,
    measures the new tool and shifts the Z zero by the length difference.
 
 The production wizard offers these steps automatically when the setter is configured.
@@ -124,9 +124,9 @@ The production wizard offers these steps automatically when the setter is config
 ### XY zero with a touch probe
 
 - **Střed díry → X0 Y0** (Hole center → X0 Y0) – put the probe tip into a hole (e.g. a pin hole) below the top edge.
-  CuMill touches the walls in 4 directions, computes the center and sets X0 Y0.
+  KiMill touches the walls in 4 directions, computes the center and sets X0 Y0.
 - **Levý dolní roh → X0 Y0** (Lower-left corner → X0 Y0) – put the tip diagonally in front of the lower-left
-  board corner, below the top edge. CuMill finds the left and bottom edges and sets X0 Y0 at the corner.
+  board corner, below the top edge. KiMill finds the left and bottom edges and sets X0 Y0 at the corner.
 
 Tip diameter and search distances are in **Settings → Probe and height map**.
 Before probing a dialog reminds you where the tip must be.
@@ -137,7 +137,7 @@ Before probing a dialog reminds you where the tip must be.
 
 ![Program bar](../img/m_lista.png)
 
-1. Choose the program at the top. CuMill programs of the current board are offered
+1. Choose the program at the top. KiMill programs of the current board are offered
    (in the right order), or **Otevřít .nc…** opens any file (also from FlatCAM).
 2. The **Výšková mapa** (Height map) switch – isolation programs are adjusted by the map
    (see [chapter 8](08-height-map.md)).
@@ -236,12 +236,12 @@ Communication with GRBL. Type any command at the bottom (e.g. `$$`, `G0 X10`, `$
 
 ## Pendant
 
-CuMill responds to the keys **F13–F24** (also with `Shift` / `Ctrl`) the same way UGS does –
+KiMill responds to the keys **F13–F24** (also with `Shift` / `Ctrl`) the same way UGS does –
 so a pendant that presents itself as a keyboard works out of the box: jogging, steps,
 zeroing, Z probing, homing, start / pause / stop.
 
 - Short jog press = **step**, hold = **continuous jog**.
-- The CuMill window must be **active** (in front).
+- The KiMill window must be **active** (in front).
 - Change key assignments in **Settings → Pendant keys** (click a key and press a new one).
 
 Default assignments are in [chapter 11](11-shortcuts.md#pendant).

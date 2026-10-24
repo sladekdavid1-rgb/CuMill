@@ -26,8 +26,8 @@
 | **Přípravek, kolíčky** | podložka s kolíky, podle kterých se oboustranná deska přesně otočí |
 | **G-kód** | textový program pro CNC (řádky jako `G1 X10 Y5 F400`) |
 | **GRBL** | firmware v řídicí desce levných frézek, který G-kód provádí |
-| **UGS, Candle** | programy pro posílání G-kódu do GRBL (CuMill je nahrazuje) |
-| **FlatCAM** | program na výpočet drah z gerberů (CuMill ho nahrazuje) |
+| **UGS, Candle** | programy pro posílání G-kódu do GRBL (KiMill je nahrazuje) |
+| **FlatCAM** | program na výpočet drah z gerberů (KiMill ho nahrazuje) |
 | **Gerber** | standardní formát výrobních dat DPS |
 | **Nula (pracovní nula, G54)** | bod, od kterého se měří souřadnice programu (X0 Y0 Z0) |
 | **Relativní / strojové souřadnice** | vzhledem k nule obrobku / absolutně od homingu |

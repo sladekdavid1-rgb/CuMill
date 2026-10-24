@@ -28,8 +28,8 @@ Czech terms you will see in the program are in parentheses.
 | **Jig, pins** (přípravek, kolíčky) | a spoilboard with pins used to flip a two-sided board accurately |
 | **G-code** (G-kód) | text program for CNC (lines like `G1 X10 Y5 F400`) |
 | **GRBL** | firmware in the controller of hobby CNCs that executes G-code |
-| **UGS, Candle** | programs that send G-code to GRBL (CuMill replaces them) |
-| **FlatCAM** | program that computes tool paths from Gerbers (CuMill replaces it) |
+| **UGS, Candle** | programs that send G-code to GRBL (KiMill replaces them) |
+| **FlatCAM** | program that computes tool paths from Gerbers (KiMill replaces it) |
 | **Gerber** | standard PCB manufacturing data format |
 | **Work zero** (nula, G54) | the point program coordinates are measured from (X0 Y0 Z0) |
 | **Work / machine coordinates** (relativní / strojové) | relative to the workpiece zero / absolute from homing |

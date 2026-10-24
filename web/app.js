@@ -1,4 +1,4 @@
-// CuMill – hlavní logika aplikace
+// KiMill – hlavní logika aplikace
 import { loadKicad } from './kicad.js';
 import { parseGerber, parseExcellon, classifyFile } from './gerber.js';
 import { finalizeBoard, emptyBoard } from './board.js';
@@ -64,7 +64,7 @@ const st = {
 
 // ---------- hostitel: vlastní okno (nativní soubory) / prohlížeč (File System Access) ----------
 const host = { native: false };
-const H = { 'X-CuMill': '1' };
+const H = { 'X-KiMill': '1' };
 async function api(path, body) {
   const r = await fetch('/api/' + path, body === undefined ? { headers: H } : { method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error((await r.text()) || r.statusText);
@@ -119,7 +119,7 @@ function buildBoard(files) {
   return finalizeBoard(b);
 }
 async function loadSources(sources, { keepView = false } = {}) {
-  const prjSrc = sources.find(s => /\.cumill$/i.test(s.name));
+  const prjSrc = sources.find(s => /\.(kimill|cumill)$/i.test(s.name));
   if (prjSrc) { try { await openProject((await readSource(prjSrc)).text, prjSrc.path || null); } catch (e) { toast(e.message, true); } return; }
   if (!sources.length && st.panel) return reloadPanel({ keepView });
   busy(true);
@@ -148,7 +148,7 @@ async function applyBoard(board, sources, { keepView = false } = {}) {
   renderBoardInfo(); renderSettings();
   recompute(true);
   if (!keepView || !sameBoard) requestAnimationFrame(() => viewer.fit());
-  document.title = `${board.name} – CuMill`;
+  document.title = `${board.name} – KiMill`;
   st.outDir = await db.get((host.native ? 'outp:' : 'out:') + board.name);
 }
 
@@ -226,7 +226,7 @@ async function addFileToPanel() {
   } else {
     sources = await new Promise(res => { const i = el('input', { type: 'file', multiple: true, accept: '.kicad_pcb,.gbr,.gtl,.gbl,.gko,.gm1,.gml,.drl,.xln,.exc,.txt' }); i.addEventListener('change', () => res([...i.files].map(f => ({ file: f, name: f.name })))); i.click(); });
   }
-  sources = pickSources(sources).filter(s => !/\.cumill$/i.test(s.name));
+  sources = pickSources(sources).filter(s => !/\.(kimill|cumill)$/i.test(s.name));
   if (!sources.length) return;
   const files = []; for (const src of sources) { const f = await readSource(src); files.push({ name: f.name, text: f.text }); }
   addInstance(files[0].name.replace(/\.[^.]+$/, ''), files);
@@ -317,12 +317,12 @@ async function openDialog() {
       const j = await (await api('open', { start: start || '' })).json();
       if (j.paths?.length) loadSources(pickSources(j.paths.map(p => ({ path: p, name: p.split(/[\\/]/).pop() }))));
     } else if ('showOpenFilePicker' in window) {
-      const hs = await window.showOpenFilePicker({ id: 'cumill-open', multiple: true, types: [{ description: 'Deska KiCad, gerbery, vrtání', accept: { 'application/octet-stream': ['.kicad_pcb', '.cumill', '.gbr', '.gtl', '.gbl', '.gko', '.gm1', '.gml', '.drl', '.xln', '.exc'] } }] });
+      const hs = await window.showOpenFilePicker({ id: 'kimill-open', multiple: true, types: [{ description: 'Deska KiCad, gerbery, vrtání', accept: { 'application/octet-stream': ['.kicad_pcb', '.kimill', '.cumill', '.gbr', '.gtl', '.gbl', '.gko', '.gm1', '.gml', '.drl', '.xln', '.exc'] } }] });
       if (hs.length) loadSources(pickSources(hs.map(h => ({ handle: h, name: h.name }))));
     } else $('#fileInput').click();
   } catch (e) { if (e.name !== 'AbortError') toast(e.message, true); }
 }
-function pickSources(list) { const p = list.find(s => /\.cumill$/i.test(s.name)); if (p) return [p]; const k = list.find(s => /\.kicad_pcb$/i.test(s.name)); return k ? [k] : list; }
+function pickSources(list) { const p = list.find(s => /\.(kimill|cumill)$/i.test(s.name)); if (p) return [p]; const k = list.find(s => /\.kicad_pcb$/i.test(s.name)); return k ? [k] : list; }
 
 // ---------- výpočet (na pozadí ve worker vlákně, záložně v hlavním) ----------
 let recTimer = null, jobId = 0, worker = null, workerBoard = null;
@@ -711,7 +711,7 @@ function renderToolsTab() {
   const drawRes = () => {
     resBox.innerHTML = '';
     const items = MAT.list().filter(r => (!toolsFilter.tool || r.toolId === toolsFilter.tool) && (!toolsFilter.q || (r.material || '').toLowerCase().includes(toolsFilter.q.toLowerCase())));
-    if (!items.length) { resBox.append(el('p', { class: 'muted' }, MAT.list().length ? 'Nic neodpovídá filtru.' : 'Zatím žádné uložené výsledky. Vyzkoušej materiál ve Stroji v kartě Test – po skončení testu se CuMill zeptá, jestli výsledek uložit.')); return; }
+    if (!items.length) { resBox.append(el('p', { class: 'muted' }, MAT.list().length ? 'Nic neodpovídá filtru.' : 'Zatím žádné uložené výsledky. Vyzkoušej materiál ve Stroji v kartě Test – po skončení testu se KiMill zeptá, jestli výsledek uložit.')); return; }
     const t = el('table', { class: 'ttable mtable' });
     t.append(el('tr', {}, ...['Materiál', 'Nástroj', 'Posuv F', 'Zanoření', 'Otáčky S', 'Hloubka', 'Krok', 'Test', 'Datum', 'Poznámka', ''].map(h => el('th', {}, h))));
     for (const r of items) {
@@ -1258,7 +1258,7 @@ function download(name, text) {
 }
 function stepsText() {
   const tmp = document.createElement('div');
-  const lines = [`CuMill – postup výroby: ${st.board.name}`, `Vytvořeno ${new Date().toLocaleString('cs-CZ')}`, ''];
+  const lines = [`KiMill – postup výroby: ${st.board.name}`, `Vytvořeno ${new Date().toLocaleString('cs-CZ')}`, ''];
   buildSteps().forEach((s, i) => { tmp.innerHTML = s.h; lines.push(`${i + 1}. ${tmp.textContent}${s.tag ? ' [' + s.tag + ']' : ''}`); });
   lines.push('', 'Kontroly:');
   for (const c of st.res.checks) { lines.push(`- ${c.text}`); if (c.list?.length) lines.push('  ' + c.list.join(', ')); }
@@ -1289,7 +1289,7 @@ async function saveAll(pickNew = false) {
     if (!('showDirectoryPicker' in window)) { for (const [n, t] of files) download(n, t); toast(`Staženo ${files.length} souborů.`); return; }
     let dir = !pickNew && st.outDir && await ensurePerm(st.outDir, 'readwrite') ? st.outDir : null;
     if (!dir) {
-      dir = await window.showDirectoryPicker({ id: 'cumill-out', mode: 'readwrite', startIn: st.outDir || st.sources[0]?.handle || 'documents' });
+      dir = await window.showDirectoryPicker({ id: 'kimill-out', mode: 'readwrite', startIn: st.outDir || st.sources[0]?.handle || 'documents' });
       st.outDir = dir; db.set('out:' + st.board.name, dir);
     }
     const keep = new Set(files.map(f => f[0]));
@@ -1306,7 +1306,7 @@ function showCode(op) {
   $('#codeDlg').showModal();
 }
 $('#codeClose').addEventListener('click', () => $('#codeDlg').close());
-function exportSettings() { download('cumill-nastaveni.json', JSON.stringify(S, null, 2)); }
+function exportSettings() { download('kimill-nastaveni.json', JSON.stringify(S, null, 2)); }
 function importSettings() {
   const i = el('input', { type: 'file', accept: '.json' });
   i.addEventListener('change', async () => { try { S = merge(CAM.defaults(), JSON.parse(await i.files[0].text())); saveSettings(); renderSettings(); recompute(); toast('Nastavení načteno.'); } catch { toast('Neplatný soubor nastavení.', true); } });
@@ -1458,11 +1458,11 @@ const JR_LS = 'cumill.journal.v1';
 const journal = () => { try { return { runs: [], tools: {}, ...JSON.parse(localStorage.getItem(JR_LS) || '{}') }; } catch { return { runs: [], tools: {} }; } };
 const journalSave = J => { try { localStorage.setItem(JR_LS, JSON.stringify(J)); } catch {} };
 
-// ---------- projekt (.cumill): deska + nastavení + úpravy + výšková mapa v jednom souboru ----------
+// ---------- projekt (.kimill): deska + nastavení + úpravy + výšková mapa v jednom souboru ----------
 // ---------- projekty ve složce projektů (průběžně ukládané) ----------
 const PRJ_DIR_LS = 'cumill.projdir';
 const prjDir = () => { try { return localStorage.getItem(PRJ_DIR_LS) || ''; } catch { return ''; } };
-const prjBase = p => p.split(/[\\/]/).pop().replace(/\.cumill$/i, '');
+const prjBase = p => p.split(/[\\/]/).pop().replace(/\.(kimill|cumill)$/i, '');
 function projectThumb() {
   try {
     const c = viewer.c; if (!c.width || !c.height || !st.board) return null;
@@ -1481,7 +1481,7 @@ async function projectText(name) {
   if (!st.panel) for (const src of st.sources) { const f = await readSource(src); files.push({ name: f.name, path: src.path || null, text: f.text }); }
   const map = machineUI?.getMap?.() || null;
   const meta = { name, board: st.board.name, size: st.board.size, ops: st.res?.ops.filter(o => st.enabled[o.id] !== false).length || 0, map: !!map, thumb: projectThumb(), panel: st.panel ? st.panel.insts.length : undefined };
-  return JSON.stringify({ cumillProject: 1, meta, version: CAM.VERSION, saved: new Date().toISOString(), board: st.board.name, files, panel: st.panel || undefined, S, B, enabled: st.enabled, map });
+  return JSON.stringify({ kimillProject: 1, meta, version: CAM.VERSION, saved: new Date().toISOString(), board: st.board.name, files, panel: st.panel || undefined, S, B, enabled: st.enabled, map });
 }
 async function saveProjectAs(name) {
   if (!st.board) throw new Error('Nejdřív načti desku.');
@@ -1546,7 +1546,7 @@ async function openProjectsDlg({ pickForPanel = false } = {}) {
           el('button', { class: 'iconbtn', title: 'Smazat projekt', onclick: async () => { if (!confirm(`Smazat projekt „${name}“? Soubor se smaže ze složky projektů.`)) return; try { await api('projects/delete', { dir: data.dir, path: p.path }); if (cur) { st.project = null; renderBoardInfo(); } draw(); } catch (e) { toast(e.message, true); } } }, '✕'))));
     }
     body.append(list);
-    if (st.board) body.append(el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: async () => { download(`${CAM.fileSafe(st.project?.name || st.board.name)}.cumill`, await projectText(st.project?.name || st.board.name)); } }, 'Uložit kopii jinam (stáhnout)…'), el('span', { class: 'muted small' }, 'Projekt = deska, nastavení, úpravy, zaškrtnuté programy a výšková mapa.')));
+    if (st.board) body.append(el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: async () => { download(`${CAM.fileSafe(st.project?.name || st.board.name)}.kimill`, await projectText(st.project?.name || st.board.name)); } }, 'Uložit kopii jinam (stáhnout)…'), el('span', { class: 'muted small' }, 'Projekt = deska, nastavení, úpravy, zaškrtnuté programy a výšková mapa.')));
   };
   await draw();
   if (!d.open) d.showModal();
@@ -1564,7 +1564,7 @@ async function renderRecentProjects(box) {
 }
 async function openProject(text, path = null) {
   const prj = JSON.parse(text);
-  if (!prj.cumillProject) throw new Error('Soubor není projekt CuMillu.');
+  if (!prj.kimillProject && !prj.cumillProject) throw new Error('Soubor není projekt KiMillu.');
   S = merge(CAM.defaults(), prj.S); saveSettings();
   try { localStorage.setItem('cumill.board.' + prj.board, JSON.stringify(prj.B)); } catch {}
   // deska: aktuální soubor z KiCadu, pokud ještě existuje (a jde sledovat změny), jinak uložená kopie
@@ -1634,7 +1634,7 @@ function exportLaser(o) {
     x0 -= 2; y0 -= 2; x1 += 2; y1 += 2;
     if (o.origin) groups.push(`<g id="nula" fill="none" stroke="#00E000" stroke-width="0.1"><path d="M-1.5,0L1.5,0M0,-1.5L0,1.5"/><circle cx="0" cy="0" r="0.6"/></g>`);
     const W = x1 - x0, H = y1 - y0;
-    const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<!-- CuMill ${CAM.VERSION} – ${b.name}, strana ${side === 'top' ? 'horní' : 'spodní (zrcadleně)'}; souřadnice stroje v mm, nula = ${originCz()} -->\n<svg xmlns="http://www.w3.org/2000/svg" width="${W.toFixed(3)}mm" height="${H.toFixed(3)}mm" viewBox="${x0.toFixed(3)} ${(-y1).toFixed(3)} ${W.toFixed(3)} ${H.toFixed(3)}">\n${groups.join('\n')}\n</svg>\n`;
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<!-- KiMill ${CAM.VERSION} – ${b.name}, strana ${side === 'top' ? 'horní' : 'spodní (zrcadleně)'}; souřadnice stroje v mm, nula = ${originCz()} -->\n<svg xmlns="http://www.w3.org/2000/svg" width="${W.toFixed(3)}mm" height="${H.toFixed(3)}mm" viewBox="${x0.toFixed(3)} ${(-y1).toFixed(3)} ${W.toFixed(3)} ${H.toFixed(3)}">\n${groups.join('\n')}\n</svg>\n`;
     download(`${CAM.fileSafe(b.name)}_laser_${side === 'top' ? 'horni' : 'spodni_ZRCADLENO'}.svg`, svg);
     n++;
   }
@@ -1740,8 +1740,8 @@ function setBackup(B) {
   B.append(el('h3', {}, 'Záloha všeho'),
     el('p', { class: 'muted small' }, 'Nastavení, knihovna nástrojů, témata, stroj a pendant, i úpravy všech desek (díry, oblasti, kolíčky, můstky…) do jednoho souboru.'),
     el('div', { class: 'mrow' },
-      el('button', { class: 'btn', onclick: () => download(`cumill_zaloha_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ cumillBackup: 1, data: Object.fromEntries(keys().map(k => [k, localStorage.getItem(k)])) }, null, 1)) }, 'Exportovat vše'),
-      el('button', { class: 'btn', onclick: () => pickFile('.json', txt => { try { const j = JSON.parse(txt); if (!j.cumillBackup) throw new Error('Soubor není záloha CuMillu.'); if (!confirm('Nahradit současné nastavení zálohou? Aplikace se pak načte znovu.')) return; for (const [k, v] of Object.entries(j.data)) localStorage.setItem(k, v); location.reload(); } catch (e) { toast(e.message, true); } }) }, 'Obnovit ze zálohy…')),
+      el('button', { class: 'btn', onclick: () => download(`kimill_zaloha_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ kimillBackup: 1, data: Object.fromEntries(keys().map(k => [k, localStorage.getItem(k)])) }, null, 1)) }, 'Exportovat vše'),
+      el('button', { class: 'btn', onclick: () => pickFile('.json', txt => { try { const j = JSON.parse(txt); if (!j.kimillBackup && !j.cumillBackup) throw new Error('Soubor není záloha KiMillu.'); if (!confirm('Nahradit současné nastavení zálohou? Aplikace se pak načte znovu.')) return; for (const [k, v] of Object.entries(j.data)) localStorage.setItem(k, v); location.reload(); } catch (e) { toast(e.message, true); } }) }, 'Obnovit ze zálohy…')),
     el('h3', {}, 'Jen nastavení desky (bez témat a úprav desek)'),
     el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: exportSettings }, 'Export nastavení'), el('button', { class: 'btn small', onclick: importSettings }, 'Import')),
     el('h3', {}, 'Výchozí stav'),

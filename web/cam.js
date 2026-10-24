@@ -2,7 +2,7 @@
 import * as G from './geom.js';
 import { textToLines } from './text.js';
 
-export const APP = 'CuMill';
+export const APP = 'KiMill';
 export const VERSION = '1.5';
 
 export const TOOL_TYPES = { v: 'V-fréza', end: 'Fréza', drill: 'Vrták' };

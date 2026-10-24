@@ -7,7 +7,7 @@ The left panel has collapsible sections. Each section header shows a short summa
 Every change is recomputed immediately and shows in the preview and in the programs on the right.
 
 > **Tip:** in every number field the value can be changed with the `↑` `↓` arrows
-> (with `Shift` in tenfold steps). CuMill accepts both decimal comma and point.
+> (with `Shift` in tenfold steps). KiMill accepts both decimal comma and point.
 
 Sections:
 [Tool library](#tool-library) ·
@@ -132,7 +132,7 @@ The main operation – the V-bit goes around all tracks and pads and isolates th
 
 > **Why override the cut width?** A real V-bit is a bit different from the spec, and depth varies
 > with board flatness. If after a test cut you measure the groove (e.g. 0.2 mm), enter it into
-> **Šířka řezu**. CuMill offsets the paths so the tracks come out at the right width.
+> **Šířka řezu**. KiMill offsets the paths so the tracks come out at the right width.
 > **The depth does not change.**
 
 ---

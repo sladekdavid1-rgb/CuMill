@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- **Renamed from CuMill to KiMill** – on first start the data folders are moved automatically
+  (%LOCALAPPDATA%\CuMill → KiMill, Documents\CuMill\Projekty → Documents\KiMill\Projekty, `.cumill` → `.kimill`);
+  old `.cumill` project files still open
 - **Panel** – several boards (different ones or copies of the same) on one blank as one project:
   add from saved projects or files, drag with the mouse (snap 0.5 mm), rotate by 90°, arrow-key nudge,
   automatic arrangement onto the blank, overlap / cut-gap and blank checks, pins around the panel,
@@ -8,7 +11,7 @@
 - New orange application icon that stays visible on a dark taskbar
 
 ## 1.4 – 2026-10
-- **Projects** – projects folder (Documents\CuMill\Projekty), Projects window (save as, open, rename, duplicate, delete, thumbnails),
+- **Projects** – projects folder (Documents\KiMill\Projekty), Projects window (save as, open, rename, duplicate, delete, thumbnails),
   continuous autosave of the open project (settings, edits, checked programs, height map), recent projects on the start screen
 - **Tools tab** (F6) – tool library on a full page, material test results per tool (filter, search, apply to tool)
 - **Machine → Test** – test cuts: line, rectangle, triangle, circle, pocket, drilling; center / inside / outside path,
@@ -26,7 +29,7 @@
 - Production wizard; pendant support (F13–F24, UGS compatible)
 - **G-code viewer** – 3D, playback, linked listing, material-removal simulation on a board-thickness solid
 - Board cut-out **tabs** (automatic or manual), silkscreen engraving, laser SVG export
-- `.cumill` project file, undo/redo, settings dialog, 8 color themes and custom theme editor
+- `.kimill` project file, undo/redo, settings dialog, 8 color themes and custom theme editor
 
 ## 1.2
 - Arcs as G2/G3, merged segments (6–10× shorter programs), background computation

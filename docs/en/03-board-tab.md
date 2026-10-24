@@ -130,7 +130,7 @@ Dragging an automatically placed tab switches the board to manual tabs.
 ## Watching changes in KiCad
 
 Turn on **Sledovat změny** (Watch changes) in the top bar. When you save the board in KiCad (`Ctrl+S`),
-CuMill reloads and recomputes it. Manual edits (holes, pins, areas, tabs) are kept.
+KiMill reloads and recomputes it. Manual edits (holes, pins, areas, tabs) are kept.
 Reload manually with `F5` or **Načíst znovu** (Reload).
 
 ## Undo and redo

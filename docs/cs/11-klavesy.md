@@ -52,8 +52,8 @@ V číselném políčku: `↑` / `↓` mění hodnotu, se `Shift` desetkrát ví
 ## Pendant
 
 Pendant se k počítači hlásí jako USB klávesnice a posílá klávesy **F13–F24**
-(samostatně, se `Shift` nebo s `Ctrl`). CuMill je bere stejně jako UGS.
-Okno CuMillu musí být aktivní. Krátký stisk jogu = krok, podržení = plynulý pojezd.
+(samostatně, se `Shift` nebo s `Ctrl`). KiMill je bere stejně jako UGS.
+Okno KiMillu musí být aktivní. Krátký stisk jogu = krok, podržení = plynulý pojezd.
 
 | Klávesa | Akce |
 |---------|------|

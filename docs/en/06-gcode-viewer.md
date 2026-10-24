@@ -10,7 +10,7 @@ actually takes out of the board.
 
 | # | Element | What it does |
 |---|---------|--------------|
-| 1 | **Program selector** | a CuMill program (from the right panel) or an opened `.nc` file; next to it **Otevřít .nc…** (Open .nc…) |
+| 1 | **Program selector** | a KiMill program (from the right panel) or an opened `.nc` file; next to it **Otevřít .nc…** (Open .nc…) |
 | 2 | **Views** | *Shora* (Top), *Zepředu* (Front), *Izometricky* (Isometric), *Celé* (Fit) |
 | 3 | **Switches** | *Dráhy* (Paths), *Přejezdy* (Rapids), *Deska 3D* (Board 3D simulation), *Předchozí programy* (Previous programs), *Motiv mědi* (Copper pattern), *Pravoúhle* (Orthographic), Z exaggeration *Z ×1–×20* |
 | 4 | **Info** | X/Y/Z position, feed F, spindle S, line number, program extent, cut and rapid length, time estimate |
@@ -65,7 +65,7 @@ The viewer shows any `.nc`, `.ngc`, `.gcode`, `.tap` file:
 
 - **Otevřít .nc…** button, `Ctrl+O` in the G-code tab, or **drag the file into the window**.
 
-For a foreign file CuMill doesn't know the tool – fields appear at the top to enter the
+For a foreign file KiMill doesn't know the tool – fields appear at the top to enter the
 **tool type** (end mill / V-bit with angle), **diameter** and **board thickness**,
 so the simulation matches reality.
 

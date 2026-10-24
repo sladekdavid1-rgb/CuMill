@@ -134,8 +134,8 @@ func CreateCoreWebView2EnvironmentWithOptions(browserExecutableFolder, userDataF
 	return res, nil
 }
 
-// CuMill: načítání DLL z paměti je vypnuté (antiviry ho podezírají) – WebView2Loader.dll
-// musí ležet vedle CuMill.exe; když chybí, aplikace použije okno Edge.
+// KiMill: načítání DLL z paměti je vypnuté (antiviry ho podezírají) – WebView2Loader.dll
+// musí ležet vedle KiMill.exe; když chybí, aplikace použije okno Edge.
 type memProc struct{}
 
 func (memProc) Call(a ...uint64) (uint64, uint64, error) {

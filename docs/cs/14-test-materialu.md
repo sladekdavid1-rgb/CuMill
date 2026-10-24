@@ -107,7 +107,7 @@ Pauza, Stop, korekce posuvu a otáček za běhu fungují stejně jako u běžné
 
 ## Uložení výsledku
 
-Po dokončení (nebo zastavení) testu se CuMill zeptá **Uložit výsledek testu?**
+Po dokončení (nebo zastavení) testu se KiMill zeptá **Uložit výsledek testu?**
 
 ![Uložení výsledku](../img/t_ulozit.png)
 

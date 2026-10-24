@@ -10,7 +10,7 @@ import (
 
 var ownerHwnd uintptr // okno aplikace – vlastník dialogů
 
-// otevře vlastní okno CuMill (WebView2); false, když WebView2 v systému chybí
+// otevře vlastní okno KiMill (WebView2); false, když WebView2 v systému chybí
 func runWindow(url string) (ok bool) {
 	defer func() {
 		if recover() != nil {
@@ -22,7 +22,7 @@ func runWindow(url string) (ok bool) {
 		AutoFocus: true,
 		DataPath:  dataDir("webview2"),
 		WindowOptions: webview2.WindowOptions{
-			Title:  "CuMill",
+			Title:  "KiMill",
 			Width:  1600,
 			Height: 980,
 			IconId: 2, // ikona v prostředcích exe (rsrc: manifest = 1, skupina ikon = 2)

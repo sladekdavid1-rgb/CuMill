@@ -1,4 +1,4 @@
-module cumill
+module kimill
 
 go 1.24
 

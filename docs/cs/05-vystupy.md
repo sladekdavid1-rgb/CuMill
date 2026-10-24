@@ -45,7 +45,7 @@ Tlačítko **< >** otevře okno s celým G-kódem. Na začátku jsou komentáře
 
 ![Kontroly](../img/e_kontroly.png)
 
-CuMill po každé změně zkontroluje desku i nastavení. Barvy:
+KiMill po každé změně zkontroluje desku i nastavení. Barvy:
 
 - **zelená ✓** – v pořádku,
 - **modrá i** – informace (např. kolik průchodů musíš protáhnout drátkem),
@@ -99,7 +99,7 @@ nechal, ulož ji jako **projekt**. Tlačítko **Projekt** nahoře (nebo `Ctrl+Sh
 |---|------|---------|
 | 1 | **Otevřený projekt** | název projektu, se kterým právě pracuješ; **Uložit teď** uloží hned |
 | 2 | **Uložit desku jako projekt** | napiš název a **Uložit** (u otevřeného projektu: *Uložit jako nový projekt* = kopie pod jiným názvem) |
-| 3 | **Složka projektů** | výchozí `Dokumenty\CuMill\Projekty`; **Změnit…** vybere jinou, **Výchozí** vrátí původní |
+| 3 | **Složka projektů** | výchozí `Dokumenty\KiMill\Projekty`; **Změnit…** vybere jinou, **Výchozí** vrátí původní |
 | 4 | **Seznam projektů** | náhled, název, deska, rozměr, datum; **Otevřít**, **Přejmenovat**, **Duplikovat**, **✕** smazat |
 
 **Co je v projektu:** deska (kopie souboru KiCadu nebo gerberů), všechna nastavení a knihovna nástrojů,
@@ -113,9 +113,9 @@ se projekt zavře (zůstane uložený).
 **Návrat k projektu:** na úvodní obrazovce jsou poslední projekty s náhledem, nebo tlačítko **Projekt**
 → **Otevřít**. Když původní soubor z KiCadu ještě existuje, načte se jeho **aktuální** verze
 (a funguje *Sledovat změny*), jinak kopie uložená v projektu. Výšková mapa se načte taky –
-před startem programu CuMill upozorní, pokud je stará (deska se mohla pohnout).
+před startem programu KiMill upozorní, pokud je stará (deska se mohla pohnout).
 
-**Uložit kopii jinam (stáhnout)…** uloží projekt jako soubor `.cumill` kamkoli (např. na flashku).
+**Uložit kopii jinam (stáhnout)…** uloží projekt jako soubor `.kimill` kamkoli (např. na flashku).
 Takový soubor otevřeš tlačítkem **Otevřít** nebo přetažením do okna.
 
 ## Export pro laser

@@ -3,7 +3,7 @@
 [← Test materiálu](14-test-materialu.md) · [Obsah](README.md)
 
 **Panel** je projekt, ve kterém je na jednom polotovaru **víc desek** – různých, nebo
-několikrát té samé. Desky rozmístíš myší, CuMill zkontroluje, že se nepřekrývají a vejdou
+několikrát té samé. Desky rozmístíš myší, KiMill zkontroluje, že se nepřekrývají a vejdou
 se na polotovar, a pak se vše vyrobí **najednou po nástrojích**: jedna izolace přes všechny
 desky, jedno vrtání každým vrtákem, jeden ořez všech desek i s můstky. Výšková mapa se měří
 jednou přes celý panel.

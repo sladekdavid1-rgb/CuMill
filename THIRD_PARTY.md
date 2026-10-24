@@ -9,4 +9,4 @@
 | **golang.org/x/sys** – Windows system calls (serial port, registry), © The Go Authors | `third_party/sys` | BSD 3-Clause |
 
 The full license texts are included in the respective files and folders.
-Because the newstroke font is GPL v2+, CuMill as a whole is distributed under the GNU GPL v3 or later.
+Because the newstroke font is GPL v2+, KiMill as a whole is distributed under the GNU GPL v3 or later.

@@ -31,7 +31,7 @@ s GRBL, posílá do ní program, ovládá pojezd, nulu, sondy, výškovou mapu i
 
 | Stav | Význam |
 |------|--------|
-| **Odpojeno** | CuMill není připojený |
+| **Odpojeno** | KiMill není připojený |
 | **Alarm** | GRBL je zamčený – po zapnutí, po nouzovém zastavení, po narážce na koncový spínač |
 | **Připraven** (Idle) | čeká na příkazy |
 | **Běží** (Run) | jede program |
@@ -111,14 +111,14 @@ Ovládání:
 
 ### Pevná Z sonda (tool setter) – výměna nástroje bez klipu
 
-Tool setter je pevný spínač na stole frézky. Po výměně nástroje na něm CuMill změří
+Tool setter je pevný spínač na stole frézky. Po výměně nástroje na něm KiMill změří
 nový nástroj a **sám přepočítá nulu Z** – nemusíš znovu hledat povrch desky
 a výšková mapa platí dál.
 
 1. Najeď nástrojem nad střed sondy → **Poloha sondy = tady** (uloží se strojová poloha).
 2. Nastav nulu Z prvního nástroje obvyklým způsobem (klip / destička / mapa).
 3. **Referenční měření** – změří stejný nástroj na sondě a zapamatuje si rozdíl.
-4. Po každé výměně nástroje: **Změřit nástroj**. CuMill vyjede nahoru, přejede nad sondu,
+4. Po každé výměně nástroje: **Změřit nástroj**. KiMill vyjede nahoru, přejede nad sondu,
    změří nový nástroj a posune nulu Z o rozdíl délek.
 
 Průvodce výrobou tyto kroky nabízí sám, když je sonda nastavená.
@@ -126,9 +126,9 @@ Průvodce výrobou tyto kroky nabízí sám, když je sonda nastavená.
 ### Nula XY dotykovou sondou
 
 - **Střed díry → X0 Y0** – hrot sondy dej do díry (např. díry pro kolíček) pod horní hranu.
-  CuMill se dotkne stěn ve 4 směrech, spočítá střed a nastaví X0 Y0.
+  KiMill se dotkne stěn ve 4 směrech, spočítá střed a nastaví X0 Y0.
 - **Levý dolní roh → X0 Y0** – hrot dej šikmo před levý dolní roh desky, pod horní hranu.
-  CuMill najde levou a spodní hranu a nastaví X0 Y0 do rohu.
+  KiMill najde levou a spodní hranu a nastaví X0 Y0 do rohu.
 
 Průměr hrotu a vzdálenosti hledání nastavíš v **Nastavení → Sonda a výšková mapa**.
 Před měřením se zobrazí okno s kontrolou, kde má být hrot.
@@ -139,7 +139,7 @@ Před měřením se zobrazí okno s kontrolou, kde má být hrot.
 
 ![Lišta programu](../img/m_lista.png)
 
-1. Nahoře vyber program. Nabízí se programy CuMillu z aktuální desky
+1. Nahoře vyber program. Nabízí se programy KiMillu z aktuální desky
    (ve správném pořadí), nebo tlačítkem **Otevřít .nc…** libovolný soubor (i z FlatCAMu).
 2. Přepínač **Výšková mapa** – u izolace mědi se program upraví podle mapy
    (viz [kapitola 8](08-vyskova-mapa.md)).
@@ -238,12 +238,12 @@ a odešleš `Enter`. **Zobrazovat i hlášení stavu** ukáže i pravidelné dot
 
 ## Pendant (ruční ovladač)
 
-CuMill reaguje na klávesy **F13–F24** (i se `Shift` / `Ctrl`) stejně jako UGS – takže
+KiMill reaguje na klávesy **F13–F24** (i se `Shift` / `Ctrl`) stejně jako UGS – takže
 pendant, který se k počítači hlásí jako klávesnice, funguje bez úprav: pojezd, kroky,
 nulování, měření Z, homing, start / pauza / stop.
 
 - Krátký stisk jogu = **krok**, podržení = **plynulý pojezd**.
-- Okno CuMillu musí být **aktivní** (v popředí).
+- Okno KiMillu musí být **aktivní** (v popředí).
 - Přiřazení kláves změníš v **Nastavení → Klávesy pendantu** (klikni na klávesu a stiskni novou).
 
 Výchozí přiřazení je v [kapitole 11](11-klavesy.md#pendant).

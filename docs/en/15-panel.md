@@ -3,7 +3,7 @@
 [← Material test](14-material-test.md) · [Contents](README.md)
 
 A **panel** is a project with **several boards** on one blank – different ones, or the same
-board several times. You arrange the boards with the mouse, CuMill checks that they don't
+board several times. You arrange the boards with the mouse, KiMill checks that they don't
 overlap and fit the blank, and then everything is made **at once, tool by tool**: one isolation
 over all boards, one drilling per drill, one cut-out of all boards including tabs. The height
 map is measured once over the whole panel.

@@ -8,14 +8,14 @@
 Program nemá placený digitální podpis. Klikni na *Další informace* → *Přesto spustit*.
 
 **Otevře se okno Edge místo vlastního okna.**
-Vedle `CuMill.exe` chybí `WebView2Loader.dll`, nebo ve Windows chybí WebView2 Runtime
+Vedle `KiMill.exe` chybí `WebView2Loader.dll`, nebo ve Windows chybí WebView2 Runtime
 (stáhneš zdarma od Microsoftu). Program funguje i v Edge.
 
 **Okno je prázdné nebo se nenačte.**
-CuMill uvnitř běží jako malý lokální server na adrese `127.0.0.1:47823` (jen pro tvůj počítač,
-z internetu není dostupný). Když CuMill spustíš podruhé, otevře se další okno nad stejným
-programem. Pokud okno zůstane prázdné, zavři všechna okna CuMillu a spusť ho znovu;
-pomůže i povolit CuMill ve firewallu / antiviru.
+KiMill uvnitř běží jako malý lokální server na adrese `127.0.0.1:47823` (jen pro tvůj počítač,
+z internetu není dostupný). Když KiMill spustíš podruhé, otevře se další okno nad stejným
+programem. Pokud okno zůstane prázdné, zavři všechna okna KiMillu a spusť ho znovu;
+pomůže i povolit KiMill ve firewallu / antiviru.
 
 ## Deska
 
@@ -55,7 +55,7 @@ Sonda se nedotkla povrchu v nastavené vzdálenosti. Najeď níž nad desku, zv�
 a mědí při dotyku).
 
 **Program se zastavil s chybou (error).**
-CuMill program pozastaví a ukáže řádek s chybou v Konzoli. Zkus **Kontrolní běh** – projde
+KiMill program pozastaví a ukáže řádek s chybou v Konzoli. Zkus **Kontrolní běh** – projde
 celý program bez pohybu a ukáže všechny chyby. U cizích programů bývá chybou nepodporovaný
 příkaz (např. `M6`, `T1`).
 
@@ -64,8 +64,8 @@ Změř **výškovou mapu** ([kapitola 8](08-vyskova-mapa.md)) a zkontroluj, že 
 *Výšková mapa* nad programem zapnutý.
 
 **Cesty jsou užší, než mají být.**
-Skutečná drážka je širší, než CuMill počítá. Změř ji (lupou s měřítkem) a napiš do
-**Izolace → Šířka řezu**. CuMill odsune dráhy, cesty vyjdou ve správné šířce.
+Skutečná drážka je širší, než KiMill počítá. Změř ji (lupou s měřítkem) a napiš do
+**Izolace → Šířka řezu**. KiMill odsune dráhy, cesty vyjdou ve správné šířce.
 
 **Díry z druhé strany nesedí.**
 Kolíčky musí jít do děr bez vůle. Díry pro kolíčky vrtej vrtákem stejného průměru jako
@@ -83,6 +83,6 @@ Nula zůstala uložená v GRBL.
 - V-frézy se rychle tupí. Hlídej si **Deník → Nástroje – najeto** a po výměně dej *Nový*.
 - U oboustranné desky dávej průchody (via) **mimo pouzdra součástek** – pod pouzdrem
   se drátek špatně pájí.
-- Každou desku si ulož jako **Projekt** – po zavření CuMillu ji najdeš na úvodní obrazovce přesně tak, jak jsi ji nechal (i s mapou), a za rok budeš vědět, s jakým nastavením vznikla.
+- Každou desku si ulož jako **Projekt** – po zavření KiMillu ji najdeš na úvodní obrazovce přesně tak, jak jsi ji nechal (i s mapou), a za rok budeš vědět, s jakým nastavením vznikla.
 
 [← Klávesy](11-klavesy.md) · [Obsah](README.md) · [Další: Slovníček →](13-slovnicek.md)

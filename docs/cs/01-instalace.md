@@ -4,23 +4,23 @@
 
 ## Co potřebuješ
 
-- **Windows 10 nebo 11** (64bit). CuMill je jeden soubor `CuMill.exe`, nic se neinstaluje.
+- **Windows 10 nebo 11** (64bit). KiMill je jeden soubor `KiMill.exe`, nic se neinstaluje.
 - **Microsoft Edge WebView2** – ve Windows 10/11 už skoro vždy je (používá ho i Office a Teams).
 - Pro práci se strojem: frézku s **GRBL 1.1** připojenou přes USB (sériový port COM, 115200 Bd).
 - Desky z **KiCadu 6 až 10** (`.kicad_pcb`), nebo gerbery a vrtací soubor z jiného programu.
 
 ## Stažení
 
-1. Otevři stránku **[Releases](https://github.com/sladekdavid1-rgb/cumill/releases)** repozitáře.
-2. U nejnovější verze stáhni `CuMill.exe` a `WebView2Loader.dll`.
-3. Oba soubory dej **do jedné složky**, např. `Dokumenty\CuMill`.
+1. Otevři stránku **[Releases](https://github.com/sladekdavid1-rgb/KiMill/releases)** repozitáře.
+2. U nejnovější verze stáhni `KiMill.exe` a `WebView2Loader.dll`.
+3. Oba soubory dej **do jedné složky**, např. `Dokumenty\KiMill`.
 
-> Bez `WebView2Loader.dll` se CuMill otevře v okně prohlížeče Edge. Funguje stejně,
+> Bez `WebView2Loader.dll` se KiMill otevře v okně prohlížeče Edge. Funguje stejně,
 > jen nemá vlastní okno.
 
 ## První spuštění
 
-Dvakrát klikni na `CuMill.exe`.
+Dvakrát klikni na `KiMill.exe`.
 
 Windows může u programu bez digitálního podpisu ukázat modré okno
 **„Systém Windows ochránil počítač“**. Klikni na **Další informace** → **Přesto spustit**.
@@ -37,9 +37,9 @@ Desku můžeš také **přetáhnout myší** z Průzkumníka přímo do okna.
 a **naposledy otevřené desky**. Všechny projekty najdeš tlačítkem **Projekt** nahoře
 (viz [kapitola 5](05-vystupy.md#projekty)).
 
-## Kde si CuMill co pamatuje
+## Kde si KiMill co pamatuje
 
-- **Nastavení, knihovnu nástrojů, témata, polohu sondy, klávesy pendantu** si CuMill pamatuje sám
+- **Nastavení, knihovnu nástrojů, témata, polohu sondy, klávesy pendantu** si KiMill pamatuje sám
   (ve složce profilu Windows). Při dalším spuštění je vše, jak jsi to nechal.
 - **Úpravy konkrétní desky** (ruční kolíčky, můstky, oblasti, změny děr) se pamatují **u desky**
   a vydrží i když desku v KiCadu dál upravuješ.
@@ -53,8 +53,8 @@ a **naposledy otevřené desky**. Všechny projekty najdeš tlačítkem **Projek
 | # | Prvek | K čemu slouží |
 |---|-------|---------------|
 | 1 | **Deska / G-kód / Stroj / Nástroje** | hlavní záložky (také `F2`, `F3`, `F4`, `F6`); Nástroje = knihovna nástrojů a výsledky testů ([kapitola 14](14-test-materialu.md)) |
-| 2 | **Otevřít** | načíst desku `.kicad_pcb`, gerbery nebo projekt `.cumill` |
-| 3 | **Sledovat změny** | když v KiCadu desku uložíš, CuMill ji sám znovu načte a přepočítá |
+| 2 | **Otevřít** | načíst desku `.kicad_pcb`, gerbery nebo projekt `.kimill` |
+| 3 | **Sledovat změny** | když v KiCadu desku uložíš, KiMill ji sám znovu načte a přepočítá |
 | 4 | **Projekt** | projekty: uložit desku jako projekt (deska, nastavení, úpravy, výšková mapa – pak se ukládá průběžně) a otevřít uložené projekty |
 | 5 | **Laser** | export potisku a masky do SVG pro laser (LightBurn) |
 | 6 | **⚙ Nastavení** | barevná témata, výchozí hodnoty, sonda, klávesy, zálohy (`Ctrl+,`) |

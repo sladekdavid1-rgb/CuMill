@@ -47,7 +47,7 @@ func waitEv(t *testing.T, ch chan map[string]any, typ string, to time.Duration) 
 func sim(m *Machine) *grblSim { m.mu.Lock(); defer m.mu.Unlock(); return m.port.(*grblSim) }
 
 func connectSim(t *testing.T, speed string) (*Machine, chan map[string]any) {
-	t.Setenv("CUMILL_SIM_SPEED", speed)
+	t.Setenv("KIMILL_SIM_SPEED", speed)
 	m := &Machine{zFeed: 1, wake: make(chan struct{}, 1), subs: map[chan []byte]struct{}{}}
 	ev := subscribe(m)
 	if err := m.Connect(simPortName, 115200); err != nil {
@@ -70,7 +70,7 @@ func loadNC(t *testing.T, name string) []string {
 
 // syntetické testovací programy: izolace (G1 + oblouky G2/G3), vrtání, ořez po krocích
 func synthPrograms() map[string][]string {
-	head := []string{"(CuMill test)", "G21", "G90", "G94", "G17", "G0 Z2", "S12000 M3", "G4 P2"}
+	head := []string{"(KiMill test)", "G21", "G90", "G94", "G17", "G0 Z2", "S12000 M3", "G4 P2"}
 	tail := []string{"G0 Z15", "M5", "G0 X0 Y0", "M2"}
 	iso := append([]string{}, head...)
 	for i := 0; i < 40; i++ {

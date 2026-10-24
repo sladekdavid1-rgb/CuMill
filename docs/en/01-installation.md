@@ -4,23 +4,23 @@
 
 ## What you need
 
-- **Windows 10 or 11** (64-bit). CuMill is a single file `CuMill.exe`; nothing is installed.
+- **Windows 10 or 11** (64-bit). KiMill is a single file `KiMill.exe`; nothing is installed.
 - **Microsoft Edge WebView2** – almost always already present on Windows 10/11 (Office and Teams use it).
 - For machine control: a CNC with **GRBL 1.1** connected via USB (COM serial port, 115200 baud).
 - Boards from **KiCad 6 to 10** (`.kicad_pcb`), or Gerbers and a drill file from any other program.
 
 ## Download
 
-1. Open the **[Releases](https://github.com/sladekdavid1-rgb/cumill/releases)** page of the repository.
-2. From the latest version download `CuMill.exe` and `WebView2Loader.dll`.
-3. Put both files **in one folder**, e.g. `Documents\CuMill`.
+1. Open the **[Releases](https://github.com/sladekdavid1-rgb/KiMill/releases)** page of the repository.
+2. From the latest version download `KiMill.exe` and `WebView2Loader.dll`.
+3. Put both files **in one folder**, e.g. `Documents\KiMill`.
 
-> Without `WebView2Loader.dll` CuMill opens in an Edge browser window. It works the same,
+> Without `WebView2Loader.dll` KiMill opens in an Edge browser window. It works the same,
 > it just doesn't have its own window.
 
 ## First start
 
-Double-click `CuMill.exe`.
+Double-click `KiMill.exe`.
 
 For a program without a paid digital signature Windows may show a blue
 **"Windows protected your PC"** screen. Click **More info** → **Run anyway**.
@@ -37,7 +37,7 @@ opens a board. You can also **drag the board file** from Explorer into the windo
 and the **recently opened boards**. All projects are under the **Projekt** button at the top
 (see [chapter 5](05-outputs.md#projects)).
 
-## What CuMill remembers
+## What KiMill remembers
 
 - **Settings, tool library, themes, probe position, pendant keys** are remembered automatically
   (in the Windows user profile). Next time everything is as you left it.
@@ -53,8 +53,8 @@ and the **recently opened boards**. All projects are under the **Projekt** butto
 | # | Element | Purpose |
 |---|---------|---------|
 | 1 | **Deska / G-kód / Stroj / Nástroje** | main tabs: Board / G-code / Machine / Tools (also `F2`, `F3`, `F4`, `F6`); Tools = tool library and test results ([chapter 14](14-material-test.md)) |
-| 2 | **Otevřít** (Open) | load a `.kicad_pcb` board, Gerbers or a `.cumill` project |
-| 3 | **Sledovat změny** (Watch changes) | when you save the board in KiCad, CuMill reloads and recomputes it |
+| 2 | **Otevřít** (Open) | load a `.kicad_pcb` board, Gerbers or a `.kimill` project |
+| 3 | **Sledovat změny** (Watch changes) | when you save the board in KiCad, KiMill reloads and recomputes it |
 | 4 | **Projekt** (Project) | projects: save the board as a project (board, settings, edits, height map – then saved continuously) and open saved projects |
 | 5 | **Laser** | SVG export of silkscreen and mask for a laser (LightBurn) |
 | 6 | **⚙ Nastavení** (Settings) | color themes, defaults, probe, keys, backups (`Ctrl+,`) |

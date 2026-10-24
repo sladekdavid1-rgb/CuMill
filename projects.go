@@ -1,6 +1,6 @@
 package main
 
-// Projekty CuMillu (.cumill) ve složce projektů: seznam, uložení, přejmenování, kopie, smazání.
+// Projekty KiMillu (.kimill) ve složce projektů: seznam, uložení, přejmenování, kopie, smazání.
 
 import (
 	"encoding/json"
@@ -10,17 +10,23 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
-// výchozí složka projektů: Dokumenty\CuMill\Projekty
+var oldProjectsOnce sync.Once
+
+// výchozí složka projektů: Dokumenty\KiMill\Projekty (dřív Dokumenty\CuMill\Projekty)
 func defaultProjectsDir() string {
 	docs := documentsDir()
 	if docs == "" {
 		h, _ := os.UserHomeDir()
 		docs = filepath.Join(h, "Documents")
 	}
-	return filepath.Join(docs, "CuMill", "Projekty")
+	base, _ := appFolder(docs)
+	dir := filepath.Join(base, "Projekty")
+	oldProjectsOnce.Do(func() { renameOldProjects(dir) })
+	return dir
 }
 
 type projectInfo struct {
@@ -41,14 +47,22 @@ func validProjectName(n string) error {
 	return nil
 }
 
-// cesta musí ležet přímo ve složce projektů a končit .cumill
+const projectExt = ".kimill"
+
+// projekt KiMillu (.kimill), nebo starší z doby, kdy se program jmenoval CuMill (.cumill)
+func isProjectFile(p string) bool {
+	e := filepath.Ext(p)
+	return strings.EqualFold(e, projectExt) || strings.EqualFold(e, ".cumill")
+}
+
+// cesta musí ležet přímo ve složce projektů a končit .kimill (.cumill)
 func projectPath(dir, p string) (string, error) {
 	if dir == "" {
 		dir = defaultProjectsDir()
 	}
 	ad, _ := filepath.Abs(dir)
 	ap, _ := filepath.Abs(p)
-	if !strings.EqualFold(filepath.Dir(ap), ad) || !strings.EqualFold(filepath.Ext(ap), ".cumill") {
+	if !strings.EqualFold(filepath.Dir(ap), ad) || !isProjectFile(ap) {
 		return "", errors.New("soubor není projekt ve složce projektů")
 	}
 	return ap, nil
@@ -66,7 +80,7 @@ func registerProjectsAPI(mux *http.ServeMux, guard func(func(http.ResponseWriter
 			return writeJSON(w, map[string]any{"dir": dir, "default": defaultProjectsDir(), "projects": out, "missing": true})
 		}
 		for _, e := range ents {
-			if e.IsDir() || !strings.EqualFold(filepath.Ext(e.Name()), ".cumill") {
+			if e.IsDir() || !isProjectFile(e.Name()) {
 				continue
 			}
 			p := filepath.Join(dir, e.Name())
@@ -106,14 +120,14 @@ func registerProjectsAPI(mux *http.ServeMux, guard func(func(http.ResponseWriter
 			if err := validProjectName(req.Name); err != nil {
 				return err
 			}
-			p = filepath.Join(req.Dir, strings.TrimSpace(req.Name)+".cumill")
+			p = filepath.Join(req.Dir, strings.TrimSpace(req.Name)+projectExt)
 			if req.NoOverwrite {
 				if _, err := os.Stat(p); err == nil {
 					return errors.New("projekt s tímto názvem už existuje")
 				}
 			}
-		} else if !strings.EqualFold(filepath.Ext(p), ".cumill") {
-			return errors.New("soubor projektu musí mít příponu .cumill")
+		} else if !isProjectFile(p) {
+			return errors.New("soubor projektu musí mít příponu " + projectExt)
 		}
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			return err
@@ -140,7 +154,7 @@ func registerProjectsAPI(mux *http.ServeMux, guard func(func(http.ResponseWriter
 		if err := validProjectName(req.Name); err != nil {
 			return err
 		}
-		np := filepath.Join(filepath.Dir(p), strings.TrimSpace(req.Name)+".cumill")
+		np := filepath.Join(filepath.Dir(p), strings.TrimSpace(req.Name)+projectExt)
 		if _, err := os.Stat(np); err == nil && !strings.EqualFold(np, p) {
 			return errors.New("projekt s tímto názvem už existuje")
 		}

@@ -1,8 +1,8 @@
 # sestavené soubory / build output
-/CuMill.exe
-/cumill
-/cumill-linux
 /dist/
 *.zip
 # lokální data
 *.log
+/KiMill.exe
+/kimill
+/kimill-linux

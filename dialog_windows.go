@@ -74,8 +74,8 @@ func openFilesDialog(start, kind string) ([]string, error) {
 		})
 	}
 	return fileDialog("Otevřít desku KiCad nebo gerbery", start, false, true, [][2]string{
-		{"Deska KiCad, projekt CuMill, gerbery, vrtání", "*.kicad_pcb;*.cumill;*.gbr;*.gtl;*.gbl;*.gko;*.gm1;*.gml;*.drl;*.xln;*.exc"},
-		{"Projekt CuMill (*.cumill)", "*.cumill"},
+		{"Deska KiCad, projekt KiMill, gerbery, vrtání", "*.kicad_pcb;*.kimill;*.cumill;*.gbr;*.gtl;*.gbl;*.gko;*.gm1;*.gml;*.drl;*.xln;*.exc"},
+		{"Projekt KiMill (*.kimill)", "*.kimill;*.cumill"},
 		{"Deska KiCad (*.kicad_pcb)", "*.kicad_pcb"},
 		{"Všechny soubory", "*.*"},
 	})

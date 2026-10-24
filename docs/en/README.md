@@ -1,12 +1,12 @@
-# CuMill – User manual (English)
+# KiMill – User manual (English)
 
-CuMill is a program for **milling printed circuit boards at home** on a small CNC router
-(typically a CNC 3018 with a GRBL controller). You design the board in KiCad, CuMill computes
+KiMill is a program for **milling printed circuit boards at home** on a small CNC router
+(typically a CNC 3018 with a GRBL controller). You design the board in KiCad, KiMill computes
 the tool paths (G-code) and in the **Stroj** (Machine) tab sends them straight to the machine –
 including a height map, a production wizard and pendant control. It replaces the
 FlatCAM + UGS + Candle trio.
 
-![CuMill – main window](../img/a02_prehled.png)
+![KiMill – main window](../img/a02_prehled.png)
 
 > **The user interface is in Czech.** This manual always shows the Czech label as it appears
 > on screen, followed by its meaning in English – e.g. **Otevřít** (Open).
@@ -34,10 +34,10 @@ FlatCAM + UGS + Candle trio.
 ## Who is it for
 
 - You have a **CNC 3018**-type machine (or any other with **GRBL 1.1**) and want to make PCBs at home.
-- You design boards in **KiCad** (CuMill reads `.kicad_pcb` directly, no export needed).
+- You design boards in **KiCad** (KiMill reads `.kicad_pcb` directly, no export needed).
 - You don't want to juggle three programs and remember where each setting lives.
 
-## What CuMill does, in short
+## What KiMill does, in short
 
 - **Direct KiCad import** (`.kicad_pcb`) or Gerbers + drill file.
 - **Copper isolation** with a V-bit and exact cut width, multiple passes, per-net passes (e.g. GND 4×).

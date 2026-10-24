@@ -169,7 +169,7 @@ export function buildTest(t, M) {
     for (const k of ['feed', 'plunge', 'spindle', 'depth', 'step']) if (!(c.p[k] > 0)) throw new Error(`Neplatná hodnota ${VARS[k]} v buňce ${c.r + 1}/${c.c + 1}.`);
     if (T && c.p.depth > T + 0.001) warn.push(`buňka ${c.r + 1}/${c.c + 1}: hloubka ${fmt(c.p.depth)} mm je větší než tloušťka materiálu ${fmt(T)} mm`);
   }
-  const head = [`(CuMill – test materiálu${t.material ? ': ' + t.material.replace(/[()]/g, '') : ''})`, `(Nástroj: ${(t.tool?.name || '').replace(/[()]/g, '')}, tvar: ${SHAPES[t.shape]})`, 'G21', 'G90', 'G94', 'G17', `G0 Z${fmt(M.zTravel)}`];
+  const head = [`(KiMill – test materiálu${t.material ? ': ' + t.material.replace(/[()]/g, '') : ''})`, `(Nástroj: ${(t.tool?.name || '').replace(/[()]/g, '')}, tvar: ${SHAPES[t.shape]})`, 'G21', 'G90', 'G94', 'G17', `G0 Z${fmt(M.zTravel)}`];
   const out = head.slice();
   let S = null;
   for (const c of run) {

@@ -10,7 +10,7 @@ co fréza z desky skutečně vyřízne.
 
 | # | Prvek | Co dělá |
 |---|-------|---------|
-| 1 | **Výběr programu** | program CuMillu (podle pravého panelu) nebo otevřený soubor `.nc`; vedle tlačítko **Otevřít .nc…** |
+| 1 | **Výběr programu** | program KiMillu (podle pravého panelu) nebo otevřený soubor `.nc`; vedle tlačítko **Otevřít .nc…** |
 | 2 | **Pohledy** | *Shora*, *Zepředu*, *Izometricky*, *Celé* (celý program do okna) |
 | 3 | **Přepínače** | *Dráhy*, *Přejezdy*, *Deska 3D* (simulace), *Předchozí programy*, *Motiv mědi*, *Pravoúhle*, převýšení *Z ×1–×20* |
 | 4 | **Informace** | poloha X/Y/Z, posuv F, otáčky S, číslo řádku, rozsah programu, délka řezu a přejezdů, odhad času |
@@ -65,7 +65,7 @@ Vizualizér zobrazí i libovolný soubor `.nc`, `.ngc`, `.gcode`, `.tap`:
 
 - tlačítko **Otevřít .nc…**, nebo `Ctrl+O` v záložce G-kód, nebo **přetažení souboru do okna**.
 
-U cizího souboru CuMill neví, jaký byl nástroj – nahoře se objeví políčka, kde zadáš
+U cizího souboru KiMill neví, jaký byl nástroj – nahoře se objeví políčka, kde zadáš
 **typ nástroje** (válcová / V-fréza s úhlem), **průměr** a **tloušťku desky**.
 Simulace pak odpovídá skutečnosti.
 

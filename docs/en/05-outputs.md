@@ -45,7 +45,7 @@ the tool, depth, origin, side, extent and time estimate:
 
 ![Checks](../img/e_kontroly.png)
 
-CuMill checks the board and the settings after every change:
+KiMill checks the board and the settings after every change:
 
 - **green ✓** – OK,
 - **blue i** – information (e.g. how many vias to wire through),
@@ -99,7 +99,7 @@ prepare another board meanwhile, they change. To keep each board ready exactly a
 |---|------|--------------|
 | 1 | **Otevřený projekt** (Open project) | the project you are working on; **Uložit teď** (Save now) saves immediately |
 | 2 | **Uložit desku jako projekt** (Save board as project) | type a name and **Uložit** (Save); with a project open: *Save as new project* = a copy under another name |
-| 3 | **Složka projektů** (Projects folder) | default `Documents\CuMill\Projekty`; **Změnit…** (Change…) picks another, **Výchozí** (Default) resets it |
+| 3 | **Složka projektů** (Projects folder) | default `Documents\KiMill\Projekty`; **Změnit…** (Change…) picks another, **Výchozí** (Default) resets it |
 | 4 | **Project list** | thumbnail, name, board, size, date; **Otevřít** (Open), **Přejmenovat** (Rename), **Duplikovat** (Duplicate), **✕** delete |
 
 **What a project contains:** the board (a copy of the KiCad file or Gerbers), all settings and the tool library,
@@ -111,10 +111,10 @@ probed or edited height map) is **saved automatically** within about 2 seconds. 
 
 **Returning to a project:** the start screen shows recent projects with thumbnails, or **Projekt** → **Otevřít**.
 If the original KiCad file still exists, its **current** version is loaded (and *Watch changes* works),
-otherwise the copy stored in the project. The height map is loaded too – before starting a program CuMill
+otherwise the copy stored in the project. The height map is loaded too – before starting a program KiMill
 warns when it is old (the board may have moved).
 
-**Uložit kopii jinam (stáhnout)…** (Save a copy elsewhere) saves the project as a `.cumill` file anywhere
+**Uložit kopii jinam (stáhnout)…** (Save a copy elsewhere) saves the project as a `.kimill` file anywhere
 (e.g. a USB stick). Open such a file with **Otevřít** or by dragging it into the window.
 
 ## Laser export

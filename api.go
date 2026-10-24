@@ -1,7 +1,7 @@
 package main
 
 // Lokální API pro vlastní okno: čtení/zápis souborů a nativní dialogy.
-// Přístup jen ze stránky CuMill: vlastní hlavička X-CuMill (cizí stránky ji kvůli CORS poslat nemůžou)
+// Přístup jen ze stránky KiMill: vlastní hlavička X-KiMill (cizí stránky ji kvůli CORS poslat nemůžou)
 // a kontrola Host (proti DNS rebindingu).
 
 import (
@@ -19,7 +19,7 @@ import (
 func registerAPI(mux *http.ServeMux) {
 	guard := func(h func(w http.ResponseWriter, r *http.Request) error) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			if r.Header.Get("X-CuMill") != "1" || !hostOK(r.Host) {
+			if r.Header.Get("X-KiMill") != "1" || !hostOK(r.Host) {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -79,8 +79,8 @@ func registerAPI(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("/api/write", guard(func(w http.ResponseWriter, r *http.Request) error {
 		var req struct {
-			Dir   string
-			Files []struct{ Name, Text string }
+			Dir         string
+			Files       []struct{ Name, Text string }
 			CleanPrefix string
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

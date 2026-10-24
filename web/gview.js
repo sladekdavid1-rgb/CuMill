@@ -169,7 +169,7 @@ export class GcodeViewer {
       el('button', { class: 'iconbtn', type: 'button', title: 'O řádek vpřed (→)', html: ICO.fwd, onclick: () => this.stepLine(1) }),
       el('button', { class: 'iconbtn', type: 'button', title: 'Na konec (End)', html: ICO.end, onclick: () => { this.pause(); this.setTime(this.g ? this.g.total : 0); } }),
       this.slider, this.timeLbl, this.speedSel);
-    this.empty = el('div', { class: 'gv-empty' }, 'Vyber program CuMillu nahoře, nebo otevři libovolný soubor .nc.');
+    this.empty = el('div', { class: 'gv-empty' }, 'Vyber program KiMillu nahoře, nebo otevři libovolný soubor .nc.');
     this.stage.append(this.top, this.info, this.controls, this.empty, this.legend);
     if (this.machine) { this.controls.style.display = 'none'; this.srcSel.style.display = 'none'; this.top.querySelector('.btn.small').style.display = 'none'; this.info.style.display = 'none'; }
     // výpis

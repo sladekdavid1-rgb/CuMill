@@ -1,6 +1,6 @@
 package main
 
-// Simulátor GRBL 1.1 (port „SIMULÁTOR“): na zkoušení CuMillu bez stroje a pro automatické testy.
+// Simulátor GRBL 1.1 (port „SIMULÁTOR“): na zkoušení KiMillu bez stroje a pro automatické testy.
 // Napodobuje RX buffer 128 B, plánovač 15 bloků, odpovědi ok/error, stav <…>, podržení, reset,
 // homing, kontrolní režim $C, real-time korekce, posuv joggingu a měření sondou proti
 // zvlněnému povrchu desky.
@@ -21,7 +21,7 @@ import (
 const simPortName = "SIMULÁTOR"
 
 func simSpeed() float64 {
-	if v, err := strconv.ParseFloat(os.Getenv("CUMILL_SIM_SPEED"), 64); err == nil && v > 0 {
+	if v, err := strconv.ParseFloat(os.Getenv("KIMILL_SIM_SPEED"), 64); err == nil && v > 0 {
 		return v
 	}
 	return 1
@@ -69,7 +69,7 @@ type grblSim struct {
 	Overflows int
 	Errors    []string
 	Lines     int
-	waitOK    bool // G38 / $H: ok až po dokončení
+	waitOK    bool    // G38 / $H: ok až po dokončení
 	CutMin    float64 // hloubka řezu pod povrchem (kontrola výškové mapy)
 	CutMax    float64
 	CutN      int

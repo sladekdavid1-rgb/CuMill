@@ -879,7 +879,7 @@ export function initMachine(ctx) {
       el('div', { class: 'jp' }, e.prog),
       el('div', { class: 'muted small' }, `${e.board} · ${e.tool}${e.map ? ' · mapa' : ''}${e.from ? ' · od ř. ' + (e.from + 1) : ''}`)));
     P.append(J.runs.length ? rt : el('div', { class: 'muted small' }, 'Zatím žádný běh.'),
-      el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: () => ctx.download('cumill_denik.csv', '\ufeffčas;deska;program;nástroj;výsledek;sekund;odhad min\n' + J.runs.map(e => [new Date(e.t).toLocaleString('cs-CZ'), e.board, e.prog, e.tool, e.result, e.secs, e.est].join(';')).join('\n')) }, 'Export CSV')));
+      el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: () => ctx.download('kimill_denik.csv', '\ufeffčas;deska;program;nástroj;výsledek;sekund;odhad min\n' + J.runs.map(e => [new Date(e.t).toLocaleString('cs-CZ'), e.board, e.prog, e.tool, e.result, e.secs, e.est].join(';')).join('\n')) }, 'Export CSV')));
   }
 
   // ---------- výšková mapa ----------
@@ -1167,7 +1167,7 @@ export function initMachine(ctx) {
   function renderWizard() {
     const P = panes.wiz; P.innerHTML = '';
     const steps = wizardSteps();
-    if (!steps) { P.append(el('p', { class: 'muted' }, 'Průvodce vede výrobou desky načtené v CuMillu (záložka Deska). Pro cizí program použij ovládání vlevo a program nahoře.')); return; }
+    if (!steps) { P.append(el('p', { class: 'muted' }, 'Průvodce vede výrobou desky načtené v KiMillu (záložka Deska). Pro cizí program použij ovládání vlevo a program nahoře.')); return; }
     const W = M.wizard;
     if (W.i >= steps.length) W.i = steps.length - 1;
     P.append(el('div', { class: 'muted small' }, `Deska ${ctx.boardName()} · ${steps.length} kroků`));

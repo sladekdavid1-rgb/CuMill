@@ -1,4 +1,4 @@
-// CuMill – spouštěč: lokální server s vloženým UI + vlastní okno (WebView2),
+// KiMill – spouštěč: lokální server s vloženým UI + vlastní okno (WebView2),
 // záložně okno Edge/Chrome v režimu --app.
 package main
 
@@ -33,9 +33,9 @@ func main() {
 	url := fmt.Sprintf("http://127.0.0.1:%d/", appPort)
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", appPort))
 	if err != nil {
-		// CuMill už běží -> otevřít další okno nad stejným serverem
+		// KiMill už běží -> otevřít další okno nad stejným serverem
 		c := http.Client{Timeout: 2 * time.Second}
-		if r, e := c.Get(url + "api/ping"); e == nil && r.Header.Get("X-App") == "CuMill" {
+		if r, e := c.Get(url + "api/ping"); e == nil && r.Header.Get("X-App") == "KiMill" {
 			r.Body.Close()
 			if !runWindow(url) {
 				if cmd := openBrowserWindow(url); cmd != nil {
@@ -56,7 +56,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) {
 		lastPing.Store(time.Now().UnixNano())
-		w.Header().Set("X-App", "CuMill")
+		w.Header().Set("X-App", "KiMill")
 		w.Header().Set("Cache-Control", "no-store")
 		_, _ = w.Write([]byte("ok"))
 	})
@@ -78,7 +78,7 @@ func main() {
 	if runWindow(url) {
 		os.Exit(0)
 	}
-	webviewMode.Store(os.Getenv("CUMILL_NATIVE") == "1") // jen pro testy API
+	webviewMode.Store(os.Getenv("KIMILL_NATIVE") == "1") // jen pro testy API
 
 	// 2) záloha: okno prohlížeče v režimu aplikace
 	lastPing.Store(time.Now().UnixNano())
@@ -159,7 +159,8 @@ func dataDir(name string) string {
 	if dir == "" {
 		dir, _ = os.UserCacheDir()
 	}
-	p := filepath.Join(dir, "CuMill", name)
+	base, _ := appFolder(dir)
+	p := filepath.Join(base, name)
 	_ = os.MkdirAll(p, 0o755)
 	return p
 }

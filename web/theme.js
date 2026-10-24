@@ -133,10 +133,10 @@ export function setColor(id, key, hex) { const t = state.custom[id]; if (!t) ret
 export function rename(id, name) { const t = state.custom[id]; if (t) { t.name = name; save(); apply(); } }
 export function setLight(id, light) { const t = state.custom[id]; if (t) { t.light = light; save(); apply(); } }
 export function remove(id) { delete state.custom[id]; if (state.active === id) state.active = 'dark'; save(); apply(); }
-export function exportTheme(id) { const t = allThemes().find(x => x.id === id); return JSON.stringify({ cumillTheme: 1, name: t.name, light: t.light, colors: t.c }, null, 2); }
+export function exportTheme(id) { const t = allThemes().find(x => x.id === id); return JSON.stringify({ kimillTheme: 1, name: t.name, light: t.light, colors: t.c }, null, 2); }
 export function importTheme(text) {
   const j = JSON.parse(text);
-  if (!j.colors) throw new Error('Soubor není téma CuMillu.');
+  if (!j.colors) throw new Error('Soubor není téma KiMillu.');
   const id = 'c' + Date.now().toString(36);
   state.custom[id] = { name: j.name || 'Importované téma', light: !!j.light, c: { ...DARK, ...j.colors } };
   state.active = id; save(); apply();
