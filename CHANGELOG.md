@@ -8,6 +8,8 @@
   add from saved projects or files, drag with the mouse (snap 0.5 mm), rotate by 90°, arrow-key nudge,
   automatic arrangement onto the blank, overlap / cut-gap and blank checks, pins around the panel,
   shared tool-by-tool programs, one height map and one cut-out with tabs for all boards
+- Two-layer KiCad board with only one copper layer milled is made as single-sided: holes, geometry and cut-out
+  from the same side, no flipping, no pins (automatic side choice follows the milled layer)
 - New orange application icon that stays visible on a dark taskbar
 
 ## 1.4 – 2026-10

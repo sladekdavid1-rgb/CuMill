@@ -432,10 +432,10 @@ const SECTIONS = [
       { k: 'setup.blankT', label: 'Tloušťka cuprextitu', unit: 'mm' },
     ] },
   { id: 'pins', title: 'Přípravek s kolíčky', icon: 'pins',
-    sum: () => !st.res ? '' : !st.res.pinsOn ? ((S.pins.mode || 'auto') === 'never' ? 'vypnuto' : 'jednostranná – bez') : st.res.pins.length ? `${st.res.pins.length}× Ø${cz(S.pins.dia)}` : 'žádné',
+    sum: () => !st.res ? '' : !st.res.pinsOn ? ((S.pins.mode || 'auto') === 'never' ? 'vypnuto' : 'jedna strana – bez') : st.res.pins.length ? `${st.res.pins.length}× Ø${cz(S.pins.dia)}` : 'žádné',
     fields: [
       { k: 'pins.mode', label: 'Kolíčky přípravku', type: 'seg', wide: true, options: [['auto', 'Automaticky'], ['always', 'Vždy'], ['never', 'Nikdy']] },
-      { type: 'hint', show: () => (S.pins.mode || 'auto') === 'auto', html: () => 'Automaticky = jen když se frézuje měď z obou stran (deska se otáčí).' },
+      { type: 'hint', show: () => (S.pins.mode || 'auto') === 'auto', html: () => 'Automaticky = jen když se deska otáčí (frézuje se z obou stran). Když frézuješ jen jednu vrstvu, kolíčky nejsou potřeba.' },
       { k: 'pins.source', label: 'Umístění', type: 'seg', wide: true, options: [['holes', 'Do děr desky'], ['pattern', 'Vzor'], ['manual', 'Ručně']], show: () => S.pins.mode !== 'never' },
       { k: 'pins.holeDia', label: 'Průměr děr desky', unit: 'mm', show: () => S.pins.mode !== 'never' && S.pins.source === 'holes' },
       { k: 'pins.patW', label: 'Rozteč X', unit: 'mm', show: () => S.pins.mode !== 'never' && S.pins.source === 'pattern' },
@@ -470,7 +470,7 @@ const SECTIONS = [
     fields: [
       { k: 'drill.depth', label: 'Hloubka vrtání', unit: 'mm' }, { k: 'drill.millAbove', label: 'Frézovat díry větší o', unit: 'mm' },
       { k: 'drill.millTool', label: 'Fréza na velké díry (auto)', type: 'tool', types: ['end'], wide: true },
-      { k: 'drill.side', label: 'Díry, geometrie a ořez ze strany', type: 'select', wide: true, options: [['auto', 'Automaticky (strana poslední mědi)'], ['top', 'Shora'], ['bottom', 'Zespodu (zrcadleně)']] },
+      { k: 'drill.side', label: 'Díry, geometrie a ořez ze strany', type: 'select', wide: true, options: [['auto', 'Automaticky (strana frézované mědi)'], ['top', 'Shora'], ['bottom', 'Zespodu (zrcadleně)']] },
       { type: 'holetable', wide: true },
     ] },
   { id: 'geo', title: 'Další geometrie', icon: 'geo',

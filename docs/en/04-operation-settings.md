@@ -91,7 +91,7 @@ Principle: holes are first drilled through the board **into the backing board (M
 
 | Field | Meaning |
 |-------|---------|
-| **Kolíčky přípravku** (Jig pins) | *Automaticky* (Auto) = only when copper is milled on both sides; *Vždy* (Always); *Nikdy* (Never) |
+| **Kolíčky přípravku** (Jig pins) | *Automaticky* (Auto) = only when the board is flipped (milled from both sides); *Vždy* (Always); *Nikdy* (Never) |
 | **Umístění** (Placement) | *Do děr desky* (into board holes of the given diameter), *Vzor* (Pattern – rectangle around the board), *Ručně* (Manual – placed with the Pin tool, see [chapter 3](03-board-tab.md#jig-pins-manual)) |
 | **Průměr děr desky** (Board hole diameter) | *into board holes* only: which holes are mounting holes (e.g. 3.2 mm) |
 | **Rozteč X / Y** (Spacing) | *Pattern* only |
@@ -148,7 +148,7 @@ The main operation – the V-bit goes around all tracks and pads and isolates th
 | **Hloubka vrtání** (Drill depth) | deeper than the board (1.6 board + margin → 1.7) |
 | **Frézovat díry větší o** (Mill holes larger by) | a hole bigger than your largest drill by more than this is milled; other holes are drilled with the nearest drill |
 | **Fréza na velké díry (auto)** (Mill for large holes) | what to mill large holes with |
-| **Díry, geometrie a ořez ze strany** (Side for holes, geometry, cut-out) | *Auto* (the side milled last – the board is no longer flipped), *Shora* (top), *Zespodu* (bottom, mirrored) |
+| **Díry, geometrie a ořez ze strany** (Side for holes, geometry, cut-out) | *Auto* (the side whose copper is milled – for a two-layer KiCad board where you mill only one layer it is that layer, so the board is never flipped and needs no pins; with both layers from the top), *Shora* (top), *Zespodu* (bottom, mirrored) |
 | **Průměry v projektu** (Diameters in project) | table of all diameters: how many holes, which tool. Check several rows and set a tool for them at once, e.g. 1.0 + 1.1 + 1.2 → all with the 1.0 drill. |
 
 Individual holes are edited in the preview with the **Výběr** (Select) tool – see [chapter 3](03-board-tab.md#holes).

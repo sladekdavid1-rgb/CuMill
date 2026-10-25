@@ -85,7 +85,7 @@ kolíčky (třeba kousky ocelového drátu Ø2,5) a deska se pak otáčí kolem 
 
 | Pole | Význam |
 |------|--------|
-| **Kolíčky přípravku** | *Automaticky* = jen když se frézuje měď z obou stran; *Vždy*; *Nikdy* |
+| **Kolíčky přípravku** | *Automaticky* = jen když se deska otáčí (frézuje se z obou stran); *Vždy*; *Nikdy* |
 | **Umístění** | *Do děr desky* (použijí se montážní díry zadaného průměru), *Vzor* (obdélník zadané rozteče kolem desky), *Ručně* (umístíš nástrojem Kolíček – viz [kapitola 3](03-deska.md#kolíčky-přípravku-ručně)) |
 | **Průměr děr desky** | jen *Do děr desky*: které díry jsou montážní (např. 3,2 mm) |
 | **Rozteč X / Y** | jen *Vzor* |
@@ -138,7 +138,7 @@ Hlavní operace – V-fréza objede všechny cesty a plošky a tím je odizoluje
 | **Hloubka vrtání** | o kolik hlouběji než deska (deska 1,6 + rezerva → 1,7) |
 | **Frézovat díry větší o** | díra větší než tvůj největší vrták o víc než tuto hodnotu se vyfrézuje; ostatní díry se vrtají nejbližším vrtákem z knihovny |
 | **Fréza na velké díry (auto)** | čím frézovat velké díry |
-| **Díry, geometrie a ořez ze strany** | *Automaticky* (ze strany, která se frézuje jako poslední – deska se už neotáčí), *Shora*, *Zespodu (zrcadleně)* |
+| **Díry, geometrie a ořez ze strany** | *Automaticky* (ze strany frézované mědi – u dvouvrstvé desky z KiCadu, kde frézuješ jen jednu vrstvu, je to právě ta, takže se deska vůbec neotáčí a nepotřebuje kolíčky; u obou vrstev shora), *Shora*, *Zespodu (zrcadleně)* |
 | **Průměry v projektu** | tabulka všech průměrů: kolik děr, čím se udělají. Zaškrtni víc řádků a nastav jim hromadně nástroj, např. díry 1,0 + 1,1 + 1,2 → všechny vrtákem 1,0. |
 
 Jednotlivé díry upravíš v náhledu nástrojem **Výběr** – viz [kapitola 3](03-deska.md#díry).

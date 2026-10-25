@@ -349,12 +349,32 @@ function orderPoints(pts, start = [0, 0]) {
 
 // ---------- kolíčky přípravku ----------
 // kolíčky přípravku: režim (auto = jen u oboustranné desky), zdroj (díry desky / vzor / ručně)
+export function isoLayersOf(board, S) {
+  return ['B.Cu', 'F.Cu'].filter(l => board.used[l] && S.iso.layers[l] !== false && board.hasCopper[l]);
+}
+// strana pro díry, geometrii a ořez: automaticky ta, ze které se frézuje měď (u jedné frézované
+// vrstvy právě ta – i když je deska v KiCadu dvouvrstvá), u obou stran ta poslední (horní)
+export function workSideOf(board, S) {
+  if (S.drill.side === 'top' || S.drill.side === 'bottom') return S.drill.side;
+  const iso = isoLayersOf(board, S);
+  if (iso.length === 1) return iso[0] === 'B.Cu' ? 'bottom' : 'top';
+  if (iso.length === 2) return 'top';
+  return board.used['F.Cu'] || !board.used['B.Cu'] ? 'top' : 'bottom';
+}
+// strany, ze kterých se bude frézovat (izolace, potisk, díry a ořez)
+export function sidesUsed(board, S) {
+  const set = new Set(isoLayersOf(board, S).map(l => l === 'B.Cu' ? 'bottom' : 'top'));
+  const sg = S.silk || {};
+  if (sg.F && board.silk?.['F.SilkS']) set.add('top');
+  if (sg.B && board.silk?.['B.SilkS']) set.add('bottom');
+  if (board.holes.length || S.cut.enabled) set.add(workSideOf(board, S));
+  return set;
+}
 export function pinsActive(board, S) {
   const m = S.pins.mode || 'auto';
   if (m === 'never') return false;
   if (m === 'always') return true;
-  const iso = ['B.Cu', 'F.Cu'].filter(l => board.used[l] && S.iso.layers[l] !== false && board.hasCopper[l]);
-  return iso.length === 2;
+  return sidesUsed(board, S).size === 2;
 }
 export function findPins(board, s, B) {
   const p = s.pins;
@@ -473,8 +493,8 @@ export function computeAll(board, S, B) {
   if (pinsOn && pins.length) pinChecks(board, S, pins, checks, markers);
   const sides = makeSides(board, S, pins);
   const used = board.used;
-  const isoLayers = ['B.Cu', 'F.Cu'].filter(l => used[l] && S.iso.layers[l] !== false && board.hasCopper[l]);
-  const workSide = S.drill.side === 'top' ? 'top' : S.drill.side === 'bottom' ? 'bottom' : (used['F.Cu'] || !used['B.Cu'] ? 'top' : 'bottom');
+  const isoLayers = isoLayersOf(board, S);
+  const workSide = workSideOf(board, S);
   const firstSide = isoLayers.length ? (isoLayers[0] === 'B.Cu' ? 'bottom' : 'top') : workSide;
   const sideName = sd => sd === 'bottom' ? `SPODNI - ZRCADLENO pres ${S.setup.mirrorAxis === 'h' ? 'vodorovnou' : 'svislou'} osu` : 'HORNI (pohled shora)';
   const boardName = board.name;
@@ -930,12 +950,13 @@ export function computeAll(board, S, B) {
   if (dOp.some(o => o.prm.depth < S.setup.blankT + 0.1)) checks.push({ level: 'warn', text: `Hloubka vrtání je menší než tloušťka desky ${fmtMM(S.setup.blankT)} mm + 0,1.` });
   const cOp = ops.find(o => o.kind === 'cut');
   if (cOp && cOp.prm.depth < S.setup.blankT) checks.push({ level: 'error', text: `Hloubka ořezu ${fmtMM(cOp.prm.depth)} mm neprojde deskou ${fmtMM(S.setup.blankT)} mm.` });
-  if (used['F.Cu'] && used['B.Cu'] && board.vias) {
+  if (used['F.Cu'] && used['B.Cu'] && isoLayers.length === 1) checks.push({ level: 'info', text: `Deska má v KiCadu obě vrstvy mědi, frézuje se jen ${isoLayers[0] === 'B.Cu' ? 'spodní B.Cu' : 'horní F.Cu'} – vyrobí se jako jednostranná (díry a ořez ${workSide === 'bottom' ? 'zespodu' : 'shora'}, bez otáčení).` });
+  if (used['F.Cu'] && used['B.Cu'] && isoLayers.length === 2 && board.vias) {
     if (board.vias.length) checks.push({ level: 'info', text: `${board.vias.length} průchodů (via) – deska nemá prokovy, protáhnout drátkem a zapájet z obou stran.`, via: true });
     const top = topSolder(board);
     if (top.length) checks.push({ level: 'info', text: `${top.length} vývodů THT má cestu nebo zónu nahoře – pájet i shora:`, list: top });
   }
-  if (isoLayers.length === 2 && !(pinsOn && pins.length)) checks.push({ level: 'warn', text: 'Oboustranná deska bez kolíčků přípravku – otočení nebude přesné.' });
+  if (new Set(ops.map(o => o.side)).size === 2 && !(pinsOn && pins.length)) checks.push({ level: 'warn', text: 'Deska se otáčí (frézuje se z obou stran), ale bez kolíčků přípravku – otočení nebude přesné.' });
   for (const w2 of board.warnings) checks.unshift(w2);
 
   return { ops, checks, markers, holeList, holeActs: acts, pins, pinsOn, cutTabs, pinDia: S.pins.dia || 2.5, sides, workSide, firstSide, isoLayers, isoWidth: w, ms: performance.now() - t0 };
