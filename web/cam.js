@@ -23,7 +23,7 @@ export function defaults() {
     setup: { origin: 'pin-ll', offX: 0, offY: 0, rot: 0, mirrorAxis: 'h', blankW: 100, blankH: 70, blankT: 1.2 },
     pins: { mode: 'auto', source: 'holes', holeDia: 3.2, patW: 88, patH: 58, dia: 2.5, method: 'drill', tool: 'd25', millTool: 'e18', depth: 6, exclude: true },
     iso: { layers: { 'F.Cu': true, 'B.Cu': true }, tool: 'v30', width: 0.18, depth: 0.1, passes: 1, overlap: 15, clearOverlap: 40, climb: true, clip: true, step: 0 },
-    drill: { depth: 1.7, millAbove: 0.3, millTool: 'e10', side: 'auto' },
+    drill: { depthMode: 'auto', through: 0.3, depth: 1.7, millAbove: 0.3, millTool: 'e10', side: 'auto' },
     geo: { tool: 'e18', pocketOverlap: 40 },
     cut: { enabled: true, tool: 'e18', depth: 1.8, step: null, tabs: 0, tabW: 2, tabH: 0.6, climb: true },
     silk: { F: false, B: false, tool: 'v30', depth: 0.08, texts: true, graphics: true, avoid: 'tracks', margin: 0.15 },
@@ -57,6 +57,13 @@ export function toolLabel(t) {
   return t.name || (t.type === 'v' ? `V ${t.vAngle}° ${t.vTip}` : `${TOOL_TYPES[t.type]} Ø${fmtMM(t.dia)}`);
 }
 // parametry operace: nástroj z knihovny, přepsané hodnoty operace mají přednost
+// hloubka vrtání: auto = tloušťka desky + délka špičky vrtáku (úhel hrotu, výchozí 118°) + přesah,
+// aby díra měla celý průměr až na spodní straně; jinak pevná hloubka z nastavení
+export const drillTip = tool => { const a = (+tool?.tipAngle || 118) * Math.PI / 180; return (tool?.dia || 0) / 2 / Math.tan(a / 2); };
+export function drillDepth(S, tool) {
+  if (S.drill.depthMode === 'fixed') return S.drill.depth;
+  return Math.round(((S.setup.blankT || 1.6) + drillTip(tool) + (S.drill.through ?? 0.3)) * 100) / 100;
+}
 export function opParams(S, key, tool, base = {}) {
   const o = S.ov[key] || {};
   const pick = (k, def) => has(o[k]) ? +o[k] : def;
@@ -732,7 +739,7 @@ export function computeAll(board, S, B) {
   for (const [tid, list] of [...byDrill.entries()].sort((a, b) => getTool(S, a[0]).dia - getTool(S, b[0]).dia)) {
     const tool = getTool(S, tid);
     const key = 'drill:' + tid;
-    const prm = opParams(S, key, tool, { depth: S.drill.depth });
+    const prm = opParams(S, key, tool, { depth: drillDepth(S, tool) });
     const pts = orderPoints(list.map(({ h }) => {
       const [x, y] = sdw.fwd([h.x, h.y]);
       const o = { x, y };
@@ -971,6 +978,7 @@ export function computeAll(board, S, B) {
   }
   const dOp = ops.filter(o => o.kind === 'drill');
   if (dOp.some(o => o.prm.depth < S.setup.blankT + 0.1)) checks.push({ level: 'warn', text: `Hloubka vrtání je menší než tloušťka desky ${fmtMM(S.setup.blankT)} mm + 0,1.` });
+  else { const short = dOp.filter(o => o.prm.depth < S.setup.blankT + drillTip(getTool(S, o.toolId)) - 0.01); if (short.length) checks.push({ level: 'warn', text: `Vrtání ${short.map(o => 'Ø' + fmtMM(o.toolDia)).join(', ')}: hloubka nepokryje špičku vrtáku – díra nebude mít na spodní straně plný průměr (potřeba aspoň tloušťka desky + ${short.map(o => fmtMM(drillTip(getTool(S, o.toolId)), 2)).join(' / ')} mm).` }); }
   const cOp = ops.find(o => o.kind === 'cut');
   if (cOp && cOp.prm.depth < S.setup.blankT) checks.push({ level: 'error', text: `Hloubka ořezu ${fmtMM(cOp.prm.depth)} mm neprojde deskou ${fmtMM(S.setup.blankT)} mm.` });
   if (used['F.Cu'] && used['B.Cu'] && isoLayers.length === 1) checks.push({ level: 'info', text: `Deska má v KiCadu obě vrstvy mědi, frézuje se jen ${isoLayers[0] === 'B.Cu' ? 'spodní B.Cu' : 'horní F.Cu'} – vyrobí se jako jednostranná (díry a ořez ${workSide === 'bottom' ? 'zespodu' : 'shora'}, bez otáčení).` });

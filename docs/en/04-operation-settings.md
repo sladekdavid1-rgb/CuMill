@@ -146,7 +146,7 @@ The main operation – the V-bit goes around all tracks and pads and isolates th
 
 | Field | Meaning |
 |-------|---------|
-| **Hloubka vrtání** (Drill depth) | deeper than the board (1.6 board + margin → 1.7) |
+| **Hloubka vrtání** (Drill depth) | *Podle vrtáku (auto)* – per drill: board thickness + tip length (Ø/2 ÷ tan(point angle/2), about 0.3 × Ø at 118°) + **Přesah pod desku** (overshoot, default 0.3 mm), so the hole has full diameter on the bottom side too. The point angle can be changed per drill in the tool library (carbide PCB drills are often 130°). *Pevná* (fixed) – one depth for all drills. |
 | **Frézovat díry větší o** (Mill holes larger by) | a hole bigger than your largest drill by more than this is milled; other holes are drilled with the nearest drill |
 | **Fréza na velké díry (auto)** (Mill for large holes) | what to mill large holes with |
 | **Díry, geometrie a ořez ze strany** (Side for holes, geometry, cut-out) | *Auto* (the side whose copper is milled – for a two-layer KiCad board where you mill only one layer it is that layer, so the board is never flipped and needs no pins; with both layers from the top), *Shora* (top), *Zespodu* (bottom, mirrored) |

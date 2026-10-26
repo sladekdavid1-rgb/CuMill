@@ -23,6 +23,8 @@
 - Z at program end (tool change) now 35 mm by default (old default 15 is migrated); when sending, KiMill caps
   the lift 1 mm below the machine's Z top so it never hits the limit. GRBL simulator plans from the last
   queued position like real GRBL
+- Drill depth by drill (auto): board thickness + drill point length (point angle per drill, default 118°) + overshoot;
+  check warns when a fixed depth does not cover the drill point
 - New orange application icon that stays visible on a dark taskbar
 
 ## 1.4 – 2026-10

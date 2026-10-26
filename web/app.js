@@ -40,7 +40,11 @@ function merge(def, val) {
   return o;
 }
 // starší nastavení: Z na konci 15 mm (dřívější výchozí) -> 35 mm, ať je při výměně nástroje kam sáhnout
-function migrateS(s) { if (!s.machine.zEndV2) { if (s.machine.zEnd === 15) s.machine.zEnd = 35; s.machine.zEndV2 = true; } return s; }
+function migrateS(s) {
+  if (!s.machine.zEndV2) { if (s.machine.zEnd === 15) s.machine.zEnd = 35; s.machine.zEndV2 = true; }
+  if (!s.drill.depthV2) { if (s.drill.depth !== 1.7) s.drill.depthMode = 'fixed'; s.drill.depthV2 = true; } // vlastní pevná hloubka zůstane
+  return s;
+}
 function loadSettings() { try { return migrateS(merge(CAM.defaults(), JSON.parse(localStorage.getItem(LS)))); } catch { return CAM.defaults(); } }
 function saveSettings() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch {} }
 let S = loadSettings();
@@ -472,7 +476,15 @@ const SECTIONS = [
   { id: 'drill', title: 'Díry', icon: 'drill', open: true,
     sum: () => { if (!st.res) return ''; const n = st.res.ops.filter(o => o.kind === 'drill').length; return `${n} ${pl(n, 'vrták', 'vrtáky', 'vrtáků')}`; },
     fields: [
-      { k: 'drill.depth', label: 'Hloubka vrtání', unit: 'mm' }, { k: 'drill.millAbove', label: 'Frézovat díry větší o', unit: 'mm' },
+      { k: 'drill.depthMode', label: 'Hloubka vrtání', type: 'seg', wide: true, options: [['auto', 'Podle vrtáku (auto)'], ['fixed', 'Pevná']] },
+      { k: 'drill.through', label: 'Přesah pod desku', unit: 'mm', show: () => S.drill.depthMode !== 'fixed' },
+      { k: 'drill.depth', label: 'Hloubka vrtání', unit: 'mm', show: () => S.drill.depthMode === 'fixed' },
+      { type: 'hint', show: () => S.drill.depthMode !== 'fixed', html: () => {
+        const used = st.res ? st.res.ops.filter(o => o.kind === 'drill') : [];
+        const list = used.map(o => { const t = CAM.getTool(S, o.toolId); return `Ø${cz(t.dia)} → <b>${cz(CAM.drillDepth(S, t))}</b> mm`; }).join(' · ');
+        return `Hloubka = tloušťka desky ${cz(S.setup.blankT)} + špička vrtáku (Ø/2 ÷ tan(úhel/2), úhel hrotu 118°, jde změnit v knihovně) + přesah, aby díra měla plný průměr i na spodní straně.${list ? '<br>' + list : ''}`;
+      } },
+      { k: 'drill.millAbove', label: 'Frézovat díry větší o', unit: 'mm' },
       { k: 'drill.millTool', label: 'Fréza na velké díry (auto)', type: 'tool', types: ['end'], wide: true },
       { k: 'drill.side', label: 'Díry, geometrie a ořez ze strany', type: 'select', wide: true, options: [['auto', 'Automaticky (strana frézované mědi)'], ['top', 'Shora'], ['bottom', 'Zespodu (zrcadleně)']] },
       { type: 'holetable', wide: true },
@@ -693,7 +705,7 @@ function buildToolTable(body, changedFn) {
         el('td', {}, selectBox(Object.entries(CAM.TOOL_TYPES), tool.type, v => { tool.type = v; if (v === 'v' && !tool.vAngle) { tool.vAngle = 30; tool.vTip = tool.dia || 0.1; } changedFn(); draw(); })),
         el('td', {}, el('div', { class: 'inp' }, nameInp)),
         tool.type === 'v' ? el('td', {}, numInput(() => tool.vTip, v => { tool.vTip = v; tool.dia = v; changedFn(); }, { unit: 'mm' })) : cell('dia', { unit: 'mm' }),
-        tool.type === 'v' ? cell('vAngle', { unit: '°' }) : el('td', { class: 'muted' }, '—'),
+        tool.type === 'v' ? cell('vAngle', { unit: '°' }) : tool.type === 'drill' ? el('td', { title: 'Úhel hrotu vrtáku (běžně 118°, karbidové PCB vrtáky 130°) – pro výpočet hloubky vrtání' }, numInput(() => tool.tipAngle ?? '', v => { tool.tipAngle = v; changedFn(); }, { unit: '°', placeholder: '118' })) : el('td', { class: 'muted' }, '—'),
         cell('feed'), cell('plunge'), cell('spindle', { int: true }), cell('step', { unit: 'mm' }),
         el('td', {}, el('div', { class: 'mrow nowrap' },
           el('span', { class: 'muted small', title: 'Uložené výsledky testů s tímto nástrojem' }, nRes ? `${nRes}×` : '—'),
@@ -972,7 +984,7 @@ function opEditor(op) {
     if ((op.kind === 'drill' || op.kind === 'pins') && f === 'plunge') lab = 'Posuv Z';
     if ((op.kind === 'drill' || op.kind === 'pins') && f === 'step') lab = 'Krok vrtání';
     if (op.kind === 'iso' && f === 'depth') lab = 'Hloubka izolace';
-    let base = f === 'depth' ? (op.kind === 'pins' ? S.pins.depth : op.kind === 'drill' ? S.drill.depth : op.kind === 'iso' ? S.iso.depth : S.cut.depth) : f === 'spindle' ? (tool?.spindle ?? '') : tool?.[f];
+    let base = f === 'depth' ? (op.kind === 'pins' ? S.pins.depth : op.kind === 'drill' ? CAM.drillDepth(S, tool) : op.kind === 'iso' ? S.iso.depth : S.cut.depth) : f === 'spindle' ? (tool?.spindle ?? '') : tool?.[f];
     if (f === 'step' && op.kind === 'iso') base = S.iso.step > 0 ? S.iso.step : 'bez kroků';
     if (f === 'step' && (op.kind === 'cut' || op.kind === 'mill') && S.cut.step > 0) base = S.cut.step;
     g.append(el('div', { class: 'f' }, el('label', {}, lab + (ov[f] != null ? ' •' : '')),

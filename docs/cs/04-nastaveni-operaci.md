@@ -136,7 +136,7 @@ Hlavní operace – V-fréza objede všechny cesty a plošky a tím je odizoluje
 
 | Pole | Význam |
 |------|--------|
-| **Hloubka vrtání** | o kolik hlouběji než deska (deska 1,6 + rezerva → 1,7) |
+| **Hloubka vrtání** | *Podle vrtáku (auto)* – pro každý vrták zvlášť: tloušťka desky + délka špičky (Ø/2 ÷ tan(úhel hrotu/2), u 118° asi 0,3 × Ø) + **Přesah pod desku** (výchozí 0,3 mm), aby díra měla plný průměr i na spodní straně. Úhel hrotu jde u vrtáku změnit v knihovně nástrojů (karbidové PCB vrtáky bývají 130°). *Pevná* – jedna hloubka pro všechny vrtáky. |
 | **Frézovat díry větší o** | díra větší než tvůj největší vrták o víc než tuto hodnotu se vyfrézuje; ostatní díry se vrtají nejbližším vrtákem z knihovny |
 | **Fréza na velké díry (auto)** | čím frézovat velké díry |
 | **Díry, geometrie a ořez ze strany** | *Automaticky* (ze strany frézované mědi – u dvouvrstvé desky z KiCadu, kde frézuješ jen jednu vrstvu, je to právě ta, takže se deska vůbec neotáčí a nepotřebuje kolíčky; u obou vrstev shora), *Shora*, *Zespodu (zrcadleně)* |
