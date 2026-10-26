@@ -18,6 +18,8 @@
   the design view shows the board rotated as well
 - Range check before start and soft-limit jog distance also for machines with positive machine coordinates
   (homing in the X−/Y− corner, common on 3018) – no more false “beyond machine range” warnings
+- Running program shows percent (by estimated time), elapsed, remaining and total time; the remaining time
+  adapts to the real machine pace as the job goes on
 - New orange application icon that stays visible on a dark taskbar
 
 ## 1.4 – 2026-10

@@ -344,13 +344,34 @@ export function initMachine(ctx) {
     if (!stepsZ.some(v => Math.abs(v - M.jog.z) < 1e-9)) zChips.append(el('button', { class: 'on' }, cz(M.jog.z, 2)));
     feedInp.value = M.jog.feed;
   }
+  // průběh: procenta podle odhadu času (ne podle řádků), uběhlý čas, zbývá a celkem
+  const fmtDur = sec => { sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, x = sec % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
+  function runTimes() {
+    const s = M.stream, g = gv.g, r = M.run;
+    if (!g || !g.lineEnd) return null;
+    const n = g.lineEnd.length - 1, k = r?.factor ?? (ctx.timeFactor?.(M.prog?.op?.kind || 'soubor') || 1);
+    const from = r ? r.from || 0 : 0, t0 = g.lineStart[Math.min(from, n)] || 0, tAll = g.total - t0; // minuty podle simulace
+    if (!s.streaming && !r) return { pct: null, total: tAll * k * 60 };
+    const done = Math.min(Math.max(s.done, from), n), tDone = Math.max(0, (done > 0 ? g.lineEnd[done - 1] : 0) - t0);
+    const frac = tAll > 0 ? Math.min(1, tDone / tAll) : (s.total ? s.done / s.total : 0);
+    const elapsed = r ? (Date.now() - r.t0 - r.paused - (r.pauseT ? Date.now() - r.pauseT : 0)) / 1000 : 0;
+    const estRest = (tAll - tDone) * k * 60;
+    // čím dál víc věřit skutečnému tempu stroje (od 5 % průběhu)
+    const w = Math.min(1, Math.max(0, (frac - 0.05) / 0.3)), real = frac > 0.02 && elapsed > 20 ? elapsed / frac * (1 - frac) : estRest;
+    const rest = estRest * (1 - w) + real * w;
+    return { pct: frac * 100, elapsed, rest, total: elapsed + rest };
+  }
   function renderStream() {
-    const s = M.stream;
-    const pct = s.total ? s.done / s.total * 100 : 0;
+    const s = M.stream, t = runTimes();
+    const pct = t?.pct ?? (s.total ? s.done / s.total * 100 : 0);
     bar.firstChild.style.width = pct + '%';
-    progTxt.textContent = M.prog ? `${s.streaming ? (s.paused ? 'pozastaveno · ' : 'běží · ') : ''}${s.done} / ${s.total || M.prog.text.split('\n').length} řádků` : '';
+    if (!M.prog) { progTxt.textContent = ''; renderStatus(); return; }
+    const lines = `${s.done} / ${s.total || M.prog.text.split('\n').length} řádků`;
+    if (s.streaming && t?.pct != null) progTxt.innerHTML = `${s.paused ? 'pozastaveno' : 'běží'} · <b>${Math.floor(t.pct)} %</b> · uběhlo ${fmtDur(t.elapsed)} · zbývá ≈ <b>${fmtDur(t.rest)}</b> · celkem ≈ ${fmtDur(t.total)} · ${lines}`;
+    else progTxt.textContent = `${t ? `odhad ≈ ${fmtDur(t.total)} · ` : ''}${lines}`;
     renderStatus();
   }
+  setInterval(() => { if (M.stream.streaming) renderStream(); }, 1000);
   function renderAll() {
     btnConn.textContent = M.on ? 'Odpojit' : 'Připojit';
     btnConn.classList.toggle('primary', !M.on);
