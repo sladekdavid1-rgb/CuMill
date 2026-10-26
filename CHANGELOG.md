@@ -16,6 +16,8 @@
   (unless the old one is sending a program to the machine) – before, the new exe silently opened the old UI
 - Machine axis cross (X / Y) in the corner of the board preview, X / Y / Z cross in the G-code 3D view;
   the design view shows the board rotated as well
+- Range check before start and soft-limit jog distance also for machines with positive machine coordinates
+  (homing in the X−/Y− corner, common on 3018) – no more false “beyond machine range” warnings
 - New orange application icon that stays visible on a dark taskbar
 
 ## 1.4 – 2026-10

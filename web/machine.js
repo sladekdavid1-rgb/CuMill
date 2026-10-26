@@ -419,7 +419,7 @@ export function initMachine(ctx) {
   async function jogStart(a, dir) {
     if (!M.on) return;
     let dist = travel(a);
-    if (M.settings[20] === '1' && M.st.mpos) { const i = 'XYZ'.indexOf(a), mp = M.st.mpos[i]; dist = dir > 0 ? -mp - 0.5 : travel(a) + mp - 0.5; }
+    if (M.settings[20] === '1' && M.st.mpos) { const i = 'XYZ'.indexOf(a), mp = M.st.mpos[i]; const posSpace = mp > 0.5 || (M.st.wco?.[i] || 0) > 0.5; dist = posSpace ? (dir > 0 ? travel(a) - mp - 0.5 : mp - 0.5) : (dir > 0 ? -mp - 0.5 : travel(a) + mp - 0.5); }
     if (dist <= 0.01) return;
     jogging = true;
     await cmd(`$J=G91 G21 ${a}${fmt(dist * dir)} F${fmt(M.jog.feed)}`);
@@ -740,8 +740,16 @@ export function initMachine(ctx) {
     if (M.settings[22] === '1' && M.st.mpos) {
       for (const [i, a] of ['X', 'Y', 'Z'].entries()) {
         const tr = travel(a), lo = g.bb['min' + a] + wco[i], hi = g.bb['max' + a] + wco[i];
-        if (hi > 0.01) out.push(`program vyjede v ose ${a} o ${cz(hi, 1)} mm nad rozsah stroje (strojově > 0)`);
-        if (lo < -tr - 0.01) out.push(`program vyjede v ose ${a} o ${cz(-tr - lo, 1)} mm mimo rozsah stroje (${a} ${cz(tr, 0)} mm)`);
+        // GRBL má po homingu rozsah buď 0 … −dráha (výchozí, home v kladném rohu), nebo 0 … +dráha
+        // (home v záporném rohu – častý u 3018); který to je, se pozná podle znaménka strojové polohy / nuly
+        const pos = (M.st.mpos[i] > 0.5) || (wco[i] > 0.5);
+        if (pos) {
+          if (lo < -0.01) out.push(`program vyjede v ose ${a} o ${cz(-lo, 1)} mm pod rozsah stroje (strojově < 0)`);
+          if (hi > tr + 0.01) out.push(`program vyjede v ose ${a} o ${cz(hi - tr, 1)} mm mimo rozsah stroje (${a} ${cz(tr, 0)} mm)`);
+        } else {
+          if (hi > 0.01) out.push(`program vyjede v ose ${a} o ${cz(hi, 1)} mm nad rozsah stroje (strojově > 0)`);
+          if (lo < -tr - 0.01) out.push(`program vyjede v ose ${a} o ${cz(-tr - lo, 1)} mm mimo rozsah stroje (${a} ${cz(tr, 0)} mm)`);
+        }
       }
     }
     if (Math.abs(wco[0]) + Math.abs(wco[1]) + Math.abs(wco[2]) < 1e-6) out.push('nula obrobku není nastavená (WCO = 0)');
