@@ -222,7 +222,7 @@ na můstek vyšší než hloubka ořezu.
 | **Prodleva po rozjezdu** | čekání po zapnutí vřetena (než naběhne otáčky) |
 | **Bezpečná výška Z** | výška přejezdů nad deskou |
 | **Najetí nad materiál** | odkud se zanořuje pracovním posuvem (rychle se jede jen sem) |
-| **Z na konci** | kam vyjede vřeteno na konci programu (aby šla deska vyndat) |
+| **Z na konci (výměna nástroje)** | kam vyjede vřeteno na konci programu – výchozí 35 mm, aby šel vyměnit nástroj a vyndat deska. Při posílání do stroje se zdvih omezí na 1 mm pod horní doraz Z. |
 | **Rychloposuv (pro odhad)** | jen pro odhad času |
 | **Desetinná místa** | 3 (µm) nebo 4 (jako FlatCAM) |
 | **Tolerance** | přesnost nahrazování křivek (FlatCAM: 0,005 mm) |

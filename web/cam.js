@@ -18,7 +18,7 @@ export function defaultTools() {
 }
 export function defaults() {
   return {
-    machine: { spindle: 12000, arcs: true, fitTol: 0.005, dwell: 2, zTravel: 2, zEnd: 15, zApproach: 0.3, rapid: 1500, homeAtEnd: true, decimals: 4 },
+    machine: { spindle: 12000, arcs: true, fitTol: 0.005, dwell: 2, zTravel: 2, zEnd: 35, zApproach: 0.3, rapid: 1500, homeAtEnd: true, decimals: 4 },
     tools: defaultTools(),
     setup: { origin: 'pin-ll', offX: 0, offY: 0, rot: 0, mirrorAxis: 'h', blankW: 100, blankH: 70, blankT: 1.2 },
     pins: { mode: 'auto', source: 'holes', holeDia: 3.2, patW: 88, patH: 58, dia: 2.5, method: 'drill', tool: 'd25', millTool: 'e18', depth: 6, exclude: true },

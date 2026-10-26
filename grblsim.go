@@ -547,8 +547,16 @@ func (s *grblSim) gcode(up string, jog bool) string {
 	// cílová poloha ve strojových souřadnicích
 	var to [3]float64
 	wt := s.wcoTotal()
+	// výchozí bod = konec posledního naplánovaného pohybu (jako plánovač GRBL), ne okamžitá poloha
+	from := s.pos
+	for k := len(s.plan) - 1; k >= 0; k-- {
+		if s.plan[k].kind != "dwell" {
+			from = s.plan[k].to
+			break
+		}
+	}
 	for i, a := range axes {
-		to[i] = s.pos[i]
+		to[i] = from[i]
 		if has[a] {
 			v := val[a] * unit
 			switch {
@@ -557,7 +565,7 @@ func (s *grblSim) gcode(up string, jog bool) string {
 			case abs:
 				to[i] = v + wt[i]
 			default:
-				to[i] = s.pos[i] + v
+				to[i] = from[i] + v
 			}
 		}
 	}

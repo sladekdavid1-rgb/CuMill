@@ -39,7 +39,9 @@ function merge(def, val) {
   for (const k of Object.keys(def)) o[k] = merge(def[k], val[k]);
   return o;
 }
-function loadSettings() { try { return merge(CAM.defaults(), JSON.parse(localStorage.getItem(LS))); } catch { return CAM.defaults(); } }
+// starší nastavení: Z na konci 15 mm (dřívější výchozí) -> 35 mm, ať je při výměně nástroje kam sáhnout
+function migrateS(s) { if (!s.machine.zEndV2) { if (s.machine.zEnd === 15) s.machine.zEnd = 35; s.machine.zEndV2 = true; } return s; }
+function loadSettings() { try { return migrateS(merge(CAM.defaults(), JSON.parse(localStorage.getItem(LS)))); } catch { return CAM.defaults(); } }
 function saveSettings() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch {} }
 let S = loadSettings();
 try { const old = JSON.parse(localStorage.getItem(LS) || '{}'); if (old.pins && old.pins.enabled === false && !old.pins.mode) S.pins.mode = 'never'; } catch {}
@@ -365,7 +367,7 @@ function undoRedo(d) {
   const k = hist.pos + d;
   if (k < 0 || k >= hist.list.length) { toast(d < 0 ? 'Není co vrátit.' : 'Není co opakovat.'); return; }
   hist.pos = k; const j = JSON.parse(hist.list[k]);
-  S = merge(CAM.defaults(), j.S); B = merge(CAM.boardDefaults(), j.B);
+  S = migrateS(merge(CAM.defaults(), j.S)); B = merge(CAM.boardDefaults(), j.B);
   saveSettings(); saveBoardSettings(); st.pick = null; viewer.setOpts({ selection: null });
   hist.skip = true; renderSettings(); recompute(true);
   toast(d < 0 ? 'Vráceno zpět.' : 'Znovu provedeno.');
@@ -514,7 +516,7 @@ const SECTIONS = [
     fields: [
       { k: 'machine.dwell', label: 'Prodleva po rozjezdu', unit: 's' },
       { k: 'machine.zTravel', label: 'Bezpečná výška Z', unit: 'mm' }, { k: 'machine.zApproach', label: 'Najetí nad materiál', unit: 'mm' },
-      { k: 'machine.zEnd', label: 'Z na konci', unit: 'mm' }, { k: 'machine.rapid', label: 'Rychloposuv (pro odhad)', unit: 'mm/min' },
+      { k: 'machine.zEnd', label: 'Z na konci (výměna nástroje)', unit: 'mm' }, { k: 'machine.rapid', label: 'Rychloposuv (pro odhad)', unit: 'mm/min' },
       { k: 'machine.decimals', label: 'Desetinná místa', type: 'select', options: [[3, '3 (µm)'], [4, '4 (jako FlatCAM)']] },
       { k: 'machine.fitTol', label: 'Tolerance (FlatCAM: 0,005)', unit: 'mm' },
       { k: 'machine.arcs', label: 'Oblouky jako G2/G3 (plynulejší, kratší program)', type: 'check' },
@@ -1327,7 +1329,7 @@ $('#codeClose').addEventListener('click', () => $('#codeDlg').close());
 function exportSettings() { download('kimill-nastaveni.json', JSON.stringify(S, null, 2)); }
 function importSettings() {
   const i = el('input', { type: 'file', accept: '.json' });
-  i.addEventListener('change', async () => { try { S = merge(CAM.defaults(), JSON.parse(await i.files[0].text())); saveSettings(); renderSettings(); recompute(); toast('Nastavení načteno.'); } catch { toast('Neplatný soubor nastavení.', true); } });
+  i.addEventListener('change', async () => { try { S = migrateS(merge(CAM.defaults(), JSON.parse(await i.files[0].text()))); saveSettings(); renderSettings(); recompute(); toast('Nastavení načteno.'); } catch { toast('Neplatný soubor nastavení.', true); } });
   i.click();
 }
 
@@ -1583,7 +1585,7 @@ async function renderRecentProjects(box) {
 async function openProject(text, path = null) {
   const prj = JSON.parse(text);
   if (!prj.kimillProject && !prj.cumillProject) throw new Error('Soubor není projekt KiMillu.');
-  S = merge(CAM.defaults(), prj.S); saveSettings();
+  S = migrateS(merge(CAM.defaults(), prj.S)); saveSettings();
   try { localStorage.setItem('cumill.board.' + prj.board, JSON.stringify(prj.B)); } catch {}
   // deska: aktuální soubor z KiCadu, pokud ještě existuje (a jde sledovat změny), jinak uložená kopie
   let sources = null;

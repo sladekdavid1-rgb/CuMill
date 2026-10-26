@@ -20,6 +20,9 @@
   (homing in the X−/Y− corner, common on 3018) – no more false “beyond machine range” warnings
 - Running program shows percent (by estimated time), elapsed, remaining and total time; the remaining time
   adapts to the real machine pace as the job goes on
+- Z at program end (tool change) now 35 mm by default (old default 15 is migrated); when sending, KiMill caps
+  the lift 1 mm below the machine's Z top so it never hits the limit. GRBL simulator plans from the last
+  queued position like real GRBL
 - New orange application icon that stays visible on a dark taskbar
 
 ## 1.4 – 2026-10

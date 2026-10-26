@@ -717,7 +717,19 @@ export function initMachine(ctx) {
   function currentLines() {
     const lines = M.prog.text.split(/\r?\n/);
     for (const [a, b] of M.skips) { const t = skipText(a, b); if (t == null) continue; lines[a] = t; for (let i = a + 1; i <= b; i++) lines[i] = ''; }
+    // zdvih na konci (výměna nástroje) nesmí narazit nahoře: omezit na horní doraz Z − 1 mm
+    const top = zTopWork();
+    if (top != null) for (let i = 0; i < lines.length; i++) {
+      const m = /^G0\s*Z(-?[\d.]+)\s*$/i.exec(lines[i].trim());
+      if (m && +m[1] > top) lines[i] = `G0 Z${(Math.floor(top * 10) / 10).toFixed(1)} (omezeno na horni doraz)`;
+    }
     return lines;
+  }
+  // nejvyšší bezpečné Z v pracovních souřadnicích (1 mm pod horním dorazem), jen když je stroj po homingu
+  function zTopWork() {
+    if (M.settings[22] !== '1' || !M.st.mpos || !M.st.wco) return null;
+    const wz = M.st.wco[2], pos = M.st.mpos[2] > 0.5 || wz > 0.5;
+    return (pos ? travel('Z') : 0) - 1 - wz;
   }
   async function skipSelection(on) {
     if (!M.prog || !gv.g) return;
@@ -764,6 +776,7 @@ export function initMachine(ctx) {
         // GRBL má po homingu rozsah buď 0 … −dráha (výchozí, home v kladném rohu), nebo 0 … +dráha
         // (home v záporném rohu – častý u 3018); který to je, se pozná podle znaménka strojové polohy / nuly
         const pos = (M.st.mpos[i] > 0.5) || (wco[i] > 0.5);
+        if (a === 'Z' && zTopWork() != null) { if (lo < (pos ? 0 : -tr) - 0.01) out.push(`program sjede v ose Z pod rozsah stroje`); continue; } // zdvihy nahoru se omezí na horní doraz
         if (pos) {
           if (lo < -0.01) out.push(`program vyjede v ose ${a} o ${cz(-lo, 1)} mm pod rozsah stroje (strojově < 0)`);
           if (hi > tr + 0.01) out.push(`program vyjede v ose ${a} o ${cz(hi - tr, 1)} mm mimo rozsah stroje (${a} ${cz(tr, 0)} mm)`);

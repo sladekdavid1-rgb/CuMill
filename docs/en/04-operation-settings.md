@@ -241,7 +241,7 @@ or a tab higher than the cut-out depth.
 | **Prodleva po rozjezdu** (Spin-up dwell) | wait after starting the spindle |
 | **Bezpečná výška Z** (Safe Z) | height of moves above the board |
 | **Najetí nad materiál** (Approach height) | from where the plunge feed starts (rapids go only down to here) |
-| **Z na konci** (Z at end) | where the spindle goes at the end (so the board can be removed) |
+| **Z na konci (výměna nástroje)** (Z at end, tool change) | where the spindle goes at the end – default 35 mm for tool change and board removal. When sending, the lift is capped 1 mm below the machine Z top. |
 | **Rychloposuv (pro odhad)** (Rapid, for estimate) | only for the time estimate |
 | **Desetinná místa** (Decimals) | 3 (µm) or 4 (like FlatCAM) |
 | **Tolerance** | curve approximation accuracy (FlatCAM: 0.005 mm) |
