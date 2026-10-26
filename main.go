@@ -33,22 +33,45 @@ func main() {
 	url := fmt.Sprintf("http://127.0.0.1:%d/", appPort)
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", appPort))
 	if err != nil {
-		// KiMill už běží -> otevřít další okno nad stejným serverem
 		c := http.Client{Timeout: 2 * time.Second}
-		if r, e := c.Get(url + "api/ping"); e == nil && r.Header.Get("X-App") == "KiMill" {
+		app, build := "", ""
+		if r, e := c.Get(url + "api/ping"); e == nil {
+			app, build = r.Header.Get("X-App"), r.Header.Get("X-Build")
 			r.Body.Close()
+		}
+		switch {
+		case app == "KiMill" && build == buildID:
+			// stejná verze už běží -> otevřít další okno nad stejným serverem
 			if !runWindow(url) {
 				if cmd := openBrowserWindow(url); cmd != nil {
 					_ = cmd.Wait()
 				}
 			}
 			return
+		case app == "KiMill" || app == "CuMill":
+			// běží jiná (starší) verze -> požádat ji o ukončení a převzít port
+			freed, busy := replaceOldInstance(url)
+			if busy {
+				fatal("Běží starší verze KiMillu a právě posílá program do frézky.\nNech ji dokončit, zavři ji a spusť KiMill znovu.")
+			}
+			if !freed {
+				fatal("Běží starší verze programu (KiMill / CuMill), kterou nejde zavřít automaticky.\nZavři všechna její okna (případně ve Správci úloh ukonči KiMill.exe / CuMill.exe) a spusť KiMill znovu.")
+			}
+			for i := 0; i < 50 && err != nil; i++ {
+				time.Sleep(100 * time.Millisecond)
+				ln, err = net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", appPort))
+			}
+			if err != nil {
+				fatal("Starší verze KiMillu se neukončila včas. Spusť KiMill znovu.")
+			}
+		default:
+			// port drží něco jiného -> náhodný port
+			ln, err = net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				fatal("Nelze spustit lokální server: " + err.Error())
+			}
+			url = fmt.Sprintf("http://%s/", ln.Addr().String())
 		}
-		ln, err = net.Listen("tcp", "127.0.0.1:0")
-		if err != nil {
-			fatal("Nelze spustit lokální server: " + err.Error())
-		}
-		url = fmt.Sprintf("http://%s/", ln.Addr().String())
 	}
 	serverAddr = ln.Addr().String()
 
@@ -57,10 +80,12 @@ func main() {
 	mux.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) {
 		lastPing.Store(time.Now().UnixNano())
 		w.Header().Set("X-App", "KiMill")
+		w.Header().Set("X-Build", buildID)
 		w.Header().Set("Cache-Control", "no-store")
 		_, _ = w.Write([]byte("ok"))
 	})
 	registerAPI(mux)
+	registerQuitAPI(mux)
 	files := http.FileServer(http.FS(sub))
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-cache")

@@ -12,6 +12,8 @@
   from the same side, no flipping, no pins (automatic side choice follows the milled layer)
 - **Board rotation on the machine** (0° / 90° / 180° / 270°) in *Board and origin* – rotates all programs; the blank
   check now uses the fixed blank orientation (width along X) and suggests rotating when the board does not fit
+- Starting a new version while an older one is still running now closes the old one and starts the new one
+  (unless the old one is sending a program to the machine) – before, the new exe silently opened the old UI
 - New orange application icon that stays visible on a dark taskbar
 
 ## 1.4 – 2026-10
