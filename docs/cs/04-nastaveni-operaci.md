@@ -65,6 +65,7 @@ programu nepřepíšeš (viz [Výstupy](05-vystupy.md#přepis-parametrů-jednoho
 |------|--------|
 | **Nula XY** | kde je na stroji X0 Y0: *střed levého dolního kolíčku* (oboustranné desky), *levý dolní roh desky*, *střed desky*, *pomocný počátek KiCadu* (Aux origin) nebo *počátek souřadnic KiCadu* |
 | **Posun nuly X / Y** | posune nulu o zadanou hodnotu (např. když deska není v rohu polotovaru) |
+| **Otočení desky na stroji** | *0°*, *90° ↻* (po směru hodin), *180°*, *90° ↺* – otočí všechny programy, aby deska ležela na stroji, jak potřebuješ (např. dlouhou stranou podél osy X). Jak deska leží, ukáže náhled v režimu **Stroj**. Polotovar leží vždy šířkou v ose X – když se deska nevejde, kontrola poradí otočení. Výškovou mapu měř až po otočení. |
 | **Otočení desky na spodní stranu** | *Horní hranou dolů* (otáčíš přes vodorovnou osu – horní hrana se dostane k tobě) nebo *Přes svislou osu* (jako stránku v knize). Podle toho se spodní strana zrcadlí. |
 | **Polotovar šířka / výška** | rozměr cuprextitu; kontroluje se, jestli se deska a kolíčky vejdou |
 | **Tloušťka cuprextitu** | výchozí hloubka ořezu a výpočet výšky můstků |

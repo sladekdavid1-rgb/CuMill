@@ -246,8 +246,7 @@ export class Viewer {
       if (st) {
         const bb = G.bbox((b.outlines || [b.outline]).map(l => tf ? l.map(tf) : l));
         const cx = (bb.minX + bb.maxX) / 2, cy = (bb.minY + bb.maxY) / 2;
-        const rot = (bb.maxX - bb.minX > bb.maxY - bb.minY) !== (st.blankW > st.blankH);
-        const W = rot ? st.blankH : st.blankW, H = rot ? st.blankW : st.blankH;
+        const W = st.blankW, H = st.blankH; // ve strojových souřadnicích: šířka v ose X
         ctx.fillStyle = COL.blank; ctx.fillRect(cx - W / 2, cy - H / 2, W, H);
         ctx.strokeStyle = COL.blankEdge; ctx.lineWidth = px; ctx.setLineDash([6 * px, 4 * px]); ctx.strokeRect(cx - W / 2, cy - H / 2, W, H); ctx.setLineDash([]);
       }
@@ -411,8 +410,11 @@ export class Viewer {
       const o = t ? [0, 0] : this.res.sides[side].inv([0, 0]);
       const a = 7 * px, len = 26 * px;
       ctx.lineWidth = 2 * px;
-      ctx.strokeStyle = COL.axisX; ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(o[0] + (t || side === 'top' || this.res.sides.bottom.axis === 'h' ? len : -len), o[1]); ctx.stroke();
-      ctx.strokeStyle = COL.axisY; ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(o[0], o[1] + (t || side === 'top' || this.res.sides.bottom.axis === 'v' ? len : -len)); ctx.stroke();
+      // směr os stroje v aktuálním pohledu (v návrhu i se zrcadlením a otočením desky)
+      const dir = v => { if (t) return v; const q = this.res.sides[side].inv(v); return [q[0] - o[0], q[1] - o[1]]; };
+      const ex = dir([1, 0]), ey = dir([0, 1]);
+      ctx.strokeStyle = COL.axisX; ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(o[0] + ex[0] * len, o[1] + ex[1] * len); ctx.stroke();
+      ctx.strokeStyle = COL.axisY; ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(o[0] + ey[0] * len, o[1] + ey[1] * len); ctx.stroke();
       ctx.fillStyle = COL.origin; ctx.beginPath(); ctx.arc(o[0], o[1], a * 0.55, 0, Math.PI * 2); ctx.fill();
     }
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);

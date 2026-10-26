@@ -233,7 +233,7 @@ async function addFileToPanel() {
 }
 function arrangePanel() {
   const P = st.panel, items = panelItems();
-  const mg = 2 * (6 + (S.pins.dia || 2.5) / 2), pos = PN.autoArrange(items, P.gap, S.setup.blankW - mg, S.setup.blankH - mg);
+  const mg = 2 * (6 + (S.pins.dia || 2.5) / 2), sw = CAM.boardRot(S) % 180 !== 0, pos = PN.autoArrange(items, P.gap, (sw ? S.setup.blankH : S.setup.blankW) - mg, (sw ? S.setup.blankW : S.setup.blankH) - mg);
   P.insts.forEach((it, i) => { it.x = +pos[i].x.toFixed(2); it.y = +pos[i].y.toFixed(2); });
   clearTimeout(panelT); reloadPanel({ keepView: true }).then(() => viewer.fit());
 }
@@ -427,6 +427,8 @@ const SECTIONS = [
     fields: [
       { k: 'setup.origin', label: 'Nula XY', type: 'select', wide: true, options: [['pin-ll', 'Střed levého dolního kolíčku'], ['board-ll', 'Levý dolní roh desky'], ['board-c', 'Střed desky'], ['aux', 'Pomocný počátek KiCadu'], ['abs', 'Počátek souřadnic KiCadu']] },
       { k: 'setup.offX', label: 'Posun nuly X', unit: 'mm' }, { k: 'setup.offY', label: 'Posun nuly Y', unit: 'mm' },
+      { k: 'setup.rot', label: 'Otočení desky na stroji', type: 'seg', wide: true, options: [[0, '0°'], [90, '90° ↻'], [180, '180°'], [270, '90° ↺']] },
+      { type: 'hint', html: () => 'Otočí všechny programy (pohled shora, ↻ = po směru hodin). Jak deska leží na stroji, ukáže náhled v režimu <b>Stroj</b>. Polotovar leží vždy šířkou v ose X. Výškovou mapu měř až po otočení.' },
       { k: 'setup.mirrorAxis', label: 'Otočení desky na spodní stranu', type: 'seg', wide: true, options: [['h', 'Horní hranou dolů'], ['v', 'Přes svislou osu']] },
       { k: 'setup.blankW', label: 'Polotovar šířka', unit: 'mm' }, { k: 'setup.blankH', label: 'Polotovar výška', unit: 'mm' },
       { k: 'setup.blankT', label: 'Tloušťka cuprextitu', unit: 'mm' },
@@ -1781,8 +1783,7 @@ function boardSimInfo(op) {
   const obb = G.bbox((b.outlines || [b.outline]).map(l => l.map(tf)));
   const su = S.setup;
   const cx = (obb.minX + obb.maxX) / 2, cy = (obb.minY + obb.maxY) / 2;
-  const rot = (obb.maxX - obb.minX > obb.maxY - obb.minY) !== (su.blankW > su.blankH);
-  const W = rot ? su.blankH : su.blankW, H = rot ? su.blankW : su.blankH;
+  const W = su.blankW, H = su.blankH; // polotovar leží šířkou v ose X stroje
   const stock = { minX: Math.min(cx - W / 2, obb.minX - 1), minY: Math.min(cy - H / 2, obb.minY - 1), maxX: Math.max(cx + W / 2, obb.maxX + 1), maxY: Math.max(cy + H / 2, obb.maxY + 1) };
   const layer = op.side === 'bottom' ? 'B.Cu' : 'F.Cu';
   const v = [];
