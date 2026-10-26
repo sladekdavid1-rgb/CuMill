@@ -1080,7 +1080,7 @@ const viewer = new Viewer($('#cv'), (p, hole) => {
   const op = st.res.ops.find(o => o.id === st.sel);
   const sd = st.res.sides[op ? op.side : st.res.firstSide];
   let design, mach;
-  if (st.mode === 'machine') { mach = p; design = viewer.toDesign(p); } else { design = p; mach = sd.fwd(p); }
+  if (st.mode === 'machine') { mach = p; design = viewer.toDesign(p); } else { design = viewer.toDesign(p); mach = sd.fwd(design); }
   const n = v => v.toFixed(3).padStart(8);
   let t = `stroj  X${n(mach[0])}  Y${n(mach[1])}\nKiCad  X${n(design[0])}  Y${n(-design[1])}`;
   if (hole) { const a = st.res.holeActs?.get(CAM.holeKey(hole)); t += `\n${hole.ref ? hole.ref + '  ' : ''}díra Ø${cz(hole.d)}${hole.slot ? ' (drážka)' : ''}${hole.plated === false ? ' NPTH' : ''}${a ? '  → ' + CAM.actLabel(S, a) : ''}`; }

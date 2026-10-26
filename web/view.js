@@ -2,6 +2,26 @@
 import * as G from './geom.js';
 import { movesToDesign } from './cam.js';
 
+// malý kříž os stroje (obrazovkové souřadnice, ex/ey = směry os X a Y na obrazovce, y dolů)
+function drawAxisGizmo(ctx, x, y, ex, ey, caption) {
+  const n = v => { const l = Math.hypot(v[0], v[1]) || 1; return [v[0] / l, v[1] / l]; };
+  const L = 34;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(x, y, 48, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.font = '700 13px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const [v, col, lab] of [[n(ex), COL.axisX, 'X'], [n(ey), COL.axisY, 'Y']]) {
+    const tx = x + v[0] * L, ty = y + v[1] * L, a = Math.atan2(v[1], v[0]);
+    ctx.strokeStyle = col; ctx.fillStyle = col;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx, ty); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tx + Math.cos(a) * 6, ty + Math.sin(a) * 6); ctx.lineTo(tx + Math.cos(a + 2.5) * 7, ty + Math.sin(a + 2.5) * 7); ctx.lineTo(tx + Math.cos(a - 2.5) * 7, ty + Math.sin(a - 2.5) * 7); ctx.fill();
+    ctx.fillText(lab, x + v[0] * (L + 13), y + v[1] * (L + 13));
+  }
+  ctx.fillStyle = COL.origin; ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+  if (caption) { ctx.font = '10px system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillText(caption, x, y - 56); }
+  ctx.restore();
+}
+
 import { COL, OPC } from './theme.js';
 export const OP_COLORS = OPC;
 // stálá barva podle jména sítě (bez sítě = šedá)
@@ -144,7 +164,7 @@ export class Viewer {
   }
   cancelDraft() { this.draft = null; this.rubber = null; this.draw(false); }
   undoDraft() { if (this.draft?.length) { this.draft.pop(); if (!this.draft.length) this.draft = null; this.draw(false); } }
-  toDesign(p) { const t = this._tf(); return t ? this.res.sides[t.side].inv(p) : p; }
+  toDesign(p) { const t = this._tf(); return t ? (t.inv || this.res.sides[t.side].inv)(p) : p; }
   fromDesign(p) { const t = this._tf(); return t ? t.fwd(p) : p; }
   resize() {
     const r = this.c.parentElement.getBoundingClientRect();
@@ -160,7 +180,9 @@ export class Viewer {
   setOpts(o) { Object.assign(this.opts, o); this.draw(); }
   // aktuální transformace geometrie návrhu (v režimu stroje podle strany vybrané operace)
   _tf() {
-    if (this.opts.mode !== 'machine' || !this.res) return null;
+    if (!this.res) return null;
+    // návrh s otočenou deskou: jen otočení (bez zrcadlení a posunu nuly), ať náhled odpovídá stroji
+    if (this.opts.mode !== 'machine') { const sd = this.res.sides.top; return sd.rot ? { side: null, rotOnly: sd.rot, fwd: sd.R, inv: sd.Ri } : null; }
     const op = this.res.ops.find(o => o.id === this.opts.opId) || this.res.ops[0];
     if (!op) return null;
     return { side: op.side, fwd: this.res.sides[op.side].fwd };
@@ -170,7 +192,7 @@ export class Viewer {
     const t = this._tf();
     const ols = (this.board.outlines || [this.board.outline]).map(l => t ? l.map(t.fwd) : l);
     const bb = G.bbox(ols);
-    if (t) { G.bbox([[[0, 0]]], bb); }
+    if (t && !t.rotOnly) { G.bbox([[[0, 0]]], bb); }
     return bb;
   }
   fit() {
@@ -233,7 +255,9 @@ export class Viewer {
     this._grid();
     if (!this.board) return;
     const b = this.board, L = this.opts.layers, t = this._tf();
-    const key = t ? 'm-' + t.side : 'd';
+    const key = t ? (t.rotOnly ? 'r' + t.rotOnly + '-' : 'm-' + t.side) : 'd';
+    const mach = t && !t.rotOnly;
+    const m2v = side => mach ? (p => p) : t ? (p => t.fwd(this.res.sides[side].inv(p))) : this.res.sides[side].inv; // strojové -> zobrazené
     const tf = t ? t.fwd : null;
     // svět -> obrazovka
     const s = this.scale;
@@ -241,7 +265,7 @@ export class Viewer {
     const px = 1 / s;
 
     // polotovar (v režimu stroje kolem desky)
-    if (t && this.res) {
+    if (mach && this.res) {
       const st = this.res.settings?.setup;
       if (st) {
         const bb = G.bbox((b.outlines || [b.outline]).map(l => tf ? l.map(tf) : l));
@@ -259,7 +283,7 @@ export class Viewer {
     for (const l of order) {
       if (L[l] === false || !b.copper[l].length) continue;
       const p = this._geom(key + l, () => pathFrom(b.copper[l], tf));
-      const active = !t || (t.side === 'bottom') === (l === 'B.Cu');
+      const active = !mach || (t.side === 'bottom') === (l === 'B.Cu');
       ctx.fillStyle = l === 'F.Cu' ? (active ? COL.fcu : COL.fcuDim) : (active ? COL.bcu : COL.bcuDim);
       if (!b.used[l]) ctx.fillStyle = l === 'F.Cu' ? COL.fcuDim : COL.bcuDim;
       ctx.fill(p, 'nonzero');
@@ -326,12 +350,12 @@ export class Viewer {
     }
     // dráhy
     if (this.res && L.paths !== false) {
-      const showOps = this.res.ops.filter(o => this.opts.visible?.[o.id] !== false && (o.side === 'bottom' ? L.pathsBot !== false : L.pathsTop !== false) && (!t || o.side === t.side || o.id === this.opts.opId));
+      const showOps = this.res.ops.filter(o => this.opts.visible?.[o.id] !== false && (o.side === 'bottom' ? L.pathsBot !== false : L.pathsTop !== false) && (!mach || o.side === t.side || o.id === this.opts.opId));
       for (const op of showOps) {
         const sel = op.id === this.opts.opId;
         const mv = this._geom(key + 'mv-' + op.id, () => {
-          const moves = t ? op.moves : movesToDesign(op, this.res.sides);
-          return { cut: linesFrom(moves.filter(m => m.t === 'cut').map(m => m.pts)), rapid: linesFrom(moves.filter(m => m.t === 'rapid').map(m => m.pts)), pts: op.points ? op.points.map(p => t ? [p.x, p.y] : this.res.sides[op.side].inv([p.x, p.y])) : null };
+          const f = m2v(op.side), moves = mach ? op.moves : op.moves.map(m => ({ ...m, pts: m.pts.map(f) }));
+          return { cut: linesFrom(moves.filter(m => m.t === 'cut').map(m => m.pts)), rapid: linesFrom(moves.filter(m => m.t === 'rapid').map(m => m.pts)), pts: op.points ? op.points.map(p => f([p.x, p.y])) : null };
         });
         const color = opColor(op);
         ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -346,7 +370,7 @@ export class Viewer {
             // dráhy obarvené podle sítě
             const byNet = this._geom(key + 'np-' + op.id, () => {
               const m = new Map();
-              for (const np of op.netPaths) { if (!m.has(np.net)) m.set(np.net, []); m.get(np.net).push(t ? np.pts : np.pts.map(this.res.sides[op.side].inv)); }
+              for (const np of op.netPaths) { if (!m.has(np.net)) m.set(np.net, []); m.get(np.net).push(np.pts.map(m2v(op.side))); }
               return [...m].map(([n, ls]) => [n, linesFrom(ls)]);
             });
             for (const [n, path] of byNet) {
@@ -406,16 +430,19 @@ export class Viewer {
     }
     // nula stroje
     if (this.res) {
-      const side = t ? t.side : (this.res.ops.find(o => o.id === this.opts.opId)?.side || this.res.firstSide);
-      const o = t ? [0, 0] : this.res.sides[side].inv([0, 0]);
+      const side = mach ? t.side : (this.res.ops.find(o => o.id === this.opts.opId)?.side || this.res.firstSide);
+      const o = m2v(side)([0, 0]);
       const a = 7 * px, len = 26 * px;
       ctx.lineWidth = 2 * px;
       // směr os stroje v aktuálním pohledu (v návrhu i se zrcadlením a otočením desky)
-      const dir = v => { if (t) return v; const q = this.res.sides[side].inv(v); return [q[0] - o[0], q[1] - o[1]]; };
+      const dir = v => { const q = m2v(side)(v); return [q[0] - o[0], q[1] - o[1]]; };
       const ex = dir([1, 0]), ey = dir([0, 1]);
       ctx.strokeStyle = COL.axisX; ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(o[0] + ex[0] * len, o[1] + ex[1] * len); ctx.stroke();
       ctx.strokeStyle = COL.axisY; ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(o[0] + ey[0] * len, o[1] + ey[1] * len); ctx.stroke();
       ctx.fillStyle = COL.origin; ctx.beginPath(); ctx.arc(o[0], o[1], a * 0.55, 0, Math.PI * 2); ctx.fill();
+      // souřadnicový kříž stroje v pravém dolním rohu (směry os X / Y v tomto pohledu)
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      drawAxisGizmo(ctx, this.w - 58, this.h - 58, [ex[0], -ex[1]], [ey[0], -ey[1]], mach ? 'stroj' : t ? 'návrh, otočeno' : 'návrh');
     }
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }

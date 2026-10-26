@@ -492,3 +492,4 @@ dialog.prjdlg { width: min(980px, 95vw); }
 .rotrow .inp { flex: 1; }
 .rotseg { flex-wrap: wrap; height: auto; }
 .rotseg button { flex: 1 0 30%; height: 28px; }
+.gv-gizmo { position: absolute; right: 12px; top: 56px; width: 116px; height: 116px; pointer-events: none; }

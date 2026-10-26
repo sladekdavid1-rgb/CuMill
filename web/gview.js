@@ -170,7 +170,8 @@ export class GcodeViewer {
       el('button', { class: 'iconbtn', type: 'button', title: 'Na konec (End)', html: ICO.end, onclick: () => { this.pause(); this.setTime(this.g ? this.g.total : 0); } }),
       this.slider, this.timeLbl, this.speedSel);
     this.empty = el('div', { class: 'gv-empty' }, 'Vyber program KiMillu nahoře, nebo otevři libovolný soubor .nc.');
-    this.stage.append(this.top, this.info, this.controls, this.empty, this.legend);
+    this.gizmo = el('canvas', { class: 'gv-gizmo', width: 116, height: 116 });
+    this.stage.append(this.top, this.info, this.controls, this.empty, this.legend, this.gizmo);
     if (this.machine) { this.controls.style.display = 'none'; this.srcSel.style.display = 'none'; this.top.querySelector('.btn.small').style.display = 'none'; this.info.style.display = 'none'; }
     // výpis
     this.listHead = el('div', { class: 'gv-lhead' });
@@ -637,8 +638,32 @@ export class GcodeViewer {
   }
   // ---------- kreslení ----------
   draw() { if (this._drawQ) return; this._drawQ = requestAnimationFrame(() => { this._drawQ = 0; this._draw(); }); }
+  // souřadnicový kříž X / Y / Z v rohu podle natočení kamery
+  _drawGizmo() {
+    const cv = this.gizmo; if (!cv) return;
+    const dpr = window.devicePixelRatio || 1, S = 58;
+    if (cv.width !== Math.round(S * 2 * dpr)) { cv.width = cv.height = Math.round(S * 2 * dpr); cv.style.width = cv.style.height = S * 2 + 'px'; }
+    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, S * 2, S * 2);
+    const c = this.cam, cp = Math.cos(c.pitch);
+    const V = M4.look([c.dist * cp * Math.cos(c.yaw), c.dist * cp * Math.sin(c.yaw), c.dist * Math.sin(c.pitch)], [0, 0, 0], [0, 0, 1]);
+    const L = 36, ax = [[V[0], V[1], V[2], '#ff5c5c', 'X'], [V[4], V[5], V[6], '#5cff8a', 'Y'], [V[8], V[9], V[10], '#5ca8ff', 'Z']];
+    ax.sort((a, b) => a[2] - b[2]); // vzdálenější osy dřív
+    g.fillStyle = 'rgba(0,0,0,0.32)'; g.beginPath(); g.arc(S, S, S - 4, 0, Math.PI * 2); g.fill();
+    g.lineCap = 'round'; g.font = '700 13px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const [x, y, z, col, lab] of ax) {
+      const tx = S + x * L, ty = S - y * L;
+      g.globalAlpha = z < -0.2 ? 0.55 : 1;
+      g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 2.5;
+      g.beginPath(); g.moveTo(S, S); g.lineTo(tx, ty); g.stroke();
+      g.beginPath(); g.arc(tx, ty, 3, 0, Math.PI * 2); g.fill();
+      const k = Math.hypot(x, y) < 0.15 ? 0 : 1;
+      g.fillText(lab, S + x * (L + 12) * k + (k ? 0 : 9), S - y * (L + 12) * k + (k ? 0 : -9));
+    }
+    g.globalAlpha = 1;
+  }
   _draw() {
     const gl = this.gl; if (!gl || !this.w) return;
+    this._drawGizmo();
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     const bg = T3D.bg3d || [0.075, 0.09, 0.085, 1]; gl.clearColor(bg[0], bg[1], bg[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     if (!this.g) { if (this.hmap) { gl.enable(gl.DEPTH_TEST); this._drawMap(gl, this._matrix()); } return; }

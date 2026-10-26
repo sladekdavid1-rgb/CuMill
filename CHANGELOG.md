@@ -14,6 +14,8 @@
   check now uses the fixed blank orientation (width along X) and suggests rotating when the board does not fit
 - Starting a new version while an older one is still running now closes the old one and starts the new one
   (unless the old one is sending a program to the machine) – before, the new exe silently opened the old UI
+- Machine axis cross (X / Y) in the corner of the board preview, X / Y / Z cross in the G-code 3D view;
+  the design view shows the board rotated as well
 - New orange application icon that stays visible on a dark taskbar
 
 ## 1.4 – 2026-10

@@ -115,7 +115,7 @@ export function makeSides(board, s, pinsDesign) {
     const fwd = p => { const q = m(p); return [q[0] - ox, q[1] - oy]; };
     const inv = ([x, y]) => mInv([x + ox, y + oy]);
     if (rot) desc += `, deska otocena o ${String(rot).replace('.', ',')} st.`;
-    return { mirror, fwd, inv, desc, axis, rot, center: [cx, cy] };
+    return { mirror, fwd, inv, desc, axis, rot, R, Ri, center: [cx, cy] };
   };
   return { top: mk(false), bottom: mk(true) };
 }
