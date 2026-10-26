@@ -69,7 +69,18 @@ export function opParams(S, key, tool, base = {}) {
 export const isoWidth = S => S.iso.width;
 // ---------- souřadnicové transformace stran ----------
 // strana 'top' = pohled shora jako v KiCadu, 'bottom' = deska otočená (zrcadlení)
-export const boardRot = S => { const r = ((+S.setup.rot || 0) % 360 + 360) % 360; return r === 90 || r === 180 || r === 270 ? r : 0; };
+// otočení desky na stroji ve stupních (po směru hodin při pohledu shora), 0 ≤ r < 360
+export const boardRot = S => { const v = +S.setup?.rot; if (!isFinite(v)) return 0; const r = Math.round(((v % 360) + 360) % 360 * 100) / 100; return r >= 360 ? 0 : r; };
+// funkce otočení bodu kolem (cx, cy) a její inverze
+export function rotFns(S, cx, cy) {
+  const rot = boardRot(S);
+  if (!rot) return { rot, R: p => p, Ri: p => p, c: 1, s: 0 };
+  const a = -rot * Math.PI / 180, snap = v => Math.abs(v) < 1e-12 ? 0 : Math.abs(Math.abs(v) - 1) < 1e-12 ? Math.sign(v) : v;
+  const c = snap(Math.cos(a)), s = snap(Math.sin(a));
+  return { rot, c, s,
+    R: ([x, y]) => [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c],
+    Ri: ([x, y]) => [cx + (x - cx) * c + (y - cy) * s, cy - (x - cx) * s + (y - cy) * c] };
+}
 export function makeSides(board, s, pinsDesign) {
   let cx, cy;
   if (pinsDesign.length >= 2) {
@@ -78,9 +89,7 @@ export function makeSides(board, s, pinsDesign) {
   } else { cx = (board.bb.minX + board.bb.maxX) / 2; cy = (board.bb.minY + board.bb.maxY) / 2; }
   const axis = s.setup.mirrorAxis;
   // otočení desky na stroji (po směru hodinových ručiček při pohledu shora) kolem středu
-  const rot = boardRot(s), [rc, rs] = [[1, 0], [0, -1], [-1, 0], [0, 1]][rot / 90];
-  const R = rot ? ([x, y]) => [cx + (x - cx) * rc - (y - cy) * rs, cy + (x - cx) * rs + (y - cy) * rc] : (p => p);
-  const Ri = rot ? ([x, y]) => [cx + (x - cx) * rc + (y - cy) * rs, cy - (x - cx) * rs + (y - cy) * rc] : (p => p);
+  const { rot, R, Ri } = rotFns(s, cx, cy);
   const mk = (mirror) => {
     const mir = mirror ? (axis === 'h' ? ([x, y]) => [x, 2 * cy - y] : ([x, y]) => [2 * cx - x, y]) : (p => p);
     const m = p => mir(R(p)), mInv = p => Ri(mir(p));
@@ -105,7 +114,7 @@ export function makeSides(board, s, pinsDesign) {
     if (s.setup.offX || s.setup.offY) desc += `, posun X${s.setup.offX} Y${s.setup.offY}`;
     const fwd = p => { const q = m(p); return [q[0] - ox, q[1] - oy]; };
     const inv = ([x, y]) => mInv([x + ox, y + oy]);
-    if (rot) desc += `, deska otocena o ${rot} st.`;
+    if (rot) desc += `, deska otocena o ${String(rot).replace('.', ',')} st.`;
     return { mirror, fwd, inv, desc, axis, rot, center: [cx, cy] };
   };
   return { top: mk(false), bottom: mk(true) };
@@ -402,12 +411,15 @@ export function findPins(board, s, B) {
   const pins = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => ({ x: cx + a * p.patW / 2, y: cy + b * p.patH / 2, fromHole: false }));
   return { pins, info: `Kolíčky ve vzoru ${fmtMM(p.patW)} × ${fmtMM(p.patH)} mm kolem středu desky.` };
 }
-// polotovar (střed na desce, otočený podle tvaru desky) v souřadnicích návrhu
+// polotovar ve strojovém natočení: střed na desce, šířka v ose X stroje.
+// inside(x, y, r) = kruh (návrh) leží celý na polotovaru; size = rozměr otočené desky na stroji
 export function blankRect(board, S) {
   const cx = (board.bb.minX + board.bb.maxX) / 2, cy = (board.bb.minY + board.bb.maxY) / 2;
-  const sw = boardRot(S) % 180 !== 0; // polotovar leží na stroji vždy šířkou v ose X
-  const W = sw ? S.setup.blankH : S.setup.blankW, H = sw ? S.setup.blankW : S.setup.blankH;
-  return { cx, cy, W, H, minX: cx - W / 2, maxX: cx + W / 2, minY: cy - H / 2, maxY: cy + H / 2 };
+  const { R } = rotFns(S, cx, cy);
+  const bb = G.bbox((board.outlines || [board.outline]).map(l => l.map(R)));
+  const mx = (bb.minX + bb.maxX) / 2, my = (bb.minY + bb.maxY) / 2, W = S.setup.blankW, H = S.setup.blankH;
+  const inside = (x, y, r) => { const [u, v] = R([x, y]); return u - r >= mx - W / 2 && u + r <= mx + W / 2 && v - r >= my - H / 2 && v + r <= my + H / 2; };
+  return { W, H, inside, size: { w: bb.maxX - bb.minX, h: bb.maxY - bb.minY } };
 }
 // kontrola polohy kolíčků
 function pinChecks(board, S, pins, checks, markers) {
@@ -424,7 +436,7 @@ function pinChecks(board, S, pins, checks, markers) {
       const disk = [G.circle(p.x, p.y, r)];
       for (const L of ['F.Cu', 'B.Cu']) if (board.hasCopper[L] && G.intersection(board.copper[L], disk).length) { probs.push(`zasahuje do mědi ${L}`); break; }
     }
-    if (p.x - r < blank.minX || p.x + r > blank.maxX || p.y - r < blank.minY || p.y + r > blank.maxY) probs.push(`je mimo polotovar ${S.setup.blankW} × ${S.setup.blankH}`);
+    if (!blank.inside(p.x, p.y, r)) probs.push(`je mimo polotovar ${S.setup.blankW} × ${S.setup.blankH}`);
     if (!onBoard && cutR && distOutline(p.x, p.y) < r + 2 * cutR + 0.2) probs.push('je v dráze ořezu desky');
     p.problems = probs;
     if (probs.length) {
@@ -951,11 +963,11 @@ export function computeAll(board, S, B) {
 
   // --- souhrnné kontroly
   const bs = board.size;
-  const sw = boardRot(S) % 180 !== 0, mw = sw ? bs.h : bs.w, mh = sw ? bs.w : bs.h; // rozměr desky na stroji (X × Y)
+  const ms = blankRect(board, S).size, mw = ms.w, mh = ms.h; // rozměr (otočené) desky na stroji (X × Y)
   const fits = mw <= S.setup.blankW && mh <= S.setup.blankH;
   if (!fits) {
-    const turned = mh <= S.setup.blankW && mw <= S.setup.blankH;
-    checks.push({ level: 'error', text: `Deska ${fmtMM(mw)} × ${fmtMM(mh)} mm (X × Y na stroji) se nevejde na polotovar ${S.setup.blankW} × ${S.setup.blankH} mm.${turned ? (boardRot(S) % 180 ? ' Vrať otočení desky na 0° nebo 180° (Deska a nula → Otočení desky na stroji).' : ' Otoč desku o 90° (Deska a nula → Otočení desky na stroji).') : ''}` });
+    const turned = mh <= S.setup.blankW && mw <= S.setup.blankH && mw > S.setup.blankW;
+    checks.push({ level: 'error', text: `Deska ${fmtMM(mw)} × ${fmtMM(mh)} mm (X × Y na stroji) se nevejde na polotovar ${S.setup.blankW} × ${S.setup.blankH} mm.${turned ? ' Zkus desku otočit o 90° (Deska a nula → Otočení desky na stroji).' : ''}` });
   }
   const dOp = ops.filter(o => o.kind === 'drill');
   if (dOp.some(o => o.prm.depth < S.setup.blankT + 0.1)) checks.push({ level: 'warn', text: `Hloubka vrtání je menší než tloušťka desky ${fmtMM(S.setup.blankT)} mm + 0,1.` });

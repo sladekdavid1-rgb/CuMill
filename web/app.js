@@ -233,7 +233,7 @@ async function addFileToPanel() {
 }
 function arrangePanel() {
   const P = st.panel, items = panelItems();
-  const mg = 2 * (6 + (S.pins.dia || 2.5) / 2), sw = CAM.boardRot(S) % 180 !== 0, pos = PN.autoArrange(items, P.gap, (sw ? S.setup.blankH : S.setup.blankW) - mg, (sw ? S.setup.blankW : S.setup.blankH) - mg);
+  const mg = 2 * (6 + (S.pins.dia || 2.5) / 2), sw = Math.abs(Math.sin(CAM.boardRot(S) * Math.PI / 180)) > 0.71, pos = PN.autoArrange(items, P.gap, (sw ? S.setup.blankH : S.setup.blankW) - mg, (sw ? S.setup.blankW : S.setup.blankH) - mg);
   P.insts.forEach((it, i) => { it.x = +pos[i].x.toFixed(2); it.y = +pos[i].y.toFixed(2); });
   clearTimeout(panelT); reloadPanel({ keepView: true }).then(() => viewer.fit());
 }
@@ -427,8 +427,8 @@ const SECTIONS = [
     fields: [
       { k: 'setup.origin', label: 'Nula XY', type: 'select', wide: true, options: [['pin-ll', 'Střed levého dolního kolíčku'], ['board-ll', 'Levý dolní roh desky'], ['board-c', 'Střed desky'], ['aux', 'Pomocný počátek KiCadu'], ['abs', 'Počátek souřadnic KiCadu']] },
       { k: 'setup.offX', label: 'Posun nuly X', unit: 'mm' }, { k: 'setup.offY', label: 'Posun nuly Y', unit: 'mm' },
-      { k: 'setup.rot', label: 'Otočení desky na stroji', type: 'seg', wide: true, options: [[0, '0°'], [90, '90° ↻'], [180, '180°'], [270, '90° ↺']] },
-      { type: 'hint', html: () => 'Otočí všechny programy (pohled shora, ↻ = po směru hodin). Jak deska leží na stroji, ukáže náhled v režimu <b>Stroj</b>. Polotovar leží vždy šířkou v ose X. Výškovou mapu měř až po otočení.' },
+      { k: 'setup.rot', label: 'Otočení desky na stroji', type: 'rot', wide: true },
+      { type: 'hint', html: () => 'Úhel po směru hodin při pohledu shora (záporný = proti směru). Otočí všechny programy; jak deska leží na stroji, ukáže náhled v režimu <b>Stroj</b>. Polotovar leží vždy šířkou v ose X. Výškovou mapu měř až po otočení.' },
       { k: 'setup.mirrorAxis', label: 'Otočení desky na spodní stranu', type: 'seg', wide: true, options: [['h', 'Horní hranou dolů'], ['v', 'Přes svislou osu']] },
       { k: 'setup.blankW', label: 'Polotovar šířka', unit: 'mm' }, { k: 'setup.blankH', label: 'Polotovar výška', unit: 'mm' },
       { k: 'setup.blankT', label: 'Tloušťka cuprextitu', unit: 'mm' },
@@ -590,6 +590,22 @@ function renderField(f) {
   }
   const wrap = el('div', { class: 'f' + (f.wide ? ' wide' : '') }); wrap._f = f;
   wrap.append(el('label', {}, f.label));
+  if (f.type === 'rot') {
+    // vlastní úhel + předvolby
+    const norm = v => { const r = ((v % 360) + 360) % 360; return Math.round(r * 100) / 100; };
+    const presets = [[0, '0°'], [90, '90° ↻'], [180, '180°'], [270, '90° ↺'], [45, '45°'], [315, '−45°']];
+    const seg = el('div', { class: 'seg2 rotseg' });
+    const mark = () => seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', norm(+get(f.k) || 0) === +b.dataset.v));
+    const inp = numInput(() => norm(+get(f.k) || 0), v => { set(f.k, norm(v)); mark(); changed(f.k); }, { unit: '°' });
+    for (const [v, t] of presets) {
+      const b = el('button', { type: 'button', 'data-v': v }, t);
+      b.addEventListener('click', () => { set(f.k, v); inp._show(); mark(); changed(f.k); });
+      seg.append(b);
+    }
+    mark();
+    wrap.append(el('div', { class: 'rotrow' }, inp, el('button', { class: 'iconbtn', type: 'button', title: 'Otočit o −90° (proti směru hodin)', onclick: () => { set(f.k, norm((+get(f.k) || 0) - 90)); inp._show(); mark(); changed(f.k); } }, '↺'), el('button', { class: 'iconbtn', type: 'button', title: 'Otočit o +90° (po směru hodin)', onclick: () => { set(f.k, norm((+get(f.k) || 0) + 90)); inp._show(); mark(); changed(f.k); } }, '↻')), seg);
+    return wrap;
+  }
   if (f.type === 'seg') {
     const seg = el('div', { class: 'seg2' });
     for (const [v, t] of f.options) {

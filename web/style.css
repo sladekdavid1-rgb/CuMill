@@ -488,3 +488,7 @@ dialog.prjdlg { width: min(980px, 95vw); }
 .pbar { display: flex; flex-wrap: wrap; gap: 6px; }
 .pbar .btn { flex: 1 1 auto; justify-content: center; }
 .prjpanel { padding-top: 4px; border-top: 1px solid var(--line); } .prjpanel .btn { margin-left: auto; }
+.rotrow { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.rotrow .inp { flex: 1; }
+.rotseg { flex-wrap: wrap; height: auto; }
+.rotseg button { flex: 1 0 30%; height: 28px; }
