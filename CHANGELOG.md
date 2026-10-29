@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- **Much faster recomputing** – finished isolation paths (and their arc fitting) are kept in memory, so changing
+  the cut-out, tabs, drilling, feeds etc. no longer recomputes multi-pass isolation (e.g. 37 s → 0.1 s with 15 passes);
+  isolation is computed again only when its own geometry settings, edits or board placement change
 - **Renamed from CuMill to KiMill** – on first start the data folders are moved automatically
   (%LOCALAPPDATA%\CuMill → KiMill, Documents\CuMill\Projekty → Documents\KiMill\Projekty, `.cumill` → `.kimill`);
   old `.cumill` project files still open

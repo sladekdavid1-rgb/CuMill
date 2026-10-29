@@ -268,7 +268,18 @@ function arcRun(pts, i, tol) {
   }
   return best;
 }
+// proložení oblouky je pomalé – výsledek se pamatuje k dané dráze (pole bodů z mezipaměti drah)
+const fitMemo = new WeakMap();
 export function fitPath(pts, arcs = true, tol = 0.005) {
+  const k = (arcs ? 'a' : 'l') + tol;
+  let m = fitMemo.get(pts);
+  if (m && m[k]) return m[k];
+  const out = fitPathRaw(pts, arcs, tol);
+  if (!m) { m = {}; fitMemo.set(pts, m); }
+  m[k] = out;
+  return out;
+}
+function fitPathRaw(pts, arcs, tol) {
   const out = [];
   let i = 0;
   while (i < pts.length - 1) {
@@ -507,6 +518,20 @@ export function geoObjSet(S, B, o) {
   return s;
 }
 
+// ---------- mezipaměť drah: při změně ořezu, můstků, děr… se izolace nepočítá znovu ----------
+const geoCache = new WeakMap();
+function cached(board, key, fn) {
+  let m = geoCache.get(board);
+  if (!m) { m = new Map(); geoCache.set(board, m); }
+  if (m.has(key)) { const v = m.get(key); m.delete(key); m.set(key, v); return v; }
+  const v = fn();
+  m.set(key, v);
+  while (m.size > 12) m.delete(m.keys().next().value);
+  return v;
+}
+// otisk transformace strany (je afinní – stačí tři body)
+const tfPrint = tf => [[0, 0], [1, 0], [0, 1]].map(p => tf.fwd(p).map(v => Math.round(v * 1e9) / 1e9)).join(';');
+
 // ---------- výpočet všech operací ----------
 export function computeAll(board, S, B) {
   B = B || boardDefaults();
@@ -598,9 +623,6 @@ export function computeAll(board, S, B) {
     const tf = sides[sd];
     const key = 'iso-' + L;
     const prm = opParams(S, key, isoTool, { depth: S.iso.depth, step: S.iso.step });
-    const copperT = tPaths(board.copper[L], tf.fwd);
-    const outlinesT = (board.outlines || [board.outline]).map(l => l.map(tf.fwd));
-    const region = S.iso.clip ? G.offset(outlinesT, w * 0.75) : null;
     const isl = board.islands[L] || [];
     // průjezdy každého ostrůvku: úprava kusu > úprava sítě > výchozí
     const passOf = isl.map(it => {
@@ -614,6 +636,11 @@ export function computeAll(board, S, B) {
     }
     for (const n of Object.keys(B.nets)) if (board.source === 'kicad' && !isl.some(it => it.net === n) && !(board.islands[L === 'F.Cu' ? 'B.Cu' : 'F.Cu'] || []).some(it => it.net === n)) checks.push({ level: 'warn', text: `Síť „${n}“ s vlastním počtem průjezdů na desce není.` });
     const maxP = isl.length ? Math.max(...passOf) : Math.max(1, Math.round(S.iso.passes));
+    const isoKey = JSON.stringify(['iso', L, tfPrint(tf), w, S.iso.overlap, S.iso.climb, S.iso.clip, S.iso.clearOverlap, maxP, passOf, B.areas.filter(a => (a.type === 'block' || a.type === 'clear') && (a.layer === L || a.layer === 'both')), board.source]);
+    const { ordered, clearRings } = cached(board, isoKey, () => {
+    const copperT = tPaths(board.copper[L], tf.fwd);
+    const outlinesT = (board.outlines || [board.outline]).map(l => l.map(tf.fwd));
+    const region = S.iso.clip ? G.offset(outlinesT, w * 0.75) : null;
     const blocks = B.areas.filter(a => a.type === 'block' && (a.layer === L || a.layer === 'both')).map(a => G.union([a.pts.map(tf.fwd)])).flat();
     const forbidden = maxP > 1 ? G.offset(copperT, w / 2 - 0.003) : null;
     const items = [];
@@ -695,6 +722,8 @@ export function computeAll(board, S, B) {
         it.net = best?.net || '';
       }
     }
+    return { ordered, clearRings };
+    });
     const isoMulti = prm.step > 0 && prm.step < prm.depth - 1e-6 && (S.iso.step > 0 || has(S.ov[key]?.step));
     const isoDepths = isoMulti ? depthList(prm.depth, prm.step) : [prm.depth];
     const theo = toolWidth(isoTool, prm.depth);
@@ -716,7 +745,7 @@ export function computeAll(board, S, B) {
       g.rapidZ(M.zTravel);
     }
     ops.push({ id: key, key, no: nextNo(), kind: 'iso', layer: L, title: `Izolace ${L === 'B.Cu' ? 'spodní' : 'horní'} mědi${sd === 'bottom' ? ' (zrcadleně)' : ''}`, short: `${L === 'B.Cu' ? 'Bcu' : 'Fcu'}_izolace${sd === 'bottom' ? '_ZRCADLENO' : ''}_V${w.toFixed(2)}`, side: sd, toolRef: 'iso.tool', toolTypes: ['v', 'end'], toolId: isoTool?.id, tool: `${toolLabel(isoTool)} · šířka ${fmtMM(w, 3)}`, toolDia: w, prm, fields: ['feed', 'plunge', 'spindle', 'step', 'depth'], gcode: g.build(body, G.bbox(ordered.map(o => o.pts))), moves: g.moves, minutes: g.minutes(), count: ordered.length, extra: clearRings ? `${clearRings} drah čištění` : '', netPaths: ordered.map(o => ({ net: o.net || '', pts: o.closed ? o.pts.concat([o.pts[0]]) : o.pts })) });
-    gapCheck(board, L, w, checks, markers);
+    { const gc = cached(board, 'gap|' + L + '|' + w, () => { const c = [], m = []; gapCheck(board, L, w, c, m); return { c, m }; }); checks.push(...gc.c); markers.push(...gc.m); }
     genSilk(L === 'B.Cu' ? 'B.SilkS' : 'F.SilkS');
   }
   // potisk strany bez izolace (např. holá strana jednostranné desky)
