@@ -135,7 +135,8 @@ Měď se dá frézovat **na dvakrát**: nejdřív izolace V-frézou jako obvykle
 | **Nástroj na zbylou měď** | válcová fréza z knihovny (výchozí Ø1,8) |
 | **Hloubka (zbylá měď)** | jak hluboko (výchozí 0,1 mm) |
 | **Překrytí drah** | o kolik % se sousední dráhy překrývají |
-| **Přesah do pásu izolace** | o kolik mm zajede do pásu, který už odfrézovala izolace – aby nezůstal proužek mědi |
+| **Min. vzdálenost od cest** | jak blízko smí **okraj** velké frézy k mědi, která zůstane (cesty, plošky). Např. 2 mm = fréza se k cestám nepřiblíží na méně než 2 mm. 0 = automaticky podle pásu izolace. |
+| **Přesah do pásu izolace** | (jen při 0 výše) o kolik mm zajede do pásu, který už odfrézovala izolace – aby nezůstal proužek mědi |
 
 Fréza jede jen tam, kam se vejde – úzké mezery a kouty zůstanou (ty má na starosti izolace).
 Měď **vně desky** (rámeček polotovaru, kam se připíná klip sondy) zůstává. Program se objeví

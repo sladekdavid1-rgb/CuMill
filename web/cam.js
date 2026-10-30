@@ -26,7 +26,7 @@ export function defaults() {
     drill: { depthMode: 'auto', through: 0.3, depth: 1.7, millAbove: 0.3, millTool: 'e10', side: 'auto' },
     geo: { tool: 'e18', pocketOverlap: 40 },
     cut: { enabled: true, tool: 'e18', depth: 1.8, step: null, tabs: 0, tabW: 2, tabH: 0.6, climb: true },
-    rest: { F: false, B: false, tool: 'e18', depth: 0.1, overlap: 40, isoOverlap: 0.1 },
+    rest: { F: false, B: false, tool: 'e18', depth: 0.1, overlap: 40, isoOverlap: 0.1, minDist: 0 },
     silk: { F: false, B: false, tool: 'v30', depth: 0.08, texts: true, graphics: true, avoid: 'tracks', margin: 0.15 },
     ov: {}, // přepsané parametry jednotlivých operací {klíč: {feed, plunge, spindle, step, depth}}
   };
@@ -804,7 +804,8 @@ export function computeAll(board, S, B) {
         const tw = toolWidth(tool, prm.depth), r = tw / 2;
         const minP = isl.length ? Math.min(...passOf) : maxP;
         const reach = w / 2 + (minP - 1) * w * (1 - S.iso.overlap / 100) + w / 2; // vnější hrana izolace
-        const keepD = Math.max(w / 2 + 0.02, reach - Math.max(0, +rs.isoOverlap || 0));
+        // odstup okraje frézy od mědi: ručně (min. vzdálenost od cest), jinak podle pásu izolace
+        const keepD = +rs.minDist > 0 ? Math.max(w / 2 + 0.02, +rs.minDist) : Math.max(w / 2 + 0.02, reach - Math.max(0, +rs.isoOverlap || 0));
         const step = Math.max(0.02, tw * (1 - (rs.overlap ?? 40) / 100));
         const rKey = JSON.stringify(['rest', L, tfPrint(tf), keepD, r, step, S.iso.climb, B.areas.filter(a => a.type === 'block' && (a.layer === L || a.layer === 'both'))]);
         const { paths: rp, area } = cached(board, rKey, () => {
@@ -824,7 +825,7 @@ export function computeAll(board, S, B) {
           return { paths: orderPaths(out), area };
         });
         if (rp.length) {
-          const g = mkG({ title: `Odstraneni zbyle medi ${L}${sd === 'bottom' ? ' zrcadleno' : ''}`, tool: toolLabel(tool), origin: tf.desc, side: sideName(sd), notes: [`Hloubka ${prm.depth} mm, ${rp.length} drah, prekryv ${rs.overlap ?? 40} %, ${prmNote(prm)}`] }, prm);
+          const g = mkG({ title: `Odstraneni zbyle medi ${L}${sd === 'bottom' ? ' zrcadleno' : ''}`, tool: toolLabel(tool), origin: tf.desc, side: sideName(sd), notes: [`Hloubka ${prm.depth} mm, ${rp.length} drah, prekryv ${rs.overlap ?? 40} %, odstup od medi ${fmtMM(keepD, 2)} mm, ${prmNote(prm)}`] }, prm);
           const body = []; g.lines = body;
           millLoops(g, rp, [prm.depth], prm, M);
           ops.push({ id: rkey, key: rkey, no: nextNo(), kind: 'rest', layer: L, title: `Zbylá měď ${L === 'B.Cu' ? 'spodní' : 'horní'}${sd === 'bottom' ? ' (zrcadleně)' : ''}`, short: `${L === 'B.Cu' ? 'Bcu' : 'Fcu'}_zbyla_med${sd === 'bottom' ? '_ZRCADLENO' : ''}`, side: sd, toolRef: 'rest.tool', toolTypes: ['end', 'v'], toolId: tool.id, tool: toolLabel(tool), toolDia: tw, prm, fields: ['feed', 'plunge', 'spindle', 'depth'], gcode: g.build(body, G.bbox(rp.map(o => o.pts))), moves: g.moves, minutes: g.minutes(), count: rp.length, extra: `${Math.round(area)} mm²` });

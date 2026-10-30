@@ -144,7 +144,8 @@ tool** (end mill) clears **large copper areas** between the tracks. It is enable
 | **Nástroj na zbylou měď** (Tool) | end mill from the library (default Ø1.8) |
 | **Hloubka** (Depth) | how deep (default 0.1 mm) |
 | **Překrytí drah** (Path overlap) | overlap of neighbouring paths in % |
-| **Přesah do pásu izolace** (Overlap into isolation) | how far (mm) it reaches into the band already cut by the isolation, so no copper sliver is left |
+| **Min. vzdálenost od cest** (Min. distance from tracks) | how close the **edge** of the big end mill may get to the copper that stays (tracks, pads). E.g. 2 mm = it never gets closer than 2 mm. 0 = automatic, by the isolation band. |
+| **Přesah do pásu izolace** (Overlap into isolation, only with 0 above) | how far (mm) it reaches into the band already cut by the isolation, so no copper sliver is left |
 
 The end mill only goes where it fits – narrow gaps and corners stay (the isolation handles them).
 Copper **outside the board** (the blank frame where the probe clip goes) stays. The program appears
