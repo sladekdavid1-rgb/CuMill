@@ -56,6 +56,7 @@ pro daný typ operace upraví (např. *Izolace × 1,18*). **Vynulovat kalibraci*
 | **Rychle / Pomalu** | rychlost hledání (mm/min) |
 | **Odjezd** | zvednutí mezi rychlým a pomalým měřením |
 | **Hledat Z (sonda Z)** | jak daleko dolů se hledá povrch |
+| **Kde měřit Z nástroje** | *Automaticky* – nad měď vně desky (rámeček polotovaru), *Ručně* – zadané X Y v pracovních souřadnicích, *Kde stojí nástroj* – bez přejezdu |
 | **Po změření vyjet o** | zvednutí po dokončení |
 | **Tloušťka destičky** | u dotykové destičky – o kolik je její povrch nad deskou |
 | **Měřit dvakrát** | nejdřív rychle, pak pomalu a přesně |

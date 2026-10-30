@@ -45,7 +45,7 @@ export function initMachine(ctx) {
     st: { state: 'Odpojeno', mpos: null, wpos: null, wco: [0, 0, 0], fs: [0, 0], ov: [100, 100, 100], pn: '' },
     settings: {},
     jog: { xy: saved.jog?.xy ?? 1, z: saved.jog?.z ?? 0.1, feed: saved.jog?.feed ?? 1000 },
-    probe: { type: 'clip', fast: 100, slow: 20, search: 10, retract: 0.5, double: true, plate: 0, clear: 2, tipDia: 2, xySearch: 10, cornerOff: 10, ...(saved.probe || {}) },
+    probe: { type: 'clip', fast: 100, slow: 20, search: 10, retract: 0.5, double: true, plate: 0, clear: 2, tipDia: 2, xySearch: 10, cornerOff: 10, spot: 'auto', spotX: 0, spotY: 0, ...(saved.probe || {}) },
     setter: { on: false, x: null, y: null, z: -5, search: 30, ref: null, ...(saved.setter || {}) },
     lastTool: saved.lastTool || '', zTool: saved.zTool || '',
     lastRun: saved.lastRun || null,
@@ -106,10 +106,12 @@ export function initMachine(ctx) {
     droBox.append(el('span', { class: 'dro-a' }, a), w, m, z);
   }
   const gotoInp = { X: el('input', { placeholder: 'X' }), Y: el('input', { placeholder: 'Y' }), Z: el('input', { placeholder: 'Z' }) };
-  let gotoAbs = false;
-  const gotoSeg = el('div', { class: 'seg2' },
-    el('button', { class: 'on', onclick: e => { gotoAbs = false; segOn(e.target); } }, 'Relativně'),
-    el('button', { onclick: e => { gotoAbs = true; segOn(e.target); } }, 'Strojově'));
+  // režim: 'work' = pracovní souřadnice (od nuly desky), 'rel' = o kolik od aktuální polohy, 'mach' = strojové (G53)
+  let gotoMode = 'work';
+  const gotoSeg = el('div', { class: 'seg2', title: 'Pracovně = poloha od nuly desky · O kolik = posun od aktuální polohy · Strojově = souřadnice stroje (G53)' },
+    el('button', { class: 'on', onclick: e => { gotoMode = 'work'; segOn(e.target); } }, 'Pracovně'),
+    el('button', { onclick: e => { gotoMode = 'rel'; segOn(e.target); } }, 'O kolik'),
+    el('button', { onclick: e => { gotoMode = 'mach'; segOn(e.target); } }, 'Strojově'));
   left.append(card('Souřadnice',
     el('div', { class: 'dro-head' }, el('span'), el('span', {}, 'relativní'), el('span', {}, 'strojové'), el('span')), droBox,
     el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: safeRun(() => zeroAxes('XYZ')) }, 'Vše na 0'), el('button', { class: 'btn small', title: 'Zrušit dočasný posun nuly G92 (G92.1)', onclick: safeRun(() => cmd('G92.1', true)) }, 'Zrušit G92')),
@@ -406,14 +408,17 @@ export function initMachine(ctx) {
     inp.addEventListener('blur', () => done(false));
     inp.addEventListener('click', e => e.stopPropagation());
   }
-  async function moveSafe(x, y, z, machineCoords = false) {
+  async function moveSafe(x, y, z, machineCoords = false, keepZ = false) {
     const pre = machineCoords ? 'G53 ' : '';
     const sz = safeZ();
-    if (machineCoords) {
-      // bezpečná výška ve strojových souřadnicích = aktuální Z, pokud je výš
+    const xyMove = x != null || y != null;
+    if (!xyMove) { /* jen Z – bez zdvihu */ }
+    else if (keepZ && z == null) { /* posun o kolik jen v XY – výška zůstane (jako jog) */ }
+    else if (machineCoords) {
+      // bezpečná výška ve strojových souřadnicích = aktuální Z, pokud je výš (nejvýš 1 mm pod horní doraz)
       const curM = M.st.mpos?.[2] ?? 0, safeM = Math.max(curM, sz + (M.st.wco?.[2] ?? 0));
-      await cmd(`G90 G53 G0 Z${fmt(Math.min(safeM, -1))}`, true);
-    } else if (wz() < sz) await cmd(`G90 G0 Z${fmt(sz)}`, true);
+      await cmd(`G90 G53 G0 Z${fmt(Math.min(safeM, zTopMach()))}`, true);
+    } else if (wz() < sz) await cmd(`G90 G0 Z${fmt(Math.min(sz, zTopWork() ?? sz))}`, true);
     const xy = [x != null ? 'X' + fmt(x) : '', y != null ? 'Y' + fmt(y) : ''].join(' ').trim();
     if (xy) await cmd(`G90 ${pre}G0 ${xy}`, true);
     if (z != null) {
@@ -427,7 +432,12 @@ export function initMachine(ctx) {
   async function gotoXYZ() {
     const v = Object.fromEntries(Object.entries(gotoInp).map(([k, i]) => [k, num(i.value)]));
     if (v.X == null && v.Y == null && v.Z == null) throw new Error('Zadej aspoň jednu souřadnici.');
-    await moveSafe(v.X, v.Y, v.Z, gotoAbs);
+    if (gotoMode === 'rel') {
+      // posun od aktuální polohy → převod na pracovní souřadnice
+      const w = M.st.wpos || [0, 0, 0];
+      return moveSafe(v.X != null ? w[0] + v.X : null, v.Y != null ? w[1] + v.Y : null, v.Z != null ? w[2] + v.Z : null, false, true);
+    }
+    await moveSafe(v.X, v.Y, v.Z, gotoMode === 'mach');
   }
   // jog
   const travel = a => +(M.settings[{ X: 130, Y: 131, Z: 132 }[a]] || 300);
@@ -548,7 +558,7 @@ export function initMachine(ctx) {
   async function saveSetterPos() {
     if (!M.st.mpos) throw new Error('Stroj není připojen.');
     M.setter.x = +M.st.mpos[0].toFixed(3); M.setter.y = +M.st.mpos[1].toFixed(3);
-    M.setter.z = +Math.min(M.st.mpos[2], -1).toFixed(3); // odsud se začne měřit
+    M.setter.z = +Math.min(M.st.mpos[2], zTopMach()).toFixed(3); // odsud se začne měřit
     M.setter.on = true; save(); renderSetterInfo();
     ctx.toast('Poloha Z sondy uložena (měřit se bude z této výšky).');
   }
@@ -557,13 +567,13 @@ export function initMachine(ctx) {
     if (t.x == null) throw new Error('Nejdřív ulož polohu Z sondy (najeď nad ni a „Poloha sondy = tady“).');
     if (M.st.state !== 'Idle') throw new Error('Stroj není v klidu.');
     await cmd('G21 G90', true);
-    await cmd('G53 G0 Z-1', true);
+    await cmd(`G53 G0 Z${fmt(zTopMach())}`, true);
     await cmd(`G53 G0 X${fmt(t.x)} Y${fmt(t.y)}`, true);
     await cmd(`G53 G0 Z${fmt(t.z)}`, true);
     let prb = await probeOnce(`G91 Z-${fmt(t.search)}`, p.fast);
     if (p.double) { await cmd(`G91 G0 Z${fmt(p.retract)}`, true); prb = await probeOnce(`G91 Z-${fmt(p.retract * 2 + 0.2)}`, p.slow); }
     await cmd('G90', true);
-    await cmd('G53 G0 Z-1', true);
+    await cmd(`G53 G0 Z${fmt(zTopMach())}`, true);
     return prb[2];
   }
   async function setterMeasure(reference) {
@@ -578,7 +588,7 @@ export function initMachine(ctx) {
     // delší / kratší nástroj -> posun nuly Z o rozdíl dotyků
     const wcoZ = ref.wcoZ + (trig - ref.trig);
     await cmd(`G10 L2 P1 Z${fmt(wcoZ)}`, true);
-    M.zTool = M.prog?.op?.tool || ''; save();
+    M.zTool = M.prog?.op?.tool || ''; M.zOp = M.prog?.op?.id || ''; save();
     ctx.toast(`Nástroj změřen – nula Z posunuta o ${cz(trig - ref.trig, 3)} mm.`);
     log(`Z sonda: dotyk ${cz(trig)} (ref. ${cz(ref.trig)}), G54 Z = ${cz(wcoZ)}`, 'info');
   }
@@ -626,8 +636,17 @@ export function initMachine(ctx) {
     ctx.toast('Roh desky nalezen – X0 Y0 nastaveno.');
     log(`Roh: hrana X ${cz(ex)} Y ${cz(ey)} (strojově)`, 'info');
   }
+  // místo pro měření Z dotykem: měď, která zůstane (rámeček mimo desku), nebo ručně zadané, nebo kde stojí nástroj
+  function probeSpot(side) {
+    const p = M.probe;
+    if (p.spot === 'here') return null;
+    if (p.spot === 'manual') return { x: +p.spotX || 0, y: +p.spotY || 0, where: 'manual' };
+    const pts = ctx.getRes()?.probePts || {};
+    return pts[side || M.prog?.op?.side || 'top'] || null;
+  }
+  const spotText = sp => sp ? `X ${cz(sp.x, 1)} Y ${cz(sp.y, 1)}${sp.where === 'frame' ? ' (měď vně desky)' : sp.where === 'copper' ? ' (velký kus mědi na desce)' : ' (ručně)'}` : 'tam, kde stojí nástroj';
   // Z nula nástroje: na místě, nebo v referenčním bodě výškové mapy (aby mapa dál platila)
-  async function probeZ(atRef = false) {
+  async function probeZ(atRef = false, side = null) {
     if (!M.on) throw new Error('Stroj není připojen.');
     if (M.st.state !== 'Idle') throw new Error('Stroj není v klidu.');
     let zRef = 0;
@@ -637,11 +656,16 @@ export function initMachine(ctx) {
       await moveSafe(x, y, M.probe.clear);
       await waitIdle();
       zRef = HM.interp(M.hmap, x, y);
+    } else {
+      // najet nad měď, která zůstala (v nule bývá odfrézovaná) – výška zůstane (aspoň bezpečná)
+      const sp = probeSpot(side);
+      const wco = M.st.wco || [0, 0, 0], zeroXY = Math.abs(wco[0]) + Math.abs(wco[1]) > 1e-6;
+      if (sp && zeroXY) { log(`Měření Z: najíždím nad měď ${spotText(sp)}`, 'info'); await moveSafe(sp.x, sp.y, null); await waitIdle(); }
     }
     await probeHere(M.probe.search);
     await cmd(`G10 L20 P0 Z${fmt(zRef + (M.probe.type === 'clip' ? 0 : M.probe.plate))}`, true);
     await cmd(`G91 G0 Z${fmt(M.probe.clear)}`, true); await cmd('G90', true);
-    M.zTool = M.prog?.op?.tool || ''; save();
+    M.zTool = M.prog?.op?.tool || ''; M.zOp = M.prog?.op?.id || ''; save();
     ctx.toast(atRef ? 'Z nástroje změřeno v referenčním bodě mapy.' : 'Z nástroje změřeno a vynulováno.');
     log('Z změřeno sondou' + (atRef ? ' (referenční bod mapy)' : ''), 'info');
   }
@@ -667,7 +691,7 @@ export function initMachine(ctx) {
     if (it.test) M.prog = { ...it.test };
     else if (it.op) {
       const op = it.op;
-      M.prog = { src: id, name: ctx.fileName(op), orig: op.gcode, op, side: op.side, iso: op.kind === 'iso' || op.kind === 'silk', sim: ctx.boardSimInfo(op) };
+      M.prog = { src: id, name: ctx.fileName(op), orig: op.gcode, op, side: op.side, iso: op.kind === 'iso' || op.kind === 'silk' || op.kind === 'rest', sim: ctx.boardSimInfo(op) };
     } else M.prog = { src: id, name: it.file.name, orig: it.file.text, iso: true, ext: true };
     rebuildProgram();
   }
@@ -726,6 +750,11 @@ export function initMachine(ctx) {
     return lines;
   }
   // nejvyšší bezpečné Z v pracovních souřadnicích (1 mm pod horním dorazem), jen když je stroj po homingu
+  // horní bezpečné Z ve strojových souřadnicích (1 mm pod horním dorazem; kladný i záporný strojní prostor)
+  function zTopMach() {
+    const pos = (M.st.mpos?.[2] || 0) > 0.5 || (M.st.wco?.[2] || 0) > 0.5;
+    return pos ? travel('Z') - 1 : -1;
+  }
   function zTopWork() {
     if (M.settings[22] !== '1' || !M.st.mpos || !M.st.wco) return null;
     const wz = M.st.wco[2], pos = M.st.mpos[2] > 0.5 || wz > 0.5;
@@ -1189,17 +1218,19 @@ export function initMachine(ctx) {
       }
       if (op.tool !== tool) {
         steps.push({ id: 'tool:' + op.id, title: `Nasaď nástroj: ${op.tool}`, text: 'Vyměň nástroj a dotáhni ho. Vřeteno musí stát.' });
-        const mapNeeded = op.kind === 'iso';
+        const mapNeeded = op.kind === 'iso' || op.kind === 'rest' || op.kind === 'silk';
         const setterOK = M.setter.on && M.setter.x != null && M.setter.ref;
-        const zActs = [[mapNeeded && hasMap(op.side) ? 'Změřit Z v ref. bodě mapy' : 'Změřit Z tady', () => probeZ(mapNeeded && hasMap(op.side))]];
-        if (setterOK && tool) zActs.unshift(['Změřit na Z sondě', () => setterMeasure(false)]);
-        steps.push({ id: 'z:' + op.id, title: 'Změř Z nástroje', text: (setterOK && tool ? 'Nejrychleji na pevné Z sondě (nula zůstane, mapa platí). ' : '') + (M.probe.type === 'clip' ? 'Klipem: připni klip na nástroj, druhý vodič na měď desky.' + (mapNeeded && hasMap(op.side) ? ' Měří se v referenčním bodě mapy, aby mapa dál platila.' : '') : 'Polož destičku pod nástroj.') + (M.setter.on && !tool ? ' Po změření prvního nástroje udělej „Referenční měření“ na Z sondě.' : ''), acts: zActs });
+        const atRef = mapNeeded && hasMap(op.side), sp = atRef ? null : probeSpot(op.side);
+        // program se načte dřív, než se měří – Z se pak počítá k jeho nástroji
+        const zActs = [[atRef ? 'Změřit Z v ref. bodě mapy' : sp ? 'Najet na měď a změřit Z' : 'Změřit Z tady', () => { selectOp(op); return probeZ(atRef, op.side); }]];
+        if (setterOK && tool) zActs.unshift(['Změřit na Z sondě', () => { selectOp(op); return setterMeasure(false); }]);
+        steps.push({ id: 'z:' + op.id, title: 'Změř Z nástroje', text: (setterOK && tool ? 'Nejrychleji na pevné Z sondě (nula zůstane, mapa platí). ' : '') + (M.probe.type === 'clip' ? 'Klipem: připni klip na nástroj, druhý vodič na měď desky.' + (atRef ? ' Měří se v referenčním bodě mapy, aby mapa dál platila.' : ` Nástroj najede nad měď, která zůstala: ${spotText(sp)} – spusť ho nad desku do výšky pár mm.`) : 'Polož destičku pod nástroj.') + (M.setter.on && !tool ? ' Po změření prvního nástroje udělej „Referenční měření“ na Z sondě.' : ''), acts: zActs, ok: () => M.zOp === op.id });
         tool = op.tool;
       }
       if (op.kind === 'iso' && !steps.some(s => s.id === 'map:' + op.side)) {
         steps.push({ id: 'map:' + op.side, title: `Výšková mapa – ${op.side === 'bottom' ? 'spodní' : 'horní'} strana`, text: 'Klip zůstává připnutý. Oblast se vezme z obrysu desky, body se vyhnou dírám. Po změření je nula Z = povrch v referenčním bodě.', acts: [['Nastavit mapu', () => { selectOp(op); fillArea(mapArea()); showPane('map'); }], ['Změřit mapu', () => { selectOp(op); if (!areaInp.w.value) fillArea(mapArea()); return measureMap(); }]], ok: () => hasMap(op.side) });
       }
-      steps.push({ id: 'run:' + op.id, title: `Spusť ${op.no} · ${op.title}`, text: `${op.tool} · F${op.prm.feed} S${op.prm.spindle} · ≈ ${Math.max(1, Math.round(op.minutes))} min${op.kind === 'iso' ? ' · s výškovou mapou' : ''}. Odepni klip!`, acts: [['Načíst program', () => selectOp(op)], ['Spustit', () => { selectOp(op); return startProgram(); }]], ok: () => !!M.wizard.done['run:' + op.id] });
+      steps.push({ id: 'run:' + op.id, title: `Spusť ${op.no} · ${op.title}`, text: `${op.tool} · F${op.prm.feed} S${op.prm.spindle} · ≈ ${Math.max(1, Math.round(op.minutes))} min${op.kind === 'iso' || op.kind === 'rest' ? ' · s výškovou mapou' : ''}. Odepni klip!`, acts: [['Načíst program', () => selectOp(op)], ['Spustit', () => { selectOp(op); return startProgram(); }]], ok: () => !!M.wizard.done['run:' + op.id] });
     }
     steps.push({ id: 'end', title: 'Hotovo', text: 'Vyndej desku, odjehli okraje a zkontroluj izolaci (např. multimetrem mezi sítěmi).' });
     return steps;
@@ -1429,6 +1460,9 @@ export function initMachine(ctx) {
     P.append(el('h4', {}, 'Sonda'), seg([['clip', 'Klip na mědi'], ['probe', 'Dotyková sonda']], p, 'type'),
       el('div', { class: 'mgrid' }, fld('Rychle', p, 'fast', 'mm/min'), fld('Pomalu', p, 'slow', 'mm/min'), fld('Odjezd', p, 'retract', 'mm'), fld('Hledat Z (sonda Z)', p, 'search', 'mm'), fld('Po změření vyjet o', p, 'clear', 'mm'), fld('Tloušťka destičky', p, 'plate', 'mm')),
       chk('Měřit dvakrát (rychle, pak pomalu)', p, 'double'),
+      el('h4', {}, 'Kde měřit Z nástroje (dotyk na měď)'), seg([['auto', 'Automaticky – měď vně desky'], ['manual', 'Ručně'], ['here', 'Kde stojí nástroj']], p, 'spot'),
+      el('div', { class: 'mgrid' }, fld('Místo X (pracovně)', p, 'spotX', 'mm'), fld('Místo Y (pracovně)', p, 'spotY', 'mm')),
+      el('div', { class: 'muted small' }, `V nule bývá měď už odfrézovaná a nástroj by neměl kam ťuknout. Automaticky se najede na rámeček polotovaru vně desky (za ořezem), nejblíž nule. Teď: ${spotText(probeSpot())}.`),
       el('h4', {}, 'Nula XY dotykovou sondou'), el('div', { class: 'mgrid' }, fld('Průměr hrotu sondy', p, 'tipDia', 'mm'), fld('Hledat v XY', p, 'xySearch', 'mm'), fld('Roh: odstup od hran', p, 'cornerOff', 'mm')),
       el('h4', {}, 'Pevná Z sonda (tool setter)'), el('div', { class: 'mgrid' }, fld('Hledat dolů', M.setter, 'search', 'mm'), fld('Začít měřit ve strojovém Z', M.setter, 'z', 'mm')),
       el('div', { class: 'muted small' }, M.setter.x == null ? 'Poloha sondy se ukládá ve Stroji tlačítkem „Poloha sondy = tady“.' : `Poloha sondy X ${cz(M.setter.x, 2)} Y ${cz(M.setter.y, 2)} (strojově).`),
@@ -1462,6 +1496,6 @@ export function initMachine(ctx) {
     getMap: () => M.hmap ? { map: M.hmap, meta: M.hmapMeta } : null,
     setMap: m => { if (!m?.map) return; M.hmap = m.map; M.hmapMeta = m.meta || null; if (M.prog) rebuildProgram(true); renderMapOverlay(); },
     openTest(toolId, rec) { if (toolId) M.test.toolId = toolId; if (rec) { M.test.base = { feed: rec.feed, plunge: rec.plunge, spindle: rec.spindle, depth: rec.depth, step: rec.step }; M.test.material = rec.material || M.test.material; } save(); showPane('test'); },
-    get M() { return M; }, gv, act, startProgram, measureMap, skipSelection, renderKeysInto, renderProbeInto, redraw: () => { gv.draw(); renderMapOverlay(); },
+    get M() { return M; }, gv, act, startProgram, measureMap, skipSelection, renderKeysInto, renderProbeInto, redraw: () => { gv.draw(); renderMapOverlay(); }, _t: { wizardSteps, probeZ, moveSafe, zeroAxes, preChecks, probeSpot, connect },
   };
 }

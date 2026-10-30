@@ -125,11 +125,30 @@ The main operation – the V-bit goes around all tracks and pads and isolates th
 | **Počet průjezdů** (Passes) | 1 = one groove around tracks; 2–4 = wider isolation (easier soldering) |
 | **Překrytí průjezdů** (Pass overlap) | how many % neighbouring passes overlap |
 | **Překrytí při odfrézování** (Clearing overlap) | the same for copper-clearing areas |
+| **Krajní průjezdy u mědi pomaleji** (Edge passes slower) | the first pass (next to the pad / track) and the last pass (next to the remaining copper) run at **Posuv krajních průjezdů** (edge feed, default 150 mm/min) – less burr. Passes in between run at the normal feed. With 1–2 passes all of them are edge passes. |
+| **Zbylou měď … odfrézovat druhým nástrojem** (Remove remaining copper with a second tool) | after isolation, a second tool (e.g. a Ø1.8 end mill) clears large copper areas inside the board – see below |
 | **Směr frézování** (Direction) | *Sousledně (climb)* – cleaner edge on small machines; *Nesousledně* (conventional) |
 | **Ořezat dráhy obrysem desky** (Clip to outline) | paths don't go beyond the board outline |
 | **Krok hloubky** (Step-down) | 0 = single pass; otherwise in steps (e.g. 0.15 in 0.05 steps) |
 | **Průjezdy podle sítí** (Passes by net) | own pass count per net (e.g. GND → 3×) |
 | **Oblasti** (Areas) | list of drawn clearing / no-mill areas |
+
+
+### Remaining copper with a second tool
+
+Copper can be milled **in two steps**: first the isolation with a V-bit as usual, then a **second
+tool** (end mill) clears **large copper areas** between the tracks. It is enabled separately for F.Cu and B.Cu.
+
+| Field | Meaning |
+|-------|---------|
+| **Nástroj na zbylou měď** (Tool) | end mill from the library (default Ø1.8) |
+| **Hloubka** (Depth) | how deep (default 0.1 mm) |
+| **Překrytí drah** (Path overlap) | overlap of neighbouring paths in % |
+| **Přesah do pásu izolace** (Overlap into isolation) | how far (mm) it reaches into the band already cut by the isolation, so no copper sliver is left |
+
+The end mill only goes where it fits – narrow gaps and corners stay (the isolation handles them).
+Copper **outside the board** (the blank frame where the probe clip goes) stays. The program appears
+right after the isolation of the same side as **Zbylá měď horní / spodní** and runs with the height map.
 
 > **Why override the cut width?** A real V-bit is a bit different from the spec, and depth varies
 > with board flatness. If after a test cut you measure the groove (e.g. 0.2 mm), enter it into

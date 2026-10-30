@@ -69,7 +69,7 @@ Ovládání:
 | **Zrušit G92** | zruší dočasný posun nuly `G92` (kdyby ho tam nechal jiný program) |
 | **Na X0 Y0** | vyjede na bezpečnou výšku a přejede nad nulu XY |
 | **Na X0 Y0 Z0** | totéž a sjede na Z0 |
-| **Přejeď na** | napiš X / Y / Z (stačí jen některé), zvol *Relativně* nebo *Strojově* a **Jeď** |
+| **Přejeď na** | napiš X / Y / Z (stačí jen některé), zvol režim a **Jeď**: *Pracovně* = poloha od nuly desky, *O kolik* = posun od aktuální polohy, *Strojově* = souřadnice stroje (G53). Před přejezdem v XY se nástroj zvedne do bezpečné výšky. |
 
 > Nula se ukládá v GRBL (`G54`), takže vydrží i vypnutí stroje. Po zapnutí stačí homing.
 
@@ -101,7 +101,10 @@ Ovládání:
 | **Rychloposuv** | rychlost přejezdů | 25 / 50 / 100 % |
 
 - **Změřit Z sondou** – změří povrch desky a nastaví Z0 (klipem na mědi nebo dotykovou sondou,
-  podle *Nastavení → Sonda*).
+  podle *Nastavení → Sonda*). Nástroj nejdřív **najede nad měď, která zůstala** – v nule bývá
+  měď už odfrézovaná a nástroj by neměl kam ťuknout. Automaticky je to rámeček polotovaru vně
+  desky (za ořezem) co nejblíž nule; když rámeček není, velký kus mědi na desce. Jde to změnit
+  v *Nastavení → Sonda → Kde měřit Z nástroje* (automaticky / ručně X Y / kde stojí nástroj).
 
 ---
 

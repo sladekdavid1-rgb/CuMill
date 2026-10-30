@@ -13,7 +13,7 @@ self.onmessage = async e => {
     const bufs = [];
     for (const op of res.ops) {
       op.moves = op.moves.map(m => { const p = pack(m.pts); bufs.push(p.buffer); return { t: m.t, p }; });
-      if (op.netPaths) op.netPaths = op.netPaths.map(n => { const p = pack(n.pts); bufs.push(p.buffer); return { net: n.net, p }; });
+      if (op.netPaths) op.netPaths = op.netPaths.map(n => { const p = pack(n.pts); bufs.push(p.buffer); return { net: n.net, edge: n.edge, p }; });
     }
     self.postMessage({ id, res }, bufs);
   } catch (err) {

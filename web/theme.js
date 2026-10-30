@@ -112,7 +112,7 @@ export function apply() {
     areaClear: css(c.areaClear), areaClearFill: withAlpha(c.areaClear, 0.12), areaClearAll: withAlpha(c.areaClear, 0.22), areaBlock: css(c.areaBlock), areaBlockFill: withAlpha(c.areaBlock, 0.13),
     tab: withAlpha(c.tab, 0.75), axisX: '#ff5c5c', axisY: '#5cff8a', onAccent: css(c.onAccent), mill: css(c.opMill),
   });
-  Object.assign(OPC, { 'iso-F.Cu': css(c.opIsoF), 'iso-B.Cu': css(c.opIsoB), pins: css(c.opPins), drill: css(c.opDrill), mill: css(c.opMill), geo: css(c.opGeo), cut: css(c.opCut), silk: css(c.opSilk || c.opDrill) });
+  Object.assign(OPC, { 'iso-F.Cu': css(c.opIsoF), 'iso-B.Cu': css(c.opIsoB), pins: css(c.opPins), drill: css(c.opDrill), mill: css(c.opMill), geo: css(c.opGeo), cut: css(c.opCut), silk: css(c.opSilk || c.opDrill), rest: css(c.opRest || c.opGeo) });
   for (const k of ['bg3d', 'pathAir', 'pathMid', 'pathDeep', 'simCu', 'simFr', 'simFrDeep', 'simThru', 'tool3d', 'rapid', 'sel', 'text']) T3D[k] = rgba(c[k]);
   T3D.light = !!t.light;
   for (const fn of listeners) try { fn(t); } catch (e) { console.error(e); }

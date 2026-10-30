@@ -117,8 +117,10 @@ Seznam kolíčků s polohami je v levém panelu **(2)**. Zelená tečka = kolí�
 
 Můstky drží desku v polotovaru, aby se při ořezu neutrhla. Nástroj **Můstek** (`M`) **(1)**:
 
-- klik na dráhu ořezu = **nový můstek**,
-- tažení = **posun po dráze** (drží se na ní),
+- najeď myší k dráze ořezu – **zvýrazní se místo, kam se můstek položí** (přichytí se na dráhu, kurzor +),
+- klik = **nový můstek** na zvýrazněném místě,
+- nad existujícím můstkem se kurzor změní na ruku – **tažení = posun po dráze** (drží se na ní),
+- **šipky** = posun vybraného můstku po dráze o 0,5 mm (`Shift` 5 mm),
 - `Del` = smazat.
 
 Nastavení můstků (počet, šířka, výška) je v sekci **Ořez desky** **(2)**.

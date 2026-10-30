@@ -22,10 +22,11 @@ export function defaults() {
     tools: defaultTools(),
     setup: { origin: 'pin-ll', offX: 0, offY: 0, rot: 0, mirrorAxis: 'h', blankW: 100, blankH: 70, blankT: 1.2 },
     pins: { mode: 'auto', source: 'holes', holeDia: 3.2, patW: 88, patH: 58, dia: 2.5, method: 'drill', tool: 'd25', millTool: 'e18', depth: 6, exclude: true },
-    iso: { layers: { 'F.Cu': true, 'B.Cu': true }, tool: 'v30', width: 0.18, depth: 0.1, passes: 1, overlap: 15, clearOverlap: 40, climb: true, clip: true, step: 0 },
+    iso: { layers: { 'F.Cu': true, 'B.Cu': true }, tool: 'v30', width: 0.18, depth: 0.1, passes: 1, overlap: 15, clearOverlap: 40, climb: true, clip: true, step: 0, edgeSlow: true, edgeFeed: 150 },
     drill: { depthMode: 'auto', through: 0.3, depth: 1.7, millAbove: 0.3, millTool: 'e10', side: 'auto' },
     geo: { tool: 'e18', pocketOverlap: 40 },
     cut: { enabled: true, tool: 'e18', depth: 1.8, step: null, tabs: 0, tabW: 2, tabH: 0.6, climb: true },
+    rest: { F: false, B: false, tool: 'e18', depth: 0.1, overlap: 40, isoOverlap: 0.1 },
     silk: { F: false, B: false, tool: 'v30', depth: 0.08, texts: true, graphics: true, avoid: 'tracks', margin: 0.15 },
     ov: {}, // přepsané parametry jednotlivých operací {klíč: {feed, plunge, spindle, step, depth}}
   };
@@ -532,6 +533,44 @@ function cached(board, key, fn) {
 // otisk transformace strany (je afinní – stačí tři body)
 const tfPrint = tf => [[0, 0], [1, 0], [0, 1]].map(p => tf.fwd(p).map(v => Math.round(v * 1e9) / 1e9)).join(';');
 
+// ---------- bod pro měření Z dotykem: měď, která zůstane i po izolaci a odfrézování ----------
+// přednostně rámeček polotovaru vně desky (tam bývá krokodýlek sondy), co nejblíž nule
+export function probePoints(board, S, sides, pins = []) {
+  const out = {};
+  const outl = board.outlines || [board.outline];
+  const w = S.iso.width, cutT = getTool(S, S.cut.tool, ['end']);
+  const isoReach = S.iso.clip ? 0 : w + (Math.max(1, S.iso.passes) - 1) * w * (1 - S.iso.overlap / 100);
+  const d = Math.max(isoReach, S.cut.enabled ? (cutT?.dia || 1.8) + 0.2 : 0) + 1.5;
+  const blank = blankRect(board, S);
+  const pinR = (S.pins.dia || 2.5) / 2 + 1.5;
+  const cand = [];
+  for (const ring of G.offset(outl, d)) {
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      for (let t = 0; t < L; t += 2) cand.push([a[0] + (b[0] - a[0]) * t / L, a[1] + (b[1] - a[1]) * t / L]);
+    }
+  }
+  const ok = p => blank.inside(p[0], p[1], 1.5) && !pins.some(q => Math.hypot(q.x - p[0], q.y - p[1]) < pinR) && !outl.some(o => G.pointInPoly(p[0], p[1], o));
+  const good = cand.filter(ok);
+  for (const sd of ['top', 'bottom']) {
+    const tf = sides[sd]; if (!tf) continue;
+    let best = null, bd = Infinity;
+    for (const p of good) { const q = tf.fwd(p), dd = Math.hypot(q[0], q[1]); if (dd < bd) { bd = dd; best = q; } }
+    if (best) out[sd] = { x: Math.round(best[0] * 10) / 10, y: Math.round(best[1] * 10) / 10, where: 'frame' };
+    else {
+      // bez rámečku (polotovar = deska): největší kus mědi, bod hluboko uvnitř
+      let pt = null, area = 0;
+      for (const L of [sd === 'bottom' ? 'B.Cu' : 'F.Cu']) for (const it of board.islands?.[L] || []) {
+        const a = Math.abs(G.area(it.outer)); if (a <= area) continue;
+        const inner = G.offset([it.outer], -Math.min(1.5, Math.sqrt(a) / 4));
+        if (inner.length && inner[0].length) { area = a; pt = inner[0][0]; }
+      }
+      if (pt) { const q = tf.fwd(pt); out[sd] = { x: Math.round(q[0] * 10) / 10, y: Math.round(q[1] * 10) / 10, where: 'copper' }; }
+    }
+  }
+  return out;
+}
+
 // ---------- výpočet všech operací ----------
 export function computeAll(board, S, B) {
   B = B || boardDefaults();
@@ -667,8 +706,9 @@ export function computeAll(board, S, B) {
           }
         }
         const a0 = q[0], a1 = q[q.length - 1];
-        if (q.length > 3 && Math.abs(a0[0] - a1[0]) < 1e-6 && Math.abs(a0[1] - a1[1]) < 1e-6) out.push({ pts: q.slice(0, -1), closed: true });
-        else out.push({ pts: q, closed: false, keepDir: true });
+        const src = find(q[0]) || find(q[1]), pass = src ? segs[src[0]].pass : undefined;
+        if (q.length > 3 && Math.abs(a0[0] - a1[0]) < 1e-6 && Math.abs(a0[1] - a1[1]) < 1e-6) out.push({ pts: q.slice(0, -1), closed: true, pass });
+        else out.push({ pts: q, closed: false, keepDir: true, pass });
       }
       return out;
     };
@@ -682,7 +722,7 @@ export function computeAll(board, S, B) {
       for (let r of G.offset(src, d)) {
         if (r.length < 3) continue;
         if (S.iso.climb) r = r.slice().reverse();
-        (all ? ringsAll : ringsSub).push({ pts: r, closed: true });
+        (all ? ringsAll : ringsSub).push({ pts: r, closed: true, pass: i });
       }
     }
     let segs = ringsAll.concat(batch(ringsSub, forbidden, false));
@@ -701,12 +741,15 @@ export function computeAll(board, S, B) {
       for (let k = 0; k < 4000; k++) {
         const R = k === 0 ? C : G.offset(C, -k * step);
         if (!R.length) break;
-        for (let r of R) { if (!S.iso.climb) r = r.slice().reverse(); if (r.length > 2) { items.push({ pts: r, closed: true }); clearRings++; } }
+        for (let r of R) { if (!S.iso.climb) r = r.slice().reverse(); if (r.length > 2) { items.push({ pts: r, closed: true, edge: k === 0 }); clearRings++; } }
       }
     }
     const ordered = orderPaths(items);
     // síť každé dráhy (nejbližší kus mědi) – pro barvy v náhledu a komentáře v G-kódu
-    if (isl.length && board.source === 'kicad') {
+    const uniform = passOf.every(n => n === maxP);
+    // krajní průjezd = první (u plošky) nebo poslední (u zbylé mědi) – jede se pomaleji kvůli otřepu
+    for (const it of ordered) if (it.edge === undefined) it.edge = it.pass === undefined || it.pass === 0 || (uniform && it.pass === maxP - 1);
+    if (isl.length && (board.source === 'kicad' || !uniform)) {
       for (const it of ordered) {
         const q = tf.inv(it.pts[Math.floor(it.pts.length / 2)]);
         let best = null, bd = Infinity;
@@ -719,7 +762,8 @@ export function computeAll(board, S, B) {
             if (d < bd) { bd = d; best = isx; }
           }
         }
-        it.net = best?.net || '';
+        if (board.source === 'kicad') it.net = best?.net || '';
+        if (!uniform && best && it.pass !== undefined && it.pass === passOf[isl.indexOf(best)] - 1) it.edge = true;
       }
     }
     return { ordered, clearRings };
@@ -727,26 +771,66 @@ export function computeAll(board, S, B) {
     const isoMulti = prm.step > 0 && prm.step < prm.depth - 1e-6 && (S.iso.step > 0 || has(S.ov[key]?.step));
     const isoDepths = isoMulti ? depthList(prm.depth, prm.step) : [prm.depth];
     const theo = toolWidth(isoTool, prm.depth);
+    const edgeF = S.iso.edgeSlow !== false && +S.iso.edgeFeed > 0 && +S.iso.edgeFeed < prm.feed ? +S.iso.edgeFeed : 0;
     const g = mkG({
       title: `Izolace ${L}${sd === 'bottom' ? ' zrcadleno' : ''}`, origin: tf.desc, side: sideName(sd),
       tool: `${toolLabel(isoTool)}, sirka rezu ${w} mm${isoTool?.type === 'v' ? ` (teoreticky ${theo.toFixed(3)})` : ''}`,
-      notes: [`Hloubka ${prm.depth} mm${isoMulti ? ` po ${prm.step} (${isoDepths.length} kroky)` : ''}, ${maxP > 1 ? 'az ' + maxP : '1'} prujezd(y), ${prmNote(prm)}`],
+      notes: [`Hloubka ${prm.depth} mm${isoMulti ? ` po ${prm.step} (${isoDepths.length} kroky)` : ''}, ${maxP > 1 ? 'az ' + maxP : '1'} prujezd(y), ${prmNote(prm)}`, ...(edgeF ? [`Krajni prujezdy u medi (prvni a posledni) F${edgeF}`] : [])],
     }, prm);
     const body = []; g.lines = body;
+    const nEdge = edgeF ? ordered.filter(o => o.edge).length : 0;
     let lastNet = null;
     for (const it of ordered) {
       const p = it.pts;
       if (it.net !== undefined && it.net !== lastNet) { g.comment('sit ' + (it.net || '?')); lastNet = it.net; }
+      const f = it.edge && edgeF ? edgeF : prm.feed;
       isoDepths.forEach((z, di) => {
         if (di === 0 || !it.closed) { g.rapidZ(M.zTravel); g.rapidXY(p[0][0], p[0][1]); g.rapidZ(M.zApproach); }
         g.feedZ(-z, prm.plunge);
-        g.path(p, prm.feed);
+        g.path(p, f);
       });
       g.rapidZ(M.zTravel);
     }
-    ops.push({ id: key, key, no: nextNo(), kind: 'iso', layer: L, title: `Izolace ${L === 'B.Cu' ? 'spodní' : 'horní'} mědi${sd === 'bottom' ? ' (zrcadleně)' : ''}`, short: `${L === 'B.Cu' ? 'Bcu' : 'Fcu'}_izolace${sd === 'bottom' ? '_ZRCADLENO' : ''}_V${w.toFixed(2)}`, side: sd, toolRef: 'iso.tool', toolTypes: ['v', 'end'], toolId: isoTool?.id, tool: `${toolLabel(isoTool)} · šířka ${fmtMM(w, 3)}`, toolDia: w, prm, fields: ['feed', 'plunge', 'spindle', 'step', 'depth'], gcode: g.build(body, G.bbox(ordered.map(o => o.pts))), moves: g.moves, minutes: g.minutes(), count: ordered.length, extra: clearRings ? `${clearRings} drah čištění` : '', netPaths: ordered.map(o => ({ net: o.net || '', pts: o.closed ? o.pts.concat([o.pts[0]]) : o.pts })) });
+    ops.push({ id: key, key, no: nextNo(), kind: 'iso', layer: L, title: `Izolace ${L === 'B.Cu' ? 'spodní' : 'horní'} mědi${sd === 'bottom' ? ' (zrcadleně)' : ''}`, short: `${L === 'B.Cu' ? 'Bcu' : 'Fcu'}_izolace${sd === 'bottom' ? '_ZRCADLENO' : ''}_V${w.toFixed(2)}`, side: sd, toolRef: 'iso.tool', toolTypes: ['v', 'end'], toolId: isoTool?.id, tool: `${toolLabel(isoTool)} · šířka ${fmtMM(w, 3)}`, toolDia: w, prm, fields: ['feed', 'plunge', 'spindle', 'step', 'depth'], gcode: g.build(body, G.bbox(ordered.map(o => o.pts))), moves: g.moves, minutes: g.minutes(), count: ordered.length, extra: [clearRings ? `${clearRings} drah čištění` : '', nEdge ? `${nEdge} krajních drah F${edgeF}` : ''].filter(Boolean).join(' · '), netPaths: ordered.map(o => ({ net: o.net || '', edge: !!(edgeF && o.edge), pts: o.closed ? o.pts.concat([o.pts[0]]) : o.pts })) });
     { const gc = cached(board, 'gap|' + L + '|' + w, () => { const c = [], m = []; gapCheck(board, L, w, c, m); return { c, m }; }); checks.push(...gc.c); markers.push(...gc.m); }
     genSilk(L === 'B.Cu' ? 'B.SilkS' : 'F.SilkS');
+    // --- zbylá měď druhým nástrojem (velké plochy mimo pás izolace)
+    const rs = S.rest || {};
+    if (rs[L === 'B.Cu' ? 'B' : 'F']) {
+      const tool = getTool(S, rs.tool, ['end', 'v']);
+      if (tool) {
+        const rkey = 'rest-' + L;
+        const prm = opParams(S, rkey, tool, { depth: rs.depth ?? S.iso.depth, step: rs.depth ?? S.iso.depth });
+        const tw = toolWidth(tool, prm.depth), r = tw / 2;
+        const minP = isl.length ? Math.min(...passOf) : maxP;
+        const reach = w / 2 + (minP - 1) * w * (1 - S.iso.overlap / 100) + w / 2; // vnější hrana izolace
+        const keepD = Math.max(w / 2 + 0.02, reach - Math.max(0, +rs.isoOverlap || 0));
+        const step = Math.max(0.02, tw * (1 - (rs.overlap ?? 40) / 100));
+        const rKey = JSON.stringify(['rest', L, tfPrint(tf), keepD, r, step, S.iso.climb, B.areas.filter(a => a.type === 'block' && (a.layer === L || a.layer === 'both'))]);
+        const { paths: rp, area } = cached(board, rKey, () => {
+          const copperT = tPaths(board.copper[L], tf.fwd);
+          const outl = G.union((board.outlines || [board.outline]).map(l => l.map(tf.fwd)));
+          let A = G.difference(outl, G.offset(copperT, keepD));
+          if (board.inner?.length) A = G.difference(A, board.inner.map(l => l.map(tf.fwd)));
+          const blocks = B.areas.filter(a => a.type === 'block' && (a.layer === L || a.layer === 'both')).map(a => G.union([a.pts.map(tf.fwd)])).flat();
+          if (blocks.length) A = G.difference(A, blocks);
+          const area = A.reduce((a, q) => a + G.area(q), 0);
+          const out = [];
+          for (let k = 0; k < 4000; k++) {
+            const R = G.offset(A, -(r + k * step));
+            if (!R.length) break;
+            for (let q of R) { if (q.length < 3) continue; if (!S.iso.climb) q = q.slice().reverse(); out.push({ pts: q, closed: true }); }
+          }
+          return { paths: orderPaths(out), area };
+        });
+        if (rp.length) {
+          const g = mkG({ title: `Odstraneni zbyle medi ${L}${sd === 'bottom' ? ' zrcadleno' : ''}`, tool: toolLabel(tool), origin: tf.desc, side: sideName(sd), notes: [`Hloubka ${prm.depth} mm, ${rp.length} drah, prekryv ${rs.overlap ?? 40} %, ${prmNote(prm)}`] }, prm);
+          const body = []; g.lines = body;
+          millLoops(g, rp, [prm.depth], prm, M);
+          ops.push({ id: rkey, key: rkey, no: nextNo(), kind: 'rest', layer: L, title: `Zbylá měď ${L === 'B.Cu' ? 'spodní' : 'horní'}${sd === 'bottom' ? ' (zrcadleně)' : ''}`, short: `${L === 'B.Cu' ? 'Bcu' : 'Fcu'}_zbyla_med${sd === 'bottom' ? '_ZRCADLENO' : ''}`, side: sd, toolRef: 'rest.tool', toolTypes: ['end', 'v'], toolId: tool.id, tool: toolLabel(tool), toolDia: tw, prm, fields: ['feed', 'plunge', 'spindle', 'depth'], gcode: g.build(body, G.bbox(rp.map(o => o.pts))), moves: g.moves, minutes: g.minutes(), count: rp.length, extra: `${Math.round(area)} mm²` });
+        } else checks.push({ level: 'info', text: `${L}: zbylá měď – nástroj ${toolLabel(tool)} se mezi izolaci nikam nevejde.` });
+      }
+    }
   }
   // potisk strany bez izolace (např. holá strana jednostranné desky)
   genSilk('B.SilkS'); genSilk('F.SilkS');
@@ -1018,8 +1102,9 @@ export function computeAll(board, S, B) {
   }
   if (new Set(ops.map(o => o.side)).size === 2 && !(pinsOn && pins.length)) checks.push({ level: 'warn', text: 'Deska se otáčí (frézuje se z obou stran), ale bez kolíčků přípravku – otočení nebude přesné.' });
   for (const w2 of board.warnings) checks.unshift(w2);
+  const probePts = probePoints(board, S, sides, pinsOn ? pins : []);
 
-  return { ops, checks, markers, holeList, holeActs: acts, pins, pinsOn, cutTabs, pinDia: S.pins.dia || 2.5, sides, workSide, firstSide, isoLayers, isoWidth: w, ms: performance.now() - t0 };
+  return { ops, checks, markers, holeList, holeActs: acts, pins, pinsOn, cutTabs, pinDia: S.pins.dia || 2.5, sides, workSide, firstSide, isoLayers, isoWidth: w, probePts, ms: performance.now() - t0 };
 }
 
 // uzavřené smyčky frézou po hloubkových krocích (díry, prořezy)

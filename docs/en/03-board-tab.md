@@ -118,8 +118,10 @@ red = warning (in copper, outside the blank or in the cut-out path).
 
 Tabs hold the board in the blank so it doesn't break loose during the cut-out. **Můstek** (Tab, `M`) tool **(1)**:
 
-- click on the cut-out path = **new tab**,
-- drag = **move along the path** (it sticks to it),
+- move the mouse near the cut-out path – **the spot where the tab will go is highlighted** (snapped to the path, + cursor),
+- click = **new tab** at the highlighted spot,
+- over an existing tab the cursor turns into a hand – **drag = move along the path** (it sticks to it),
+- **arrow keys** = move the selected tab along the path by 0.5 mm (`Shift` 5 mm),
 - `Del` = delete.
 
 Tab settings (count, width, height) are in the **Ořez desky** (Board cut-out) section **(2)**.

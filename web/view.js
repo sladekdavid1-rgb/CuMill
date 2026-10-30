@@ -117,6 +117,7 @@ export class Viewer {
         } else if (drag.moved && drag.btn === 0) { this.rubber = [drag.w0, wp]; this.draw(false); }
       }
       this.hoverPt = wp;
+      if (!drag && (this.opts.tool || 'pan') === 'tab') this.onTabHover?.(this.toDesign(wp), this.scale);
       if (this.draft) this.draw(false);
       this.onHover?.(this.hoverPt, this._hitHole(this.hoverPt));
     });
@@ -140,7 +141,7 @@ export class Viewer {
       const wasRubber = !!this.rubber; this.rubber = null; drag = null; c.classList.remove('grabbing'); if (wasRubber) this.draw(false);
     };
     c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
-    c.addEventListener('pointerleave', () => this.onHover?.(null));
+    c.addEventListener('pointerleave', () => { this.onHover?.(null); if (!drag) this.onTabHover?.(null); });
     c.addEventListener('dblclick', () => {
       const tool = this.opts.tool || 'pan';
       if ((tool === 'clear' || tool === 'block') && this.draft) this.finishDraft();

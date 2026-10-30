@@ -67,7 +67,7 @@ Buttons:
 | **Zrušit G92** (Cancel G92) | cancels a temporary `G92` offset (if another program left one) |
 | **Na X0 Y0** (To X0 Y0) | goes up to safe height and moves above the XY zero |
 | **Na X0 Y0 Z0** | the same and goes down to Z0 |
-| **Přejeď na** (Go to) | enter X / Y / Z (any of them), choose *Relativně* (work) or *Strojově* (machine) and **Jeď** (Go) |
+| **Přejeď na** (Go to) | enter X / Y / Z (any of them), pick a mode and **Jeď** (Go): *Pracovně* (work) = position from the board zero, *O kolik* (by) = offset from the current position, *Strojově* (machine) = machine coordinates (G53). The tool lifts to a safe height before an XY move. |
 
 > The zero is stored in GRBL (`G54`) and survives a power-off. After power-on just home the machine.
 
@@ -100,6 +100,10 @@ Buttons:
 
 - **Změřit Z sondou** (Probe Z) – probes the board surface and sets Z0 (copper clip or touch probe,
   per *Settings → Probe*).
+  The tool first **moves over copper that is left** – at the zero the copper is often already milled
+  away and the tool would have nothing to touch. Automatically it is the blank frame outside the board
+  (beyond the cut-out) nearest to the zero; without a frame, a large copper area on the board. Change it in
+  *Nastavení → Sonda → Kde měřit Z nástroje* (where to probe Z: automatic / manual X Y / where the tool is).
 
 ---
 

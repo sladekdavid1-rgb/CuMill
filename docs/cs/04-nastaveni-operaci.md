@@ -117,11 +117,29 @@ Hlavní operace – V-fréza objede všechny cesty a plošky a tím je odizoluje
 | **Počet průjezdů** | 1 = jedna drážka kolem cest; 2–4 = širší izolace (snazší pájení) |
 | **Překrytí průjezdů** | o kolik % se sousední průjezdy překrývají |
 | **Překrytí při odfrézování** | totéž pro oblasti „Odfrézovat měď“ |
+| **Krajní průjezdy u mědi pomaleji** | první průjezd (u plošky / cesty) a poslední (u zbylé mědi) jedou posuvem **Posuv krajních průjezdů** (výchozí 150 mm/min) – menší otřep. Průjezdy mezi nimi jedou normálním posuvem. Při 1–2 průjezdech jsou krajní všechny. |
+| **Zbylou měď … odfrézovat druhým nástrojem** | po izolaci odfrézuje velké plochy mědi uvnitř desky druhým nástrojem (např. frézou Ø1,8) – viz níže |
 | **Směr frézování** | *Sousledně (climb)* – čistší hrana na malých frézkách; *Nesousledně* |
 | **Ořezat dráhy obrysem desky** | dráhy nepřesahují obrys desky |
 | **Krok hloubky** | 0 = jedním průjezdem; jinak po krocích (např. 0,15 po 0,05) |
 | **Průjezdy podle sítí** | vlastní počet průjezdů pro síť (např. GND → 3×) |
 | **Oblasti** | seznam nakreslených oblastí odfrézování / zákazu |
+
+### Zbylá měď druhým nástrojem
+
+Měď se dá frézovat **na dvakrát**: nejdřív izolace V-frézou jako obvykle, pak **druhý nástroj**
+(válcová fréza) odfrézuje **velké plochy mědi** mezi cestami. Zapíná se zvlášť pro F.Cu a B.Cu.
+
+| Pole | Význam |
+|------|--------|
+| **Nástroj na zbylou měď** | válcová fréza z knihovny (výchozí Ø1,8) |
+| **Hloubka (zbylá měď)** | jak hluboko (výchozí 0,1 mm) |
+| **Překrytí drah** | o kolik % se sousední dráhy překrývají |
+| **Přesah do pásu izolace** | o kolik mm zajede do pásu, který už odfrézovala izolace – aby nezůstal proužek mědi |
+
+Fréza jede jen tam, kam se vejde – úzké mezery a kouty zůstanou (ty má na starosti izolace).
+Měď **vně desky** (rámeček polotovaru, kam se připíná klip sondy) zůstává. Program se objeví
+hned za izolací téže strany jako **Zbylá měď horní / spodní** a jede s výškovou mapou.
 
 > **Proč přepsat šířku řezu?** Skutečná V-fréza bývá trochu jiná, než říká výrobce,
 > a hloubka se mění podle rovnosti desky. Když po zkušebním řezu změříš drážku

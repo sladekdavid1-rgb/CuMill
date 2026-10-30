@@ -56,6 +56,7 @@ operation (e.g. *Isolation × 1.18*). **Vynulovat kalibraci** (Reset calibration
 | **Rychle / Pomalu** (Fast / Slow) | search speed (mm/min) |
 | **Odjezd** (Retract) | lift between fast and slow probing |
 | **Hledat Z (sonda Z)** (Z search distance) | how far down the surface is searched |
+| **Kde měřit Z nástroje** (Where to probe Z) | *Automaticky* – over copper outside the board (blank frame), *Ručně* – given X Y in work coordinates, *Kde stojí nástroj* – no move |
 | **Po změření vyjet o** (Lift after probing) | lift when done |
 | **Tloušťka destičky** (Plate thickness) | for a touch plate – how much its surface is above the board |
 | **Měřit dvakrát** (Probe twice) | first fast, then slow and precise |

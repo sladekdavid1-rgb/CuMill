@@ -86,6 +86,13 @@ Změř Z (deska je jinde než předtím) a změř **novou výškovou mapu** pro 
 Pro každý vrták: výměna nástroje → změř Z → spusť program vrtání.
 Od menších průměrů k větším.
 
+Tlačítko **Najet na měď a změřit Z** v Průvodci nejdřív načte program daného vrtáku a přejede
+nad měď, která po izolaci zůstala (rámeček vně desky) – v nule už měď bývá odfrézovaná.
+Krok se odškrtne, jakmile je Z změřené pro tenhle program.
+
+Když máš zapnutou **zbylou měď druhým nástrojem**, jede hned po izolaci téže strany:
+výměna na válcovou frézu → změř Z → spusť *Zbylá měď*.
+
 ### 13. Ořez
 
 Fréza 1,8 mm → změř Z → **Spusť Ořez desky**. Pokud máš můstky, deska zůstane

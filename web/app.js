@@ -353,7 +353,7 @@ function onComputed({ id, res, error }) {
   const unpack = a => { const o = new Array(a.length >> 1); for (let i = 0; i < o.length; i++) o[i] = [a[2 * i], a[2 * i + 1]]; return o; };
   for (const op of res.ops) {
     op.moves = op.moves.map(m => ({ t: m.t, pts: unpack(m.p) }));
-    if (op.netPaths) op.netPaths = op.netPaths.map(n => ({ net: n.net, pts: unpack(n.p) }));
+    if (op.netPaths) op.netPaths = op.netPaths.map(n => ({ net: n.net, edge: n.edge, pts: unpack(n.p) }));
   }
   applyResult(res);
 }
@@ -467,6 +467,16 @@ const SECTIONS = [
       { k: 'iso.passes', label: 'Počet průjezdů', type: 'int' },
       { k: 'iso.overlap', label: 'Překrytí průjezdů', unit: '%' },
       { k: 'iso.clearOverlap', label: 'Překrytí při odfrézování', unit: '%' },
+      { k: 'iso.edgeSlow', label: 'Krajní průjezdy u mědi pomaleji (první u plošky a poslední u zbylé mědi)', type: 'check' },
+      { k: 'iso.edgeFeed', label: 'Posuv krajních průjezdů', unit: 'mm/min', show: () => S.iso.edgeSlow !== false },
+      { type: 'hint', show: () => S.iso.edgeSlow !== false, html: () => { const t = CAM.getTool(S, S.iso.tool, ['v', 'end']); const f = +(S.ov['iso-F.Cu']?.feed || S.ov['iso-B.Cu']?.feed || t?.feed || 0); return `Průjezdy přímo u mědi, která zůstane, jedou F${S.iso.edgeFeed} – menší otřep. Průjezdy mezi nimi jedou normálním posuvem${f ? ` (F${f})` : ''}. Při 1–2 průjezdech jsou krajní všechny.`; } },
+      { k: 'rest.F', label: 'Zbylou měď F.Cu odfrézovat druhým nástrojem', type: 'check', show: () => !!st.board?.used?.['F.Cu'] },
+      { k: 'rest.B', label: 'Zbylou měď B.Cu odfrézovat druhým nástrojem', type: 'check', show: () => !!st.board?.used?.['B.Cu'] },
+      { k: 'rest.tool', label: 'Nástroj na zbylou měď', type: 'tool', types: ['end', 'v'], wide: true, show: () => S.rest.F || S.rest.B },
+      { k: 'rest.depth', label: 'Hloubka (zbylá měď)', unit: 'mm', show: () => S.rest.F || S.rest.B },
+      { k: 'rest.overlap', label: 'Překrytí drah (zbylá měď)', unit: '%', show: () => S.rest.F || S.rest.B },
+      { k: 'rest.isoOverlap', label: 'Přesah do pásu izolace', unit: 'mm', show: () => S.rest.F || S.rest.B },
+      { type: 'hint', show: () => S.rest.F || S.rest.B, html: () => 'Nejdřív jede izolace jako obvykle, pak druhý nástroj odfrézuje velké plochy mědi uvnitř desky. Jede jen tam, kam se vejde – úzké mezery a kouty zůstanou. Měď vně desky (rámeček s klipem sondy) zůstává.' },
       { k: 'iso.climb', label: 'Směr frézování', type: 'seg', wide: true, options: [[true, 'Sousledně (climb)'], [false, 'Nesousledně']] },
       { k: 'iso.clip', label: 'Ořezat dráhy obrysem desky', type: 'check' },
       { k: 'iso.step', label: 'Krok hloubky (0 = jedním průjezdem)', unit: 'mm', wide: true },
@@ -915,6 +925,41 @@ function snapTab(p, scale) {
   }
   return best && best.d < Math.max(3, 25 / scale) ? best : null;
 }
+// najetí myší s nástrojem Můstek: náhled, kam se můstek položí (přichycený na dráhu ořezu), nebo zvýraznění můstku pod kurzorem
+function tabHover(p, scale) {
+  const cv = $('#cv');
+  const ct = st.res?.cutTabs;
+  const prev = viewer.opts.tabPreview;
+  let next = null, cur = '';
+  if (p && ct) {
+    const tol = Math.max(ct.len / 2, 10 / scale);
+    const hit = (ct.list || []).filter(t => !t.problem || Array.isArray(B.tabs)).find(t => Math.hypot(t.x - p[0], t.y - p[1]) < tol);
+    if (hit) { next = { x: hit.x, y: hit.y, ang: hit.ang ?? snapTab([hit.x, hit.y], scale)?.ang ?? 0 }; cur = 'grab'; }
+    else { const q = snapTab(p, scale); if (q) { next = { x: q.x, y: q.y, ang: q.ang }; cur = 'copy'; } else cur = 'not-allowed'; }
+  }
+  cv.style.cursor = cur;
+  if (prev?.x !== next?.x || prev?.y !== next?.y) { viewer.opts.tabPreview = next; viewer.draw(false); }
+}
+// posun můstku po dráze ořezu o d mm (šipky)
+function moveTabAlong(i, d) {
+  const t = B.tabs?.[i], paths = st.res?.cutTabs?.paths || []; if (!t) return;
+  let best = null;
+  paths.forEach((P, pi) => { for (let k = 1; k < P.length; k++) { const [x0, y0] = P[k - 1], [x1, y1] = P[k], dx = x1 - x0, dy = y1 - y0, L2 = dx * dx + dy * dy; const u = L2 ? Math.max(0, Math.min(1, ((t.x - x0) * dx + (t.y - y0) * dy) / L2)) : 0; const dd = Math.hypot(t.x - x0 - u * dx, t.y - y0 - u * dy); if (!best || dd < best.dd) best = { dd, pi, k, u }; } });
+  if (!best) return;
+  const P = paths[best.pi], n = P.length, closed = Math.hypot(P[0][0] - P[n - 1][0], P[0][1] - P[n - 1][1]) < 1e-6;
+  let k = best.k, u = best.u, rest = Math.abs(d), dir = Math.sign(d);
+  for (let guard = 0; guard < 100000 && rest > 1e-9; guard++) {
+    const a = P[k - 1], b = P[k], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const avail = dir > 0 ? (1 - u) * L : u * L;
+    if (avail >= rest) { u += dir * rest / (L || 1); rest = 0; break; }
+    rest -= avail;
+    if (dir > 0) { k++; u = 0; if (k >= n) { if (!closed) { k = n - 1; u = 1; break; } k = 1; } }
+    else { k--; u = 1; if (k < 1) { if (!closed) { k = 1; u = 0; break; } k = n - 1; } }
+  }
+  const a = P[k - 1], b = P[k];
+  B.tabs[i] = { x: +(a[0] + u * (b[0] - a[0])).toFixed(4), y: +(a[1] + u * (b[1] - a[1])).toFixed(4) };
+  boardChanged();
+}
 function removeTab(i) { if (!Array.isArray(B.tabs)) return; B.tabs.splice(i, 1); if (st.pick?.kind === 'tab') st.pick = null; boardChanged(); }
 function ensureManual() {
   if (S.pins.source !== 'manual') {
@@ -984,7 +1029,7 @@ function opEditor(op) {
     if ((op.kind === 'drill' || op.kind === 'pins') && f === 'plunge') lab = 'Posuv Z';
     if ((op.kind === 'drill' || op.kind === 'pins') && f === 'step') lab = 'Krok vrtání';
     if (op.kind === 'iso' && f === 'depth') lab = 'Hloubka izolace';
-    let base = f === 'depth' ? (op.kind === 'pins' ? S.pins.depth : op.kind === 'drill' ? CAM.drillDepth(S, tool) : op.kind === 'iso' ? S.iso.depth : S.cut.depth) : f === 'spindle' ? (tool?.spindle ?? '') : tool?.[f];
+    let base = f === 'depth' ? (op.kind === 'pins' ? S.pins.depth : op.kind === 'drill' ? CAM.drillDepth(S, tool) : op.kind === 'iso' ? S.iso.depth : op.kind === 'rest' ? (S.rest.depth ?? S.iso.depth) : S.cut.depth) : f === 'spindle' ? (tool?.spindle ?? '') : tool?.[f];
     if (f === 'step' && op.kind === 'iso') base = S.iso.step > 0 ? S.iso.step : 'bez kroků';
     if (f === 'step' && (op.kind === 'cut' || op.kind === 'mill') && S.cut.step > 0) base = S.cut.step;
     g.append(el('div', { class: 'f' }, el('label', {}, lab + (ov[f] != null ? ' •' : '')),
@@ -1062,6 +1107,7 @@ function buildSteps() {
     lastTool = op.toolId;
     if (op.kind === 'pins') steps.push({ h: `${chg}pusť ${f}: díry pro kolíčky skrz desku do přípravku (${cz(op.prm.depth)} mm). Pak zasuň kolíčky.`, tag: 'Stroj' });
     else if (op.kind === 'iso') steps.push({ h: `${chg}změř výškovou mapu a pusť ${f} – ${op.side === 'bottom' ? 'spodní měď (zrcadleně)' : 'horní měď'}.`, tag: 'Stroj + mapa' });
+    else if (op.kind === 'rest') steps.push({ h: `${chg}pusť ${f} – zbylá měď ${op.side === 'bottom' ? 'zespodu (zrcadleně)' : 'nahoře'} (s výškovou mapou).`, tag: 'Stroj + mapa' });
     else if (op.kind === 'drill') steps.push({ h: `${chg}pusť ${f} (${op.count} ${pl(op.count, 'díra', 'díry', 'děr')}).`, tag: 'Stroj' });
     else steps.push({ h: `${chg}pusť ${f} – ${esc(op.title.toLowerCase())}.`, tag: 'Stroj' });
   }
@@ -1183,7 +1229,7 @@ viewer.onArea = (pts, tool) => {
 };
 function defaultAreaLayer() {
   const op = st.res?.ops.find(o => o.id === st.sel);
-  if (op?.kind === 'iso') return op.layer;
+  if (op?.kind === 'iso' || op?.kind === 'rest') return op.layer;
   return st.board.used['F.Cu'] ? 'F.Cu' : 'B.Cu';
 }
 function renderInspector() {
@@ -1271,8 +1317,8 @@ function setTool(t) {
   st.tool = t;
   document.querySelectorAll('#toolMode button').forEach(x => x.classList.toggle('on', x.dataset.tool === t));
   viewer.cancelDraft(); viewer.setOpts({ tool: t });
-  $('#cv').dataset.tool = t;
-  const hint = { pan: '', select: 'Klik = výběr díry, kusu mědi, tvaru nebo oblasti · Shift = přidat · tažení = obdélník děr · Esc = zpět na posun', clear: 'Táhni obdélník, nebo klikej body mnohoúhelníku (uzavři klikem na první bod / Enter) · Esc zruší / zpět na posun', block: 'Oblast, kde se nemá frézovat: obdélník tažením, nebo body klikáním · Enter dokončí · Esc zruší / zpět na posun', pin: 'Klik = přidat kolíček (přichytí se k díře nebo na rastr 0,5 mm) · tažení kolíčku = posun · Del = smazat vybraný · Esc = zpět na posun', panel: 'Táhni desku = posun (rastr 0,5 mm, Shift 0,1 mm) · klik = výběr · R = otočit vybranou o 90° · šipky = posun 0,5 mm (Shift 5 mm) · Esc = zpět na posun', tab: 'Klik na dráhu ořezu = přidat můstek · tažení můstku = posun po dráze · Del = smazat vybraný · Esc = zpět na posun' }[t];
+  $('#cv').dataset.tool = t; if (t !== 'tab') { $('#cv').style.cursor = ''; if (viewer.opts.tabPreview) { viewer.opts.tabPreview = null; viewer.draw(false); } }
+  const hint = { pan: '', select: 'Klik = výběr díry, kusu mědi, tvaru nebo oblasti · Shift = přidat · tažení = obdélník děr · Esc = zpět na posun', clear: 'Táhni obdélník, nebo klikej body mnohoúhelníku (uzavři klikem na první bod / Enter) · Esc zruší / zpět na posun', block: 'Oblast, kde se nemá frézovat: obdélník tažením, nebo body klikáním · Enter dokončí · Esc zruší / zpět na posun', pin: 'Klik = přidat kolíček (přichytí se k díře nebo na rastr 0,5 mm) · tažení kolíčku = posun · Del = smazat vybraný · Esc = zpět na posun', panel: 'Táhni desku = posun (rastr 0,5 mm, Shift 0,1 mm) · klik = výběr · R = otočit vybranou o 90° · šipky = posun 0,5 mm (Shift 5 mm) · Esc = zpět na posun', tab: 'Najeď na dráhu ořezu – zvýrazní se, kam se můstek položí, klik = přidat · tažení můstku = posun po dráze · šipky = posun vybraného o 0,5 mm (Shift 5 mm) · Del = smazat · Esc = zpět na posun' }[t];
   $('#toolHint').textContent = hint; $('#toolHint').classList.toggle('on', !!hint);
 }
 document.querySelectorAll('#toolMode button').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
@@ -1404,6 +1450,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Backspace' && viewer.draft) { e.preventDefault(); viewer.undoDraft(); }
   else if ((e.key === 'Delete' || e.key === 'Backspace') && st.pick?.kind === 'pin') { removePin(st.pick.idx); }
   else if ((e.key === 'Delete' || e.key === 'Backspace') && st.pick?.kind === 'tab') { removeTab(st.pick.idx); }
+  else if (st.pick?.kind === 'tab' && Array.isArray(B.tabs) && !e.ctrlKey && !e.altKey && e.key.startsWith('Arrow')) { e.preventDefault(); const k = e.shiftKey ? 5 : 0.5; moveTabAlong(st.pick.idx, (e.key === 'ArrowRight' || e.key === 'ArrowUp') ? k : -k); }
   else if ((e.key === 'Delete' || e.key === 'Backspace') && st.pick?.kind === 'area') { for (const a of st.pick.items) B.areas.splice(B.areas.indexOf(a), 1); st.pick = null; boardChanged(); }
   else if (st.panel && st.pick?.kind === 'inst' && !e.ctrlKey && !e.altKey && (e.key.toLowerCase() === 'r' || e.key.startsWith('Arrow'))) {
     e.preventDefault();
@@ -1902,6 +1949,7 @@ viewer.onPinDown = (p, scale) => {
 };
 viewer.onPinMove = (i, p, scale) => {
   if (st.tool === 'tab') { const q = snapTab(p, scale); if (!q) return; B.tabs[i] = { x: +q.x.toFixed(4), y: +q.y.toFixed(4) }; viewer.opts.tabPreview = { x: q.x, y: q.y, ang: q.ang }; viewer.draw(false); return; } const q = snapPin(p, scale); B.pins[i] = { x: q.x, y: q.y }; viewer.opts.pinPreview = { i, x: q.x, y: q.y }; viewer.draw(false); };
+viewer.onTabHover = (p, scale) => tabHover(p, scale);
 viewer.onPinUp = () => { viewer.opts.pinPreview = null; viewer.opts.tabPreview = null; boardChanged(); };
 viewer.onPinAdd = (p, scale) => {
   if (st.tool === 'tab') {

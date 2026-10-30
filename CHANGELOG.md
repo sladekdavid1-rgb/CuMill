@@ -1,6 +1,19 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- **Remaining copper with a second tool** – after the V-bit isolation an end mill clears large copper areas inside
+  the board (per layer, own tool / depth / overlap / overlap into the isolation band); copper outside the board stays
+- **Slower edge passes** – the first isolation pass (next to pads/tracks) and the last one (next to the remaining
+  copper) run at an adjustable feed (default 150 mm/min) to reduce burr; passes in between keep the normal feed
+- **Probe Z over copper that is left** – before measuring Z the tool moves over the blank frame outside the board
+  (or a large copper area); auto / manual X Y / where the tool is
+- **Tabs** – hover preview of where the tab will go (snapped to the cut path), grab cursor over tabs,
+  arrow keys move the selected tab along the path (0.5 / 5 mm)
+- Fix: **Go to X Y Z** – modes are now *Work* (from board zero), *By* (offset from current position) and *Machine*;
+  the old “Relative” mode actually moved to work coordinates; machine moves no longer use Z −1 on machines
+  with positive machine coordinates
+- Fix: step-by-step wizard – measuring Z for a drill no longer leaves the “Z was not measured” warning
+  (the program of that step is loaded first)
 - **Much faster recomputing** – finished isolation paths (and their arc fitting) are kept in memory, so changing
   the cut-out, tabs, drilling, feeds etc. no longer recomputes multi-pass isolation (e.g. 37 s → 0.1 s with 15 passes);
   isolation is computed again only when its own geometry settings, edits or board placement change

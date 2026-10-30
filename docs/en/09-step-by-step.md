@@ -86,6 +86,13 @@ with the same tool.
 
 For each drill: tool change → measure Z → run the drilling program. From smaller to larger diameters.
 
+The wizard button **Najet na měď a změřit Z** (move over copper and probe Z) first loads the program of that
+drill and moves over copper that is left after isolation (the frame outside the board) – at the zero the
+copper is usually milled away already. The step is ticked once Z is measured for this program.
+
+With **remaining copper with a second tool** enabled, it runs right after the isolation of the same side:
+change to the end mill → measure Z → run *Zbylá měď* (remaining copper).
+
 ### 13. Cut-out
 
 1.8 mm end mill → measure Z → **Run board cut-out**. With tabs the board stays in the blank –
