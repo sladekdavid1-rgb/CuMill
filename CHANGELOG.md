@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- Fix: a project whose KiCad file was moved or deleted did not open (start screen stayed, “loaded” message shown) –
+  now the board copy saved in the project is used and the message says so
 - **Print 1:1** – paper template of the board / panel at real size (copper, holes, outline of all milling incl. tool
   radius, 50 mm check bar; optional blank, pins, zero, 1 cm grid) to try the placement on the copper-clad blank; opens in the default browser with the normal
   Windows print dialog

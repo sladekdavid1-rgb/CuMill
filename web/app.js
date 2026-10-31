@@ -135,9 +135,11 @@ async function loadSources(sources, { keepView = false } = {}) {
     st.panel = null;
     await applyBoard(buildBoard(files), sources, { keepView });
     addRecent(st.board.name, sources);
+    return true;
   } catch (e) {
     console.error(e);
     toast('Nepodařilo se načíst: ' + e.message, true);
+    return false;
   } finally { busy(false); }
 }
 async function applyBoard(board, sources, { keepView = false } = {}) {
@@ -1662,21 +1664,32 @@ async function openProject(text, path = null) {
   S = migrateS(merge(CAM.defaults(), prj.S)); saveSettings();
   try { localStorage.setItem('cumill.board.' + prj.board, JSON.stringify(prj.B)); } catch {}
   // deska: aktuální soubor z KiCadu, pokud ještě existuje (a jde sledovat změny), jinak uložená kopie
-  let sources = null;
+  let sources = null, missingSrc = false;
   if (prj.panel) {
     st.panel = prj.panel; panelCache.clear(); st.board = null;
     await reloadPanel({ keepView: false });
   } else {
   if (host.native && prj.files.every(f => f.path)) {
-    try { for (const f of prj.files) await api('stat?path=' + encodeURIComponent(f.path)); sources = prj.files.map(f => ({ path: f.path, name: f.name })); } catch { sources = null; }
+    // původní soubory z KiCadu – jen když opravdu existují (jinak se použije kopie uložená v projektu)
+    try {
+      let all = true;
+      for (const f of prj.files) { const j = await (await api('stat?path=' + encodeURIComponent(f.path))).json(); if (!(j.mtime > 0)) { all = false; break; } }
+      sources = all ? prj.files.map(f => ({ path: f.path, name: f.name })) : null;
+      if (!all) missingSrc = true;
+    } catch { sources = null; }
   }
   if (!sources) sources = prj.files.map(f => ({ file: new File([f.text], f.name), name: f.name }));
-  await loadSources(sources);
+  const okLoad = await loadSources(sources);
+  if (!okLoad && sources.some(s => s.path)) {
+    // čtení původního souboru selhalo – zkusit uloženou kopii
+    missingSrc = true;
+    if (!await loadSources(prj.files.map(f => ({ file: new File([f.text], f.name), name: f.name })))) throw new Error('Desku z projektu se nepodařilo načíst.');
+  } else if (!okLoad) throw new Error('Desku z projektu se nepodařilo načíst.');
   }
   if (prj.enabled) { st.enabled = prj.enabled; renderOps(); }
   if (prj.map) getMachine().setMap(prj.map);
   st.project = path ? { path, name: prjBase(path) } : null; renderBoardInfo();
-  toast(`${prj.panel ? 'Panel' : 'Projekt'} „${st.project?.name || prj.board}“ načten${prj.map ? ' i s výškovou mapou' : ''}${st.project ? ' – změny se ukládají průběžně' : ''}.`);
+  toast(`${prj.panel ? 'Panel' : 'Projekt'} „${st.project?.name || prj.board}“ načten${prj.map ? ' i s výškovou mapou' : ''}${st.project ? ' – změny se ukládají průběžně' : ''}.` + (missingSrc ? ` Původní soubor z KiCadu (${prj.files.map(f => f.name).join(', ')}) na uložené cestě už není – použita kopie uložená v projektu.` : ''), missingSrc);
 }
 
 // ---------- export pro laser (SVG, stejná nula jako frézování) ----------
