@@ -24,6 +24,7 @@
   from tracks, e.g. 2 mm); copper outside the board stays
 - **Slower edge passes** – the first isolation pass (next to pads/tracks) and the last one (next to the remaining
   copper) run at an adjustable feed (default 150 mm/min) to reduce burr; passes in between keep the normal feed
+  and always run first – the slow edge passes come last as a finishing pass
 - **Probe Z over copper that is left** – before measuring Z the tool moves over the blank frame outside the board
   (or a large copper area); auto / manual X Y / where the tool is
 - **Tabs** – hover preview of where the tab will go (snapped to the cut path), grab cursor over tabs,

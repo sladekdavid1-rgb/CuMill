@@ -117,7 +117,7 @@ Hlavní operace – V-fréza objede všechny cesty a plošky a tím je odizoluje
 | **Počet průjezdů** | 1 = jedna drážka kolem cest; 2–4 = širší izolace (snazší pájení) |
 | **Překrytí průjezdů** | o kolik % se sousední průjezdy překrývají |
 | **Překrytí při odfrézování** | totéž pro oblasti „Odfrézovat měď“ |
-| **Krajní průjezdy u mědi pomaleji** | první průjezd (u plošky / cesty) a poslední (u zbylé mědi) jedou posuvem **Posuv krajních průjezdů** (výchozí 150 mm/min) – menší otřep. Průjezdy mezi nimi jedou normálním posuvem. Při 1–2 průjezdech jsou krajní všechny. |
+| **Krajní průjezdy u mědi pomaleji** | první průjezd (u plošky / cesty) a poslední (u zbylé mědi) jedou posuvem **Posuv krajních průjezdů** (výchozí 150 mm/min) – menší otřep. Průjezdy mezi nimi jedou normálním posuvem a **vždy jako první** – pomalé krajní průjezdy jedou až nakonec jako dokončení. Při 1–2 průjezdech jsou krajní všechny. |
 | **Zbylou měď … odfrézovat druhým nástrojem** | po izolaci odfrézuje velké plochy mědi uvnitř desky druhým nástrojem (např. frézou Ø1,8) – viz níže |
 | **Směr frézování** | *Sousledně (climb)* – čistší hrana na malých frézkách; *Nesousledně* |
 | **Ořezat dráhy obrysem desky** | dráhy nepřesahují obrys desky |

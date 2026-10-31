@@ -772,15 +772,23 @@ export function computeAll(board, S, B) {
     const isoDepths = isoMulti ? depthList(prm.depth, prm.step) : [prm.depth];
     const theo = toolWidth(isoTool, prm.depth);
     const edgeF = S.iso.edgeSlow !== false && +S.iso.edgeFeed > 0 && +S.iso.edgeFeed < prm.feed ? +S.iso.edgeFeed : 0;
+    // krajní (pomalé) průjezdy nikdy jako první: nejdřív vnitřní průjezdy, krajní až na konci (dokončení u mědi)
+    const seq = edgeF ? cached(board, isoKey + '|krajni-nakonec', () => {
+      const open = o => o.closed ? { ...o, pts: o.pts.slice(0, -1) } : o; // orderPaths přidá uzavírací bod znovu
+      const inner = ordered.filter(o => !o.edge), edge = ordered.filter(o => o.edge);
+      if (!inner.length || !edge.length) return ordered;
+      const a = orderPaths(inner.map(open)), last = a[a.length - 1].pts[a[a.length - 1].pts.length - 1];
+      return a.concat(orderPaths(edge.map(open), last));
+    }) : ordered;
     const g = mkG({
       title: `Izolace ${L}${sd === 'bottom' ? ' zrcadleno' : ''}`, origin: tf.desc, side: sideName(sd),
       tool: `${toolLabel(isoTool)}, sirka rezu ${w} mm${isoTool?.type === 'v' ? ` (teoreticky ${theo.toFixed(3)})` : ''}`,
       notes: [`Hloubka ${prm.depth} mm${isoMulti ? ` po ${prm.step} (${isoDepths.length} kroky)` : ''}, ${maxP > 1 ? 'az ' + maxP : '1'} prujezd(y), ${prmNote(prm)}`, ...(edgeF ? [`Krajni prujezdy u medi (prvni a posledni) F${edgeF}`] : [])],
     }, prm);
     const body = []; g.lines = body;
-    const nEdge = edgeF ? ordered.filter(o => o.edge).length : 0;
+    const nEdge = edgeF ? seq.filter(o => o.edge).length : 0;
     let lastNet = null;
-    for (const it of ordered) {
+    for (const it of seq) {
       const p = it.pts;
       if (it.net !== undefined && it.net !== lastNet) { g.comment('sit ' + (it.net || '?')); lastNet = it.net; }
       const f = it.edge && edgeF ? edgeF : prm.feed;
@@ -791,7 +799,7 @@ export function computeAll(board, S, B) {
       });
       g.rapidZ(M.zTravel);
     }
-    ops.push({ id: key, key, no: nextNo(), kind: 'iso', layer: L, title: `Izolace ${L === 'B.Cu' ? 'spodní' : 'horní'} mědi${sd === 'bottom' ? ' (zrcadleně)' : ''}`, short: `${L === 'B.Cu' ? 'Bcu' : 'Fcu'}_izolace${sd === 'bottom' ? '_ZRCADLENO' : ''}_V${w.toFixed(2)}`, side: sd, toolRef: 'iso.tool', toolTypes: ['v', 'end'], toolId: isoTool?.id, tool: `${toolLabel(isoTool)} · šířka ${fmtMM(w, 3)}`, toolDia: w, prm, fields: ['feed', 'plunge', 'spindle', 'step', 'depth'], gcode: g.build(body, G.bbox(ordered.map(o => o.pts))), moves: g.moves, minutes: g.minutes(), count: ordered.length, extra: [clearRings ? `${clearRings} drah čištění` : '', nEdge ? `${nEdge} krajních drah F${edgeF}` : ''].filter(Boolean).join(' · '), netPaths: ordered.map(o => ({ net: o.net || '', edge: !!(edgeF && o.edge), pts: o.closed ? o.pts.concat([o.pts[0]]) : o.pts })) });
+    ops.push({ id: key, key, no: nextNo(), kind: 'iso', layer: L, title: `Izolace ${L === 'B.Cu' ? 'spodní' : 'horní'} mědi${sd === 'bottom' ? ' (zrcadleně)' : ''}`, short: `${L === 'B.Cu' ? 'Bcu' : 'Fcu'}_izolace${sd === 'bottom' ? '_ZRCADLENO' : ''}_V${w.toFixed(2)}`, side: sd, toolRef: 'iso.tool', toolTypes: ['v', 'end'], toolId: isoTool?.id, tool: `${toolLabel(isoTool)} · šířka ${fmtMM(w, 3)}`, toolDia: w, prm, fields: ['feed', 'plunge', 'spindle', 'step', 'depth'], gcode: g.build(body, G.bbox(seq.map(o => o.pts))), moves: g.moves, minutes: g.minutes(), count: seq.length, extra: [clearRings ? `${clearRings} drah čištění` : '', nEdge ? `${nEdge} krajních drah F${edgeF}` : ''].filter(Boolean).join(' · '), netPaths: seq.map(o => ({ net: o.net || '', edge: !!(edgeF && o.edge), pts: o.closed ? o.pts.concat([o.pts[0]]) : o.pts })) });
     { const gc = cached(board, 'gap|' + L + '|' + w, () => { const c = [], m = []; gapCheck(board, L, w, c, m); return { c, m }; }); checks.push(...gc.c); markers.push(...gc.m); }
     genSilk(L === 'B.Cu' ? 'B.SilkS' : 'F.SilkS');
     // --- zbylá měď druhým nástrojem (velké plochy mimo pás izolace)

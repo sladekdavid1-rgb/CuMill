@@ -125,7 +125,7 @@ The main operation – the V-bit goes around all tracks and pads and isolates th
 | **Počet průjezdů** (Passes) | 1 = one groove around tracks; 2–4 = wider isolation (easier soldering) |
 | **Překrytí průjezdů** (Pass overlap) | how many % neighbouring passes overlap |
 | **Překrytí při odfrézování** (Clearing overlap) | the same for copper-clearing areas |
-| **Krajní průjezdy u mědi pomaleji** (Edge passes slower) | the first pass (next to the pad / track) and the last pass (next to the remaining copper) run at **Posuv krajních průjezdů** (edge feed, default 150 mm/min) – less burr. Passes in between run at the normal feed. With 1–2 passes all of them are edge passes. |
+| **Krajní průjezdy u mědi pomaleji** (Edge passes slower) | the first pass (next to the pad / track) and the last pass (next to the remaining copper) run at **Posuv krajních průjezdů** (edge feed, default 150 mm/min) – less burr. Passes in between run at the normal feed and **always first** – the slow edge passes come last as a finishing pass. With 1–2 passes all of them are edge passes. |
 | **Zbylou měď … odfrézovat druhým nástrojem** (Remove remaining copper with a second tool) | after isolation, a second tool (e.g. a Ø1.8 end mill) clears large copper areas inside the board – see below |
 | **Směr frézování** (Direction) | *Sousledně (climb)* – cleaner edge on small machines; *Nesousledně* (conventional) |
 | **Ořezat dráhy obrysem desky** (Clip to outline) | paths don't go beyond the board outline |
