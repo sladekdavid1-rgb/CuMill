@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- **Print 1:1** – paper template of the board / panel at real size (blank, copper, holes, pins, zero, 1 cm grid,
+  50 mm check bar) to try the placement on the copper-clad blank
 - **Machine mode CNC / laser** in the Machine tab: one click sets `$32` (laser mode) and `$30` (max. S) with a separate
   max. S for CNC and for laser (taken from the machine the first time); warning before milling in laser mode
 - Console quick buttons: `$$`, `$#`, `$G`, `$I`, `$X`, `$H`, `$32=0`, `$32=1`

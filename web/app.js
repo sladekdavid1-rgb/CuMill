@@ -146,7 +146,7 @@ async function applyBoard(board, sources, { keepView = false } = {}) {
   loadBoardSettings();
   viewer.setBoard(board);
   $('#empty').classList.add('hidden');
-  $('#btnReload').disabled = false; $('#btnSave').disabled = false; $('#btnProject').disabled = false; $('#btnLaser').disabled = false;
+  $('#btnReload').disabled = false; $('#btnSave').disabled = false; $('#btnProject').disabled = false; $('#btnLaser').disabled = false; $('#btnPrint').disabled = false;
   if (!sameBoard) { st.project = null; st.sel = null; st.enabled = {}; st.visible = {}; st.pick = null; st.groupSel.clear(); hist.list = []; hist.pos = -1; }
   document.querySelector('#toolMode [data-tool=panel]').hidden = !board.panel;
   if (!board.panel && st.tool === 'panel') setTool('pan');
@@ -1698,6 +1698,86 @@ function openLaserDlg() {
       el('button', { class: 'btn primary', onclick: () => { o.maskGrow = num(grow.value) ?? 0.05; try { localStorage.setItem(LASER_LS, JSON.stringify(o)); } catch {} d.close(); exportLaser(o); } }, 'Exportovat')));
   document.body.append(d); d.addEventListener('close', () => d.remove()); d.showModal();
 }
+// ---------- tisk 1:1 (papírová šablona na vyzkoušení umístění na cuprextitu) ----------
+const PRINT_LS = 'cumill.print';
+function openPrintDlg() {
+  if (!st.board || !st.res) { toast('Nejdřív načti desku.', true); return; }
+  const o = (() => { try { return { side: 'first', blank: true, copper: true, holes: true, pins: true, origin: true, grid: true, scale: true, ...JSON.parse(localStorage.getItem(PRINT_LS) || '{}') }; } catch { return {}; } })();
+  const d = el('dialog', { class: 'mdlg' });
+  const chk = (k, label) => { const i = el('input', { type: 'checkbox' }); i.checked = !!o[k]; i.addEventListener('change', () => o[k] = i.checked); return el('label', { class: 'f check' }, i, label); };
+  const two = st.res.ops.some(x => x.side === 'bottom') && st.res.ops.some(x => x.side === 'top');
+  const sideSeg = el('div', { class: 'seg2' }, ...[['first', 'Jak leží na stroji (první strana)'], ['top', 'Shora'], ['bottom', 'Zespodu (zrcadleně)']].map(([v, t]) =>
+    el('button', { type: 'button', class: o.side === v ? 'on' : '', onclick: e => { o.side = v; e.target.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === e.target)); } }, t)));
+  d.append(el('div', { class: 'dlghead' }, el('b', {}, 'Tisk 1:1')),
+    el('div', { class: 'dlgbody' },
+      el('p', { class: 'muted small' }, 'Vytiskne desku ve skutečné velikosti, jak bude ležet na stroji – vystřihni a přilož na cuprextit. V dialogu tisku nastav měřítko 100 % / „Skutečná velikost“ (ne „Přizpůsobit stránce“) a po tisku změř kontrolní úsečku 50 mm.'),
+      el('div', { class: 'f wide' }, el('label', {}, 'Strana'), sideSeg),
+      two ? el('div', { class: 'muted small' }, 'Deska se frézuje z obou stran – zespodu je obraz zrcadlený (jak bude ležet po otočení).') : null,
+      chk('blank', 'Polotovar (obdélník cuprextitu)'), chk('copper', 'Měď (šedě)'), chk('holes', 'Díry'), chk('pins', 'Kolíčky přípravku'),
+      chk('origin', 'Nula stroje (křížek)'), chk('grid', 'Mřížka po 1 cm s popisky'), chk('scale', 'Kontrolní úsečka 50 mm')),
+    el('div', { class: 'dlgfoot' }, el('button', { class: 'btn', onclick: () => d.close() }, 'Zrušit'),
+      el('button', { class: 'btn primary', onclick: () => { try { localStorage.setItem(PRINT_LS, JSON.stringify(o)); } catch {} d.close(); printBoard(o); } }, 'Tisknout…')));
+  document.body.append(d); d.addEventListener('close', () => d.remove()); d.showModal();
+}
+function printSvg(o) {
+  const b = st.board, res = st.res;
+  const side = o.side === 'first' ? (res.firstSide || 'top') : o.side;
+  const sd = res.sides[side], tf = sd.fwd;
+  const f4 = v => v.toFixed(3);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const grow = (x, y) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); };
+  const pathD = (polys, closed, map = tf) => polys.map(p => 'M' + p.map(q => { const [x, y] = map(q); grow(x, y); return `${f4(x)},${f4(-y)}`; }).join('L') + (closed ? 'Z' : '')).join('');
+  const g = [];
+  const outl = [...(b.outlines || [b.outline]), ...(b.inner || [])];
+  // polotovar: obdélník W × H kolem otočené desky (stejně jako kontrola „vejde se“)
+  if (o.blank) {
+    const rb = G.bbox((b.outlines || [b.outline]).map(l => l.map(sd.R))), mx = (rb.minX + rb.maxX) / 2, my = (rb.minY + rb.maxY) / 2, W = S.setup.blankW, H = S.setup.blankH;
+    const rect = [[mx - W / 2, my - H / 2], [mx + W / 2, my - H / 2], [mx + W / 2, my + H / 2], [mx - W / 2, my + H / 2]];
+    g.push(`<path d="${pathD([rect], true, q => tf(sd.Ri(q)))}" fill="none" stroke="#999" stroke-width="0.3" stroke-dasharray="3 1.5"/>`);
+  }
+  if (o.copper) {
+    const L = side === 'bottom' ? 'B.Cu' : 'F.Cu', Lo = side === 'bottom' ? 'F.Cu' : 'B.Cu';
+    if (b.used?.[Lo]) g.push(`<path d="${pathD(b.copper[Lo] || [], true)}" fill="#ececec" fill-rule="nonzero" stroke="none"/>`);
+    if (b.used?.[L]) g.push(`<path d="${pathD(b.copper[L] || [], true)}" fill="#c4c4c4" fill-rule="nonzero" stroke="#8a8a8a" stroke-width="0.08"/>`);
+  }
+  g.push(`<path d="${pathD(outl, true)}" fill="none" stroke="#000" stroke-width="0.25"/>`);
+  if (o.holes) g.push(`<g fill="#fff" stroke="#000" stroke-width="0.12">${b.holes.map(h => { const [x, y] = tf([h.x, h.y]); return `<circle cx="${f4(x)}" cy="${f4(-y)}" r="${f4(Math.max(0.15, h.d / 2))}"/>`; }).join('')}</g>`);
+  if (o.pins && res.pinsOn && res.pins?.length) {
+    const r = (res.pinDia || 2.5) / 2;
+    g.push(`<g fill="none" stroke="#c00" stroke-width="0.25">${res.pins.map(p => { const [x, y] = tf([p.x, p.y]); grow(x - r, y - r); grow(x + r, y + r); return `<circle cx="${f4(x)}" cy="${f4(-y)}" r="${f4(r)}"/><path d="M${f4(x - r * 1.6)},${f4(-y)}H${f4(x + r * 1.6)}M${f4(x)},${f4(-y - r * 1.6)}V${f4(-y + r * 1.6)}"/>`; }).join('')}</g>`);
+  }
+  if (o.origin) { grow(-3, -3); grow(3, 3); g.push(`<g stroke="#0a0" stroke-width="0.25" fill="none"><path d="M-4,0H4M0,-4V4"/><circle r="1.2"/></g><text x="1.6" y="-1.6" font-size="2.6" fill="#0a0" font-family="sans-serif">0</text>`); }
+  // okraj kolem a místo pro popisky
+  x0 -= 6; y0 -= 6; x1 += 6; y1 += 6;
+  if (o.grid) {
+    const gl = [];
+    for (let x = Math.ceil(x0 / 10) * 10; x <= x1; x += 10) gl.push(`M${x},${f4(-y1)}V${f4(-y0)}`);
+    for (let y = Math.ceil(y0 / 10) * 10; y <= y1; y += 10) gl.push(`M${f4(x0)},${-y}H${f4(x1)}`);
+    g.unshift(`<path d="${gl.join('')}" stroke="#cfe3f5" stroke-width="0.15" fill="none"/>`);
+    const lab = [];
+    for (let x = Math.ceil(x0 / 10) * 10; x <= x1 - 2; x += 10) if (x - x0 > 4) lab.push(`<text x="${x + 0.6}" y="${f4(-y0 - 0.8)}">${x / 10}</text>`);
+    for (let y = Math.ceil(y0 / 10) * 10; y <= y1 - 2; y += 10) if (y - y0 > 4) lab.push(`<text x="${f4(x0 + 0.6)}" y="${-y - 0.6}">${y / 10}</text>`);
+    g.push(`<g font-size="2.4" fill="#6a8fb0" font-family="sans-serif">${lab.join('')}</g>`);
+  }
+  const W = x1 - x0, H = y1 - y0;
+  const bb = G.bbox((b.outlines || [b.outline]).map(l => l.map(tf)));
+  const size = `${cz((bb.maxX - bb.minX) / 10, 1)} × ${cz((bb.maxY - bb.minY) / 10, 1)} cm`;
+  const title = `${b.name} · ${b.panel ? 'panel' : 'deska'} ${size} · ${side === 'bottom' ? 'spodní strana (zrcadleně)' : 'horní strana'} · nula: ${originCz()}`;
+  const scaleSvg = o.scale ? `<svg xmlns="http://www.w3.org/2000/svg" width="62mm" height="6mm" viewBox="0 0 62 6"><path d="M1,3h50M1,1.2v3.6M51,1.2v3.6M26,2v2" stroke="#000" stroke-width="0.3" fill="none"/></svg>` : '';
+  return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${f4(W)}mm" height="${f4(H)}mm" viewBox="${f4(x0)} ${f4(-y1)} ${f4(W)} ${f4(H)}">${g.join('')}</svg>`, W, H, title, scaleSvg };
+}
+function printBoard(o) {
+  const { svg, W, H, title, scaleSvg } = printSvg(o);
+  const land = W > H;
+  const pw = land ? 297 : 210, ph = land ? 210 : 297;
+  if (W > pw - 10 || H > ph - 26) toast(`Tisk má ${cz(W / 10, 1)} × ${cz(H / 10, 1)} cm – na A4 se celý nevejde. Vypni polotovar / mřížku, nebo tiskni na větší papír.`, true);
+  const head = `<div class="t">${esc(title)}</div>` + (scaleSvg ? `<div class="s">${scaleSvg}<span>← 50 mm – po tisku změř, musí být přesně 5,0 cm (jinak tiskni v měřítku 100 %)</span></div>` : '');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>KiMill – tisk 1:1</title><style>@page{size:A4 ${land ? 'landscape' : 'portrait'};margin:5mm}html,body{margin:0;background:#fff;color:#000;font:10pt system-ui,Segoe UI,sans-serif}svg{display:block}.t{margin:0 0 1mm}.s{display:flex;align-items:center;gap:2mm;margin:0 0 2mm;font-size:8pt}</style></head><body>${head}${svg}</body></html>`;
+  const fr = el('iframe', { style: 'position:fixed;right:0;bottom:0;width:0;height:0;border:0' });
+  document.body.append(fr);
+  fr.addEventListener('load', () => { setTimeout(() => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { toast('Tisk se nepodařil: ' + e.message, true); } setTimeout(() => fr.remove(), 60000); }, 100); });
+  fr.srcdoc = html;
+}
 function exportLaser(o) {
   const b = st.board, res = st.res;
   if (!b.silk && (o.silkF || o.silkB)) toast('Potisk je jen v desce KiCad (.kicad_pcb).', true);
@@ -1846,6 +1926,7 @@ function setBackup(B) {
 $('#btnSettings').addEventListener('click', () => openSettingsDlg());
 $('#btnProject').addEventListener('click', () => openProjectsDlg());
 $('#btnLaser').addEventListener('click', () => openLaserDlg());
+$('#btnPrint').addEventListener('click', () => openPrintDlg());
 
 // ---------- záložka Stroj ----------
 let machineUI = null;
@@ -1995,7 +2076,7 @@ viewer.onPinAdd = (p, scale) => {
 
 }
 bindPinHandlers();
-window._cm = { newPanel, addInstance, arrangePanel, reloadPanel, pinsAroundPanel, saveProject, openProject, exportLaser, undoRedo, getMachine: () => getMachine(), recompute, gvs, setTab, addGcodeFiles, st, viewer, hitTest, loadSources, saveAll, host, get B() { return B; }, get S() { return S; } }; // ladění
+window._cm = { printSvg, newPanel, addInstance, arrangePanel, reloadPanel, pinsAroundPanel, saveProject, openProject, exportLaser, undoRedo, getMachine: () => getMachine(), recompute, gvs, setTab, addGcodeFiles, st, viewer, hitTest, loadSources, saveAll, host, get B() { return B; }, get S() { return S; } }; // ladění
 (async () => {
   await detectHost();
   renderSettings();
