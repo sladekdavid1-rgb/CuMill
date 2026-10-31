@@ -90,6 +90,10 @@ The wizard button **Najet na měď a změřit Z** (move over copper and probe Z)
 drill and moves over copper that is left after isolation (the frame outside the board) – at the zero the
 copper is usually milled away already. The step is ticked once Z is measured for this program.
 
+Drills of the same length (e.g. a set with depth collars) don't need measuring every time: at the *Změř Z nástroje* step
+click **Z stejné jako předchozí** (Z same as previous) – the Z zero stays and the step is ticked. The same button is on the
+*Spindle and overrides* card.
+
 With **remaining copper with a second tool** enabled, it runs right after the isolation of the same side:
 change to the end mill → measure Z → run *Zbylá měď* (remaining copper).
 

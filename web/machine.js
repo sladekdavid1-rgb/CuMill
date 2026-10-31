@@ -164,7 +164,9 @@ export function initMachine(ctx) {
   left.append(card('Vřeteno a korekce',
     el('div', { class: 'mrow' }, el('span', { class: 'mlabel' }, 'S'), sInp, el('button', { class: 'btn small', onclick: safeRun(() => cmd(`M3 S${num(sInp.value) || 12000}`, true)) }, 'Zapnout'), el('button', { class: 'btn small', onclick: safeRun(() => cmd('M5', true)) }, 'Vypnout')),
     ovF, ovZ, ovS, ovR,
-    el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: safeRun(() => act('probeZ')) }, 'Změřit Z sondou'), el('span', { class: 'muted small' }, 'klip na mědi / dotyková sonda'))));
+    el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: safeRun(() => act('probeZ')) }, 'Změřit Z sondou'),
+      el('button', { class: 'btn small', title: 'Nový nástroj je stejně dlouhý jako předchozí (např. vrtáky ze sady) – nula Z zůstane, měřit není potřeba', onclick: safeRun(() => sameZ()) }, 'Z stejné jako předchozí')),
+    el('div', { class: 'muted small' }, 'Měření: klip na mědi / dotyková sonda. „Z stejné“ = nástroj stejné délky, Z se nemění.')));
   // režim stroje: CNC (vřeteno, $32=0) / laser ($32=1) a max. otáčky / výkon S ($30)
   const modeInfo = el('div', { class: 'muted small' });
   const modeSeg = el('div', { class: 'seg2' }), maxInps = {};
@@ -712,6 +714,16 @@ export function initMachine(ctx) {
     return pts[side || M.prog?.op?.side || 'top'] || null;
   }
   const spotText = sp => sp ? `X ${cz(sp.x, 1)} Y ${cz(sp.y, 1)}${sp.where === 'frame' ? ' (měď vně desky)' : sp.where === 'copper' ? ' (velký kus mědi na desce)' : ' (ručně)'}` : 'tam, kde stojí nástroj';
+  // nový nástroj má stejnou délku jako předchozí (např. vrtáky v sadě): nula Z se ponechá, jen se zapíše, že platí
+  function sameZ(op = M.prog?.op) {
+    if (!M.zTool && !M.zOp) throw new Error('Z ještě nebylo změřené pro žádný nástroj – nejdřív ho změř.');
+    if (!op) throw new Error('Není načtený žádný program.');
+    const prev = M.zTool;
+    M.zTool = op.tool || ''; M.zOp = op.id || ''; save();
+    ctx.toast(`Z ponecháno jako pro „${prev}“ (nástroj stejně dlouhý).`);
+    log(`Z: stejné jako pro „${prev}“ → ${op.tool}`, 'info');
+    if (!panes.wiz.hidden) renderWizard();
+  }
   // Z nula nástroje: na místě, nebo v referenčním bodě výškové mapy (aby mapa dál platila)
   async function probeZ(atRef = false, side = null) {
     if (!M.on) throw new Error('Stroj není připojen.');
@@ -1313,6 +1325,7 @@ export function initMachine(ctx) {
         // program se načte dřív, než se měří – Z se pak počítá k jeho nástroji
         const zActs = [[atRef ? 'Změřit Z v ref. bodě mapy' : sp ? 'Najet na měď a změřit Z' : 'Změřit Z tady', () => { selectOp(op); return probeZ(atRef, op.side); }]];
         if (setterOK && tool) zActs.unshift(['Změřit na Z sondě', () => { selectOp(op); return setterMeasure(false); }]);
+        if (tool) zActs.push(['Z stejné jako předchozí', () => { selectOp(op); sameZ(op); }]);
         steps.push({ id: 'z:' + op.id, title: 'Změř Z nástroje', text: (setterOK && tool ? 'Nejrychleji na pevné Z sondě (nula zůstane, mapa platí). ' : '') + (M.probe.type === 'clip' ? 'Klipem: připni klip na nástroj, druhý vodič na měď desky.' + (atRef ? ' Měří se v referenčním bodě mapy, aby mapa dál platila.' : ` Nástroj najede nad měď, která zůstala: ${spotText(sp)} – spusť ho nad desku do výšky pár mm.`) : 'Polož destičku pod nástroj.') + (M.setter.on && !tool ? ' Po změření prvního nástroje udělej „Referenční měření“ na Z sondě.' : ''), acts: zActs, ok: () => M.zOp === op.id });
         tool = op.tool;
       }

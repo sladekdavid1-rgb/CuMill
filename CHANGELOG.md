@@ -25,6 +25,8 @@
 - **Slower edge passes** – the first isolation pass (next to pads/tracks) and the last one (next to the remaining
   copper) run at an adjustable feed (default 150 mm/min) to reduce burr; passes in between keep the normal feed
   and always run first – the slow edge passes come last as a finishing pass
+- “Z same as previous” in the wizard and on the spindle card – for tools of the same length (drill sets) the Z zero is
+  kept without probing
 - Z probing after a tool change starts 10 mm above the board (adjustable) and searches down far enough, so a longer or
   shorter tool is measured safely
 - **Probe Z over copper that is left** – before measuring Z the tool moves over the blank frame outside the board

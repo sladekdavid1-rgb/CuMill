@@ -90,6 +90,10 @@ Tlačítko **Najet na měď a změřit Z** v Průvodci nejdřív načte program 
 nad měď, která po izolaci zůstala (rámeček vně desky) – v nule už měď bývá odfrézovaná.
 Krok se odškrtne, jakmile je Z změřené pro tenhle program.
 
+Vrtáky stejné délky (třeba ze sady s dorazovými kroužky) není potřeba měřit pokaždé: u kroku *Změř Z nástroje*
+klikni na **Z stejné jako předchozí** – nula Z zůstane a krok se odškrtne. Stejné tlačítko je i na kartě
+*Vřeteno a korekce*.
+
 Když máš zapnutou **zbylou měď druhým nástrojem**, jede hned po izolaci téže strany:
 výměna na válcovou frézu → změř Z → spusť *Zbylá měď*.
 
