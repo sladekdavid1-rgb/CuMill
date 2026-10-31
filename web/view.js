@@ -34,6 +34,12 @@ export function netColor(net, a = 1) {
 }
 export const opColor = op => OP_COLORS[op.kind === 'iso' ? 'iso-' + op.layer : op.kind] || '#fff';
 
+// poloha myši v prvku v CSS px – i při zvětšení rozhraní (CSS zoom na <html>), kdy getBoundingClientRect
+// vrací zvětšené rozměry, ale kreslí se v nezvětšených
+export function localPt(el, e) {
+  const r = el.getBoundingClientRect(), k = el.offsetWidth ? r.width / el.offsetWidth : 1;
+  return [(e.clientX - r.left) / k, (e.clientY - r.top) / k, k];
+}
 function drawTab(ctx, ct, t, sel, prev, px, tf) {
   const h = Math.max(0.3, (ct.len - ct.width) / 2), ca = Math.cos(t.ang) * h, sa = Math.sin(t.ang) * h;
   let a = [t.x - ca, t.y - sa], c = [t.x + ca, t.y + sa];
@@ -83,21 +89,20 @@ export class Viewer {
     this.rubber = null; // obdélník výběru/oblasti ve světě
     c.addEventListener('wheel', e => {
       e.preventDefault();
-      const r = c.getBoundingClientRect();
-      const [wx, wy] = this.toWorld(e.clientX - r.left, e.clientY - r.top);
+      const [sx, sy] = localPt(c, e);
+      const [wx, wy] = this.toWorld(sx, sy);
       const k = Math.exp(-e.deltaY * 0.0015);
       this.scale = Math.min(400, Math.max(0.5, this.scale * k));
-      const [sx, sy] = [e.clientX - r.left, e.clientY - r.top];
       this.cx = wx - (sx - this.w / 2) / this.scale;
       this.cy = wy + (sy - this.h / 2) / this.scale;
       this.interact(); this.draw(false);
     }, { passive: false });
     c.addEventListener('contextmenu', e => e.preventDefault());
     c.addEventListener('pointerdown', e => {
-      const r = c.getBoundingClientRect();
+      const [lx, ly, zk] = localPt(c, e);
       const tool = this.opts.tool || 'pan';
       const pan = e.button === 1 || e.button === 2 || (e.button === 0 && tool === 'pan');
-      drag = { x: e.clientX, y: e.clientY, cx: this.cx, cy: this.cy, pan, moved: false, w0: this.toWorld(e.clientX - r.left, e.clientY - r.top), btn: e.button, shift: e.shiftKey || e.ctrlKey, pin: null };
+      drag = { x: e.clientX, y: e.clientY, k: zk, cx: this.cx, cy: this.cy, pan, moved: false, w0: this.toWorld(lx, ly), btn: e.button, shift: e.shiftKey || e.ctrlKey, pin: null };
       if ((tool === 'pin' || tool === 'tab') && e.button === 0) { const i = this.onPinDown?.(this.toDesign(drag.w0), this.scale); if (i !== null && i !== undefined) drag.pin = i; }
       // panel: desku jde chytit a táhnout i nástrojem Posun (prázdné místo = posun pohledu)
       if (tool === 'pan' && e.button === 0 && this.board?.panel && !e.altKey) { const i = this.onPanelDown?.(this.toDesign(drag.w0)); if (i !== null && i !== undefined) { drag.panel = i; drag.pan = false; } }
@@ -106,15 +111,14 @@ export class Viewer {
       if (drag.pan) c.classList.add('grabbing');
     });
     c.addEventListener('pointermove', e => {
-      const r = c.getBoundingClientRect();
-      const wp = this.toWorld(e.clientX - r.left, e.clientY - r.top);
+      const wp = this.toWorld(...localPt(c, e));
       if (drag) {
         if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4) drag.moved = true;
         if (drag.panel != null) { if (drag.moved) this.onPanelMove?.(drag.panel, this.toDesign(drag.w0), this.toDesign(wp), e.shiftKey); }
         else if (drag.pin !== null && drag.moved) { this.onPinMove?.(drag.pin, this.toDesign(wp), this.scale); }
         else if (drag.pan) {
-          this.cx = drag.cx - (e.clientX - drag.x) / this.scale;
-          this.cy = drag.cy + (e.clientY - drag.y) / this.scale;
+          this.cx = drag.cx - (e.clientX - drag.x) / drag.k / this.scale;
+          this.cy = drag.cy + (e.clientY - drag.y) / drag.k / this.scale;
           this.interact(); this.draw(false);
         } else if (drag.moved && drag.btn === 0) { this.rubber = [drag.w0, wp]; this.draw(false); }
       }
@@ -127,8 +131,7 @@ export class Viewer {
     const end = e => {
       if (!drag) return;
       const tool = this.opts.tool || 'pan';
-      const r = c.getBoundingClientRect();
-      const wp = this.toWorld(e.clientX - r.left, e.clientY - r.top);
+      const wp = this.toWorld(...localPt(c, e));
       if (drag.panel != null) this.onPanelUp?.(drag.panel, this.toDesign(drag.w0), this.toDesign(wp), drag.moved, e.shiftKey);
       else if (drag.pin !== null) { if (drag.moved) this.onPinUp?.(); }
       else if ((tool === 'pin' || tool === 'tab') && drag.btn === 0 && !drag.moved) this.onPinAdd?.(this.toDesign(wp), this.scale);
@@ -171,11 +174,13 @@ export class Viewer {
   toDesign(p) { const t = this._tf(); return t ? (t.inv || this.res.sides[t.side].inv)(p) : p; }
   fromDesign(p) { const t = this._tf(); return t ? t.fwd(p) : p; }
   resize() {
-    const r = this.c.parentElement.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    this.w = r.width; this.h = r.height; this.dpr = dpr;
-    this.c.width = Math.round(r.width * dpr); this.c.height = Math.round(r.height * dpr);
-    this.c.style.width = r.width + 'px'; this.c.style.height = r.height + 'px';
+    const pe = this.c.parentElement, r = pe.getBoundingClientRect();
+    const k = pe.offsetWidth ? r.width / pe.offsetWidth : 1; // CSS zoom rozhraní
+    const w = pe.clientWidth || r.width / k, h = pe.clientHeight || r.height / k;
+    const dpr = (window.devicePixelRatio || 1) * k;
+    this.w = w; this.h = h; this.dpr = dpr;
+    this.c.width = Math.round(w * dpr); this.c.height = Math.round(h * dpr);
+    this.c.style.width = w + 'px'; this.c.style.height = h + 'px';
     this.draw();
   }
   toWorld(sx, sy) { return [this.cx + (sx - this.w / 2) / this.scale, this.cy - (sy - this.h / 2) / this.scale]; }

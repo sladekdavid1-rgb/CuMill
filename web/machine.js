@@ -1069,8 +1069,8 @@ export function initMachine(ctx) {
   }
   heat.addEventListener('click', e => {
     if (!heatSf || !heatPts || !heat._map) return;
-    const r = heat.getBoundingClientRect(), { ox, oy, s } = heat._map;
-    const x = heatSf.x0 + (e.clientX - r.left - ox) / s, y = heatSf.y0 + (oy - (e.clientY - r.top)) / s;
+    const r = heat.getBoundingClientRect(), k = heat.offsetWidth ? r.width / heat.offsetWidth : 1, { ox, oy, s } = heat._map;
+    const x = heatSf.x0 + ((e.clientX - r.left) / k - ox) / s, y = heatSf.y0 + (oy - (e.clientY - r.top) / k) / s;
     let best = -1, bd = Infinity; heatPts.forEach((p, i) => { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = i; } });
     if (best >= 0) { M.mapSel = best; renderMapOverlay(); renderMapTable(); mapTable.querySelector('input.on')?.focus(); }
   });

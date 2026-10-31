@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- Fix: with UI zoom other than 100 % (Settings → zoom) the mouse in the board preview, the 3D G-code view and
+  the height-map preview was offset (tabs, pins, areas were placed away from the cursor)
 - Panel: per-board copper choice (both / F.Cu / B.Cu) and mirroring – a B.Cu-only board is mirrored and milled
   from the top together with F.Cu-only boards in one isolation, without flipping
 - Panel: boards can be grabbed and dragged with the default Pan tool too (move cursor over a board; Alt + drag pans)

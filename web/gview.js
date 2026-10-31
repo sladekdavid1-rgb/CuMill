@@ -214,10 +214,11 @@ export class GcodeViewer {
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   }
   _resize() {
-    const r = this.stage.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-    this.w = r.width; this.h = r.height;
-    this.canvas.width = Math.max(1, Math.round(r.width * dpr)); this.canvas.height = Math.max(1, Math.round(r.height * dpr));
-    this.canvas.style.width = r.width + 'px'; this.canvas.style.height = r.height + 'px';
+    const st = this.stage, r = st.getBoundingClientRect(), k = st.offsetWidth ? r.width / st.offsetWidth : 1; // CSS zoom rozhraní
+    const w = st.clientWidth || r.width / k, h = st.clientHeight || r.height / k, dpr = (window.devicePixelRatio || 1) * k;
+    this.w = w; this.h = h;
+    this.canvas.width = Math.max(1, Math.round(w * dpr)); this.canvas.height = Math.max(1, Math.round(h * dpr));
+    this.canvas.style.width = w + 'px'; this.canvas.style.height = h + 'px';
     if (this._needFit && this.w && this.h) { this._needFit = false; this.fit(true); }
     this.draw();
   }
@@ -423,7 +424,7 @@ export class GcodeViewer {
   // klik do náhledu -> nejbližší segment -> řádek
   _pick(e) {
     const g = this.g; if (!g || !g.n) return;
-    const r = this.canvas.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    const r = this.canvas.getBoundingClientRect(), k = this.canvas.offsetWidth ? r.width / this.canvas.offsetWidth : 1, mx = (e.clientX - r.left) / k, my = (e.clientY - r.top) / k;
     const M = this._matrix(); const P = g.pos;
     const proj = i => { const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2]; const w = M[3] * x + M[7] * y + M[11] * z + M[15]; return [((M[0] * x + M[4] * y + M[8] * z + M[12]) / w * 0.5 + 0.5) * this.w, (1 - ((M[1] * x + M[5] * y + M[9] * z + M[13]) / w * 0.5 + 0.5)) * this.h, w]; };
     let best = -1, bd = 12;
