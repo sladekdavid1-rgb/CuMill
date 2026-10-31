@@ -140,8 +140,9 @@ The **Tisk 1:1** (Print 1:1) button in the top bar prints the board (or the whol
 template to cut out and lay on the copper-clad blank to see how the board fits.
 
 - **Side:** *Jak leží na stroji* (as it lies on the machine – the first milled side), *Shora* (top) or *Zespodu* (bottom, mirrored).
-- **Content:** the blank (dashed), copper (grey – the milled side darker), holes, fixture pins, machine zero
-  (green cross), a 1 cm grid with labels and a 50 mm check bar.
+- **Content:** by default **only the board** (all boards of a panel) – outline, copper (grey, the milled side darker),
+  holes, a 1 cm grid with labels and a 50 mm check bar. The blank (dashed), fixture pins and the machine zero can be
+  added – the print may get bigger then.
 - The template opens in the **default browser** (Edge / Chrome) and immediately shows the normal **Windows print dialog**
   where you pick the printer. A4 (landscape or portrait by shape); KiMill warns when it is too big.
 

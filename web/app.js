@@ -1699,10 +1699,10 @@ function openLaserDlg() {
   document.body.append(d); d.addEventListener('close', () => d.remove()); d.showModal();
 }
 // ---------- tisk 1:1 (papírová šablona na vyzkoušení umístění na cuprextitu) ----------
-const PRINT_LS = 'cumill.print';
+const PRINT_LS = 'cumill.print2';
 function openPrintDlg() {
   if (!st.board || !st.res) { toast('Nejdřív načti desku.', true); return; }
-  const o = (() => { try { return { side: 'first', blank: true, copper: true, holes: true, pins: true, origin: true, grid: true, scale: true, ...JSON.parse(localStorage.getItem(PRINT_LS) || '{}') }; } catch { return {}; } })();
+  const o = (() => { try { return { side: 'first', blank: false, copper: true, holes: true, pins: false, origin: false, grid: true, scale: true, ...JSON.parse(localStorage.getItem(PRINT_LS) || '{}') }; } catch { return {}; } })();
   const d = el('dialog', { class: 'mdlg' });
   const chk = (k, label) => { const i = el('input', { type: 'checkbox' }); i.checked = !!o[k]; i.addEventListener('change', () => o[k] = i.checked); return el('label', { class: 'f check' }, i, label); };
   const two = st.res.ops.some(x => x.side === 'bottom') && st.res.ops.some(x => x.side === 'top');
@@ -1710,11 +1710,11 @@ function openPrintDlg() {
     el('button', { type: 'button', class: o.side === v ? 'on' : '', onclick: e => { o.side = v; e.target.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === e.target)); } }, t)));
   d.append(el('div', { class: 'dlghead' }, el('b', {}, 'Tisk 1:1')),
     el('div', { class: 'dlgbody' },
-      el('p', { class: 'muted small' }, 'Vytiskne desku ve skutečné velikosti, jak bude ležet na stroji – vystřihni a přilož na cuprextit. V dialogu tisku nastav měřítko 100 % / „Skutečná velikost“ (ne „Přizpůsobit stránce“) a po tisku změř kontrolní úsečku 50 mm.'),
+      el('p', { class: 'muted small' }, 'Vytiskne jen desku (DPS, u panelu všechny desky) ve skutečné velikosti, jak bude ležet na stroji – vystřihni a přilož na cuprextit. V dialogu tisku nastav měřítko 100 % / „Skutečná velikost“ (ne „Přizpůsobit stránce“) a po tisku změř kontrolní úsečku 50 mm.'),
       el('div', { class: 'f wide' }, el('label', {}, 'Strana'), sideSeg),
       two ? el('div', { class: 'muted small' }, 'Deska se frézuje z obou stran – zespodu je obraz zrcadlený (jak bude ležet po otočení).') : null,
-      chk('blank', 'Polotovar (obdélník cuprextitu)'), chk('copper', 'Měď (šedě)'), chk('holes', 'Díry'), chk('pins', 'Kolíčky přípravku'),
-      chk('origin', 'Nula stroje (křížek)'), chk('grid', 'Mřížka po 1 cm s popisky'), chk('scale', 'Kontrolní úsečka 50 mm')),
+      chk('blank', 'Přidat i polotovar (obdélník cuprextitu – zvětší tisk)'), chk('copper', 'Měď (šedě)'), chk('holes', 'Díry'), chk('pins', 'Kolíčky přípravku'),
+      chk('origin', 'Nula stroje (křížek – když je mimo desku, zvětší tisk)'), chk('grid', 'Mřížka po 1 cm s popisky'), chk('scale', 'Kontrolní úsečka 50 mm')),
     el('div', { class: 'dlgfoot' }, el('button', { class: 'btn', onclick: () => d.close() }, 'Zrušit'),
       el('button', { class: 'btn primary', onclick: () => { try { localStorage.setItem(PRINT_LS, JSON.stringify(o)); } catch {} d.close(); printBoard(o); } }, 'Tisknout…')));
   document.body.append(d); d.addEventListener('close', () => d.remove()); d.showModal();

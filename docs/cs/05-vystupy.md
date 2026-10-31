@@ -141,8 +141,9 @@ Tlačítko **Tisk 1:1** v horní liště vytiskne desku (nebo celý panel) **ve 
 šablonu, kterou vystřihneš a přiložíš na cuprextit, ať vidíš, jak se tam deska vejde.
 
 - **Strana:** *Jak leží na stroji* (první frézovaná strana), *Shora*, nebo *Zespodu (zrcadleně)*.
-- **Obsah:** polotovar (čárkovaně), měď (šedě – frézovaná strana tmavší), díry, kolíčky přípravku,
-  nula stroje (zelený křížek), mřížka po 1 cm s popisky a kontrolní úsečka 50 mm.
+- **Obsah:** standardně **jen deska** (u panelu všechny desky) – obrys, měď (šedě, frézovaná strana tmavší),
+  díry, mřížka po 1 cm s popisky a kontrolní úsečka 50 mm. Přidat jde i polotovar (čárkovaně), kolíčky
+  přípravku a nulu stroje – tisk se tím ale může zvětšit.
 - Šablona se otevře ve **výchozím prohlížeči** (Edge / Chrome) a hned nabídne běžný **dialog tisku Windows** –
   tam vybereš tiskárnu. Tisk na A4 (na šířku nebo na výšku podle tvaru); když je moc velká, KiMill upozorní.
 
