@@ -108,6 +108,22 @@ Ovládání:
 
 ---
 
+## Režim stroje (CNC / laser)
+
+Přepínač **CNC (vřeteno) / Laser** zapíše do GRBL:
+
+| | `$32` (laserový režim) | `$30` (max. S) |
+|---|---|---|
+| **CNC (vřeteno)** | 0 | *Max S pro CNC* |
+| **Laser** | 1 | *Max S pro laser* |
+
+Hodnoty max. S si nastavíš pod přepínačem. Poprvé se převezmou z toho, co má stroj právě nastavené
+(výchozí 12000 pro CNC a 1000 pro laser). Nad přepínačem je vidět, v jakém režimu stroj teď je.
+Přepnout jde jen v klidu (i v alarmu), ne během běhu programu.
+
+Před spuštěním frézovacího programu KiMill upozorní, když je stroj v **laserovém režimu**
+(s `$32=1` by se vřeteno při přejezdech G0 vypínalo), a v laserovém režimu i na `S` vyšší než `$30`.
+
 ## Z sonda a nula XY
 
 ![Z sonda a nula XY](../img/m_sonda.png)
@@ -226,6 +242,9 @@ Skutečné časy běhů se používají ke **zpřesnění odhadu času** (viz *N
 
 Komunikace s GRBL. Do řádku dole napíšeš libovolný příkaz (např. `$$`, `G0 X10`, `$I`)
 a odešleš `Enter`. **Zobrazovat i hlášení stavu** ukáže i pravidelné dotazy `?`.
+
+Nahoře jsou **rychlá tlačítka**: `$$` (nastavení), `$#` (nulové body), `$G` (aktivní režimy), `$I` (verze),
+`$X` (odemknout), `$H` (homing), `$32=0` / `$32=1` (laserový režim vypnout / zapnout).
 
 ### Nastavení
 

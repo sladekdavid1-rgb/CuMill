@@ -107,6 +107,22 @@ Buttons:
 
 ---
 
+## Machine mode (CNC / laser)
+
+The **CNC (vřeteno) / Laser** switch writes to GRBL:
+
+| | `$32` (laser mode) | `$30` (max. S) |
+|---|---|---|
+| **CNC (spindle)** | 0 | *Max S pro CNC* (max S for CNC) |
+| **Laser** | 1 | *Max S pro laser* (max S for laser) |
+
+Set the max. S values below the switch. The first time they are taken from what the machine currently has
+(default 12000 for CNC and 1000 for laser). The current mode is shown above the switch.
+Switching works only when idle (also in alarm), not while a program runs.
+
+Before starting a milling program KiMill warns when the machine is in **laser mode** (with `$32=1` the spindle
+would switch off on G0 moves), and in laser mode also about `S` higher than `$30`.
+
 ## Z probe and XY zero
 
 ![Z probe and XY zero](../img/m_sonda.png)
@@ -225,6 +241,9 @@ Real run times are used to **refine the time estimate** (see *Settings → Machi
 
 Communication with GRBL. Type any command at the bottom (e.g. `$$`, `G0 X10`, `$I`) and press `Enter`.
 **Zobrazovat i hlášení stavu** (Show status reports) also shows the periodic `?` reports.
+
+At the top there are **quick buttons**: `$$` (settings), `$#` (offsets), `$G` (modal state), `$I` (version),
+`$X` (unlock), `$H` (homing), `$32=0` / `$32=1` (laser mode off / on).
 
 ### Nastavení (Settings)
 

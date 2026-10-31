@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- **Machine mode CNC / laser** in the Machine tab: one click sets `$32` (laser mode) and `$30` (max. S) with a separate
+  max. S for CNC and for laser (taken from the machine the first time); warning before milling in laser mode
+- Console quick buttons: `$$`, `$#`, `$G`, `$I`, `$X`, `$H`, `$32=0`, `$32=1`
 - Height map follows the board / panel shape (“Only over boards”, on by default): points outside the boards are moved
   onto them or not probed at all and their height is filled in from the neighbours; the reference point is the first
   probed point near the lower-left corner

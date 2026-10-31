@@ -49,6 +49,7 @@ export function initMachine(ctx) {
     setter: { on: false, x: null, y: null, z: -5, search: 30, ref: null, ...(saved.setter || {}) },
     lastTool: saved.lastTool || '', zTool: saved.zTool || '',
     lastRun: saved.lastRun || null,
+    modeCfg: { cncMax: null, laserMax: null, ...(saved.modeCfg || {}) }, // null = převezme se z $30 stroje v daném režimu
     mapCfg: { nx: 5, ny: 4, centers: false, holes: true, margin: 0.6, zmin: -1.5, clear: 1, onBoard: true, ...(saved.mapCfg || {}) },
     keymap: { ...Object.fromEntries(ACTIONS.map(a => [a[0], a[2]])), ...(saved.keymap || {}) },
     zfeed: 100,
@@ -58,7 +59,7 @@ export function initMachine(ctx) {
     checkRun: false, files: [], wizard: { i: 0, done: {} }, log: [],
     test: { toolId: '', material: '', thickness: 3, shape: 'rect', len: 20, w: 10, h: 10, side: 12, dia: 8, pocketShape: 'rect', overlap: 40, comp: 'center', climb: true, base: null, matrix: { on: false, rows: { key: 'feed', from: 200, to: 600, n: 3 }, cols: { key: 'depth', from: 0.2, to: 1, n: 3 } }, gap: 3, x: null, y: null, after: 'next', nextDX: null, nextDY: 0, park: null, skip: [], ...(saved.test || {}) },
   };
-  const save = () => { try { localStorage.setItem(LS, JSON.stringify({ test: M.test, port: M.port, jog: M.jog, probe: M.probe, mapCfg: M.mapCfg, keymap: M.keymap, setter: M.setter, lastTool: M.lastTool, zTool: M.zTool, lastRun: M.lastRun })); } catch {} };
+  const save = () => { try { localStorage.setItem(LS, JSON.stringify({ test: M.test, port: M.port, jog: M.jog, probe: M.probe, mapCfg: M.mapCfg, modeCfg: M.modeCfg, keymap: M.keymap, setter: M.setter, lastTool: M.lastTool, zTool: M.zTool, lastRun: M.lastRun })); } catch {} };
 
   // ---------- API ----------
   const call = async (path, body) => {
@@ -158,6 +159,46 @@ export function initMachine(ctx) {
     el('div', { class: 'mrow' }, el('span', { class: 'mlabel' }, 'S'), sInp, el('button', { class: 'btn small', onclick: safeRun(() => cmd(`M3 S${num(sInp.value) || 12000}`, true)) }, 'Zapnout'), el('button', { class: 'btn small', onclick: safeRun(() => cmd('M5', true)) }, 'Vypnout')),
     ovF, ovZ, ovS, ovR,
     el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: safeRun(() => act('probeZ')) }, 'Změřit Z sondou'), el('span', { class: 'muted small' }, 'klip na mědi / dotyková sonda'))));
+  // režim stroje: CNC (vřeteno, $32=0) / laser ($32=1) a max. otáčky / výkon S ($30)
+  const modeInfo = el('div', { class: 'muted small' });
+  const modeSeg = el('div', { class: 'seg2' }), maxInps = {};
+  const maxInp = k => { const i = el('input', { value: modeMax(k === 'laserMax') }); i.addEventListener('keydown', e => e.stopPropagation()); i.addEventListener('change', () => { const v = Math.round(num(i.value)); if (v > 0) { M.modeCfg[k] = v; save(); } i.value = modeMax(k === 'laserMax'); renderMode(); }); maxInps[k] = i; return i; };
+  async function setMode(laser) {
+    if (!M.on) throw new Error('Stroj není připojen.');
+    if (M.stream?.streaming) throw new Error('Během běhu programu nejde přepnout.');
+    if (!/^(Idle|Alarm)/.test(M.st.state)) throw new Error('Stroj není v klidu.');
+    const max = modeMax(laser); M.modeCfg[laser ? 'laserMax' : 'cncMax'] = max; save();
+    if (!M.st.state.startsWith('Alarm')) await cmd('M5', true); // v alarmu G-kód nejde, nastavení $ ano
+    await cmd(`$32=${laser ? 1 : 0}`, true);
+    await cmd(`$30=${max}`, true);
+    M.settings[32] = laser ? '1' : '0'; M.settings[30] = String(max);
+    await cmd('$$', true).catch(() => {});
+    renderMode(); if (!panes.set.hidden) renderSettings();
+    ctx.toast(laser ? `Stroj přepnut na LASER ($32=1, $30=${max}).` : `Stroj přepnut na CNC ($32=0, $30=${max}).`);
+    log(`Režim: ${laser ? 'laser' : 'CNC'} – $32=${laser ? 1 : 0}, $30=${max}`, 'info');
+  }
+  // max S pro režim, který stroj právě má, se poprvé převezme z jeho $30
+  function learnMode() {
+    const v = M.settings[32], mx = +M.settings[30]; if (v == null || !(mx > 0)) return;
+    const k = v === '1' ? 'laserMax' : 'cncMax'; if (M.modeCfg[k] == null) { M.modeCfg[k] = mx; save(); }
+  }
+  const modeMax = laser => M.modeCfg[laser ? 'laserMax' : 'cncMax'] ?? (laser ? 1000 : 12000);
+  let modeT = 0; function renderModeSoon() { clearTimeout(modeT); modeT = setTimeout(renderMode, 50); }
+  function renderMode() {
+    const v = M.settings[32], laser = v === '1', known = v != null;
+    modeSeg.innerHTML = '';
+    modeSeg.append(
+      el('button', { class: known && !laser ? 'on' : '', disabled: !M.on, title: `$32=0 (vřeteno), $30=${modeMax(false)}`, onclick: safeRun(() => setMode(false)) }, 'CNC (vřeteno)'),
+      el('button', { class: known && laser ? 'on' : '', disabled: !M.on, title: `$32=1 (laser), $30=${modeMax(true)}`, onclick: safeRun(() => setMode(true)) }, 'Laser'));
+    for (const [k, i] of Object.entries(maxInps)) if (document.activeElement !== i) i.value = modeMax(k === 'laserMax');
+    modeInfo.textContent = M.on ? (known ? `Teď: ${laser ? 'LASER' : 'CNC'} · $32=${v} · max S ($30) = ${M.settings[30] ?? '?'}` : 'Načítám nastavení…') : 'Připoj stroj.';
+  }
+  left.append(card('Režim stroje (CNC / laser)',
+    modeSeg, modeInfo,
+    el('div', { class: 'mgrid' },
+      el('label', { class: 'mf' }, el('span', {}, 'Max S pro CNC ($30)'), el('span', { class: 'inp' }, maxInp('cncMax'))),
+      el('label', { class: 'mf' }, el('span', {}, 'Max S pro laser ($30)'), el('span', { class: 'inp' }, maxInp('laserMax')))),
+    el('div', { class: 'muted small' }, 'Přepnutí zapíše do GRBL $32 (laserový režim) a $30 (max. otáčky / výkon pro S). Programy pro vřeteno počítej s S do max. CNC, pro laser do max. laseru.')));
   // Z sonda (tool setter) a hledání nuly XY dotykovou sondou
   const setterInfo = el('div', { class: 'muted small' });
   left.append(card('Z sonda a nula XY',
@@ -216,7 +257,11 @@ export function initMachine(ctx) {
   const conInp = el('input', { placeholder: 'Příkaz pro GRBL (Enter)…' });
   conInp.addEventListener('keydown', e => { if (e.key === 'Enter' && conInp.value.trim()) { const v = conInp.value.trim(); conInp.value = ''; safeRun(() => cmd(v))(); } e.stopPropagation(); });
   const conStatus = el('input', { type: 'checkbox' });
-  panes.con.append(conLog, el('div', { class: 'mrow' }, conInp), el('label', { class: 'f check small' }, conStatus, 'Zobrazovat i hlášení stavu'));
+  const qb = (t, c, title) => el('button', { class: 'btn small', title, onclick: safeRun(() => cmd(c)) }, t);
+  panes.con.append(el('div', { class: 'mrow conq' },
+      qb('$$', '$$', 'Všechna nastavení'), qb('$#', '$#', 'Nulové body (G54…, sonda)'), qb('$G', '$G', 'Aktivní režimy G-kódu'), qb('$I', '$I', 'Verze firmwaru'),
+      qb('$X', '$X', 'Odemknout alarm'), qb('$H', '$H', 'Homing'), qb('$32=0', '$32=0', 'Laserový režim vypnout (CNC)'), qb('$32=1', '$32=1', 'Laserový režim zapnout')),
+    conLog, el('div', { class: 'mrow' }, conInp), el('label', { class: 'f check small' }, conStatus, 'Zobrazovat i hlášení stavu'));
   function log(s, cls = '') {
     const d = el('div', { class: cls }, s);
     conLog.append(d);
@@ -256,7 +301,7 @@ export function initMachine(ctx) {
       case 'st': parseStatus(v.s); if (conStatus.checked) log(v.s, 'st'); break;
       case 'rx': {
         const s = v.s;
-        const mm = /^\$(\d+)=(.*)$/.exec(s); if (mm) M.settings[mm[1]] = mm[2];
+        const mm = /^\$(\d+)=(.*)$/.exec(s); if (mm) { M.settings[mm[1]] = mm[2]; if (mm[1] === '30' || mm[1] === '32') { learnMode(); renderModeSoon(); } }
         if (/^error:/.test(s)) { const c = +s.slice(6); log(`${v.cmd ? v.cmd + ' → ' : ''}${s} (${ERRORS[c] || 'chyba'})`, 'err'); }
         else log(s, /^\[MSG|^ALARM/.test(s) ? 'info' : 'rx');
         break;
@@ -378,7 +423,7 @@ export function initMachine(ctx) {
     btnConn.textContent = M.on ? 'Odpojit' : 'Připojit';
     btnConn.classList.toggle('primary', !M.on);
     portSel.disabled = M.on;
-    renderStatus(); renderJog(); renderOv(); renderStream();
+    renderStatus(); renderJog(); renderOv(); renderStream(); renderMode();
   }
   function card(title, ...kids) { return el('section', { class: 'mcard' }, el('h3', {}, title), ...kids); }
   function segOn(b) { b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); }
@@ -816,6 +861,9 @@ export function initMachine(ctx) {
       }
     }
     if (Math.abs(wco[0]) + Math.abs(wco[1]) + Math.abs(wco[2]) < 1e-6) out.push('nula obrobku není nastavená (WCO = 0)');
+    // režim stroje vs. program (frézovací programy KiMillu chtějí CNC, s laserem by se vřeteno vypínalo při G0)
+    if (M.settings[32] === '1' && p.op) out.push('stroj je v LASEROVÉM režimu ($32=1) – pro frézování přepni v „Režim stroje“ na CNC');
+    { const maxS = +M.settings[30], txt = p.text || M.prog?.text || ''; let sMax = 0; for (const m of txt.matchAll(/S(\d+(?:\.\d+)?)/gi)) sMax = Math.max(sMax, +m[1]); if (M.settings[32] === '1' && maxS > 0 && sMax > maxS + 1e-6) out.push(`program chce S${sMax}, ale stroj má max. S ($30) = ${maxS} – poběží na plný výkon / otáčky`); }
     if (p.mapApplied && M.hmap?.time && Date.now() - M.hmap.time > 3 * 3600e3) out.push(`výšková mapa je stará ${Math.round((Date.now() - M.hmap.time) / 3600e3)} h – deska se mezitím mohla pohnout`);
     if (p.op?.tool) {
       if (M.lastTool && M.lastTool !== p.op.tool) out.push(`naposledy jel nástroj „${M.lastTool}“ – je nasazený „${p.op.tool}“?`);
