@@ -30,7 +30,8 @@
   arrow keys move the selected tab along the path (0.5 / 5 mm)
 - Fix: **Go to X Y Z** – modes are now *Work* (from board zero), *By* (offset from current position) and *Machine*;
   the old “Relative” mode actually moved to work coordinates; machine moves no longer use Z −1 on machines
-  with positive machine coordinates
+  with positive machine coordinates; in *Machine* mode a positive number on a negative axis (Z 0 … −80) is taken
+  as negative, the machine range is shown and moves outside it are refused
 - Fix: step-by-step wizard – measuring Z for a drill no longer leaves the “Z was not measured” warning
   (the program of that step is loaded first)
 - **Much faster recomputing** – finished isolation paths (and their arc fitting) are kept in memory, so changing

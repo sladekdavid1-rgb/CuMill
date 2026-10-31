@@ -67,7 +67,7 @@ Buttons:
 | **Zrušit G92** (Cancel G92) | cancels a temporary `G92` offset (if another program left one) |
 | **Na X0 Y0** (To X0 Y0) | goes up to safe height and moves above the XY zero |
 | **Na X0 Y0 Z0** | the same and goes down to Z0 |
-| **Přejeď na** (Go to) | enter X / Y / Z (any of them), pick a mode and **Jeď** (Go): *Pracovně* (work) = position from the board zero, *O kolik* (by) = offset from the current position, *Strojově* (machine) = machine coordinates (G53). The tool lifts to a safe height before an XY move. |
+| **Přejeď na** (Go to) | enter X / Y / Z (any of them), pick a mode and **Jeď** (Go): *Pracovně* (work) = position from the board zero, *O kolik* (by) = offset from the current position, *Strojově* (machine) = machine coordinates (G53) – on an axis with a negative range (e.g. Z 0 to −80) a positive number is enough, Z 30 = Z −30; the machine range is shown below and moves outside it are refused. The tool lifts to a safe height before an XY move. |
 
 > The zero is stored in GRBL (`G54`) and survives a power-off. After power-on just home the machine.
 

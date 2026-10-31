@@ -109,16 +109,22 @@ export function initMachine(ctx) {
   const gotoInp = { X: el('input', { placeholder: 'X' }), Y: el('input', { placeholder: 'Y' }), Z: el('input', { placeholder: 'Z' }) };
   // režim: 'work' = pracovní souřadnice (od nuly desky), 'rel' = o kolik od aktuální polohy, 'mach' = strojové (G53)
   let gotoMode = 'work';
+  const gotoHint = el('div', { class: 'muted small' });
+  function renderGotoHint() {
+    if (gotoMode !== 'mach') { gotoHint.textContent = gotoMode === 'rel' ? 'O kolik se posunout od aktuální polohy (např. Z 5 = o 5 mm nahoru).' : 'Poloha od nuly desky (pracovní souřadnice).'; return; }
+    const r = ['X', 'Y', 'Z'].map((a, i) => { const pos = (M.st.mpos?.[i] || 0) > 0.5 || (M.st.wco?.[i] || 0) > 0.5, tr = cz(travel(a), 0); return `${a} ${pos ? `0 až ${tr}` : `0 až −${tr}`}`; });
+    gotoHint.textContent = `Rozsah stroje: ${r.join(' · ')}. U záporné osy stačí napsat kladné číslo (Z 30 = Z −30).`;
+  }
   const gotoSeg = el('div', { class: 'seg2', title: 'Pracovně = poloha od nuly desky · O kolik = posun od aktuální polohy · Strojově = souřadnice stroje (G53)' },
-    el('button', { class: 'on', onclick: e => { gotoMode = 'work'; segOn(e.target); } }, 'Pracovně'),
-    el('button', { onclick: e => { gotoMode = 'rel'; segOn(e.target); } }, 'O kolik'),
-    el('button', { onclick: e => { gotoMode = 'mach'; segOn(e.target); } }, 'Strojově'));
+    el('button', { class: 'on', onclick: e => { gotoMode = 'work'; segOn(e.target); renderGotoHint(); } }, 'Pracovně'),
+    el('button', { onclick: e => { gotoMode = 'rel'; segOn(e.target); renderGotoHint(); } }, 'O kolik'),
+    el('button', { onclick: e => { gotoMode = 'mach'; segOn(e.target); renderGotoHint(); } }, 'Strojově'));
   left.append(card('Souřadnice',
     el('div', { class: 'dro-head' }, el('span'), el('span', {}, 'relativní'), el('span', {}, 'strojové'), el('span')), droBox,
     el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: safeRun(() => zeroAxes('XYZ')) }, 'Vše na 0'), el('button', { class: 'btn small', title: 'Zrušit dočasný posun nuly G92 (G92.1)', onclick: safeRun(() => cmd('G92.1', true)) }, 'Zrušit G92')),
     el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: safeRun(() => act('rtxy')) }, 'Na X0 Y0'), el('button', { class: 'btn small', onclick: safeRun(() => act('rtz')) }, 'Na X0 Y0 Z0')),
     el('div', { class: 'mlabel' }, 'Přejeď na'),
-    el('div', { class: 'mrow goto' }, gotoInp.X, gotoInp.Y, gotoInp.Z, el('button', { class: 'btn small', onclick: safeRun(gotoXYZ) }, 'Jeď')), gotoSeg));
+    el('div', { class: 'mrow goto' }, gotoInp.X, gotoInp.Y, gotoInp.Z, el('button', { class: 'btn small', onclick: safeRun(gotoXYZ) }, 'Jeď')), gotoSeg, gotoHint));
 
   // jog
   const stepsXY = [0.01, 0.05, 0.1, 1, 10, 50, 100], stepsZ = [0.01, 0.05, 0.1, 1, 10];
@@ -423,7 +429,7 @@ export function initMachine(ctx) {
     btnConn.textContent = M.on ? 'Odpojit' : 'Připojit';
     btnConn.classList.toggle('primary', !M.on);
     portSel.disabled = M.on;
-    renderStatus(); renderJog(); renderOv(); renderStream(); renderMode();
+    renderStatus(); renderJog(); renderOv(); renderStream(); renderMode(); renderGotoHint();
   }
   function card(title, ...kids) { return el('section', { class: 'mcard' }, el('h3', {}, title), ...kids); }
   function segOn(b) { b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); }
@@ -481,6 +487,22 @@ export function initMachine(ctx) {
       // posun od aktuální polohy → převod na pracovní souřadnice
       const w = M.st.wpos || [0, 0, 0];
       return moveSafe(v.X != null ? w[0] + v.X : null, v.Y != null ? w[1] + v.Y : null, v.Z != null ? w[2] + v.Z : null, false, true);
+    }
+    if (gotoMode === 'mach') {
+      // strojové souřadnice: osa se záporným prostorem (např. Z 0 až −80) – kladné číslo se bere jako záporné
+      const flipped = [];
+      for (const [i, a] of ['X', 'Y', 'Z'].entries()) {
+        if (v[a] == null || v[a] <= 0) continue;
+        const neg = !((M.st.mpos?.[i] || 0) > 0.5 || (M.st.wco?.[i] || 0) > 0.5);
+        if (neg) { v[a] = -v[a]; flipped.push(`${a} ${cz(v[a], 1)}`); }
+      }
+      // kontrola rozsahu stroje
+      for (const [i, a] of ['X', 'Y', 'Z'].entries()) {
+        if (v[a] == null || M.settings[20] !== '1' && M.settings[22] !== '1') continue;
+        const pos = (M.st.mpos?.[i] || 0) > 0.5 || (M.st.wco?.[i] || 0) > 0.5, tr = travel(a);
+        if (pos ? v[a] < -0.01 || v[a] > tr + 0.01 : v[a] > 0.01 || v[a] < -tr - 0.01) throw new Error(`${a} ${cz(v[a])} je mimo rozsah stroje (${pos ? `0 až ${cz(tr, 0)}` : `0 až −${cz(tr, 0)}`} mm).`);
+      }
+      if (flipped.length) ctx.toast(`Strojové souřadnice jsou v ose záporné – jedu na ${flipped.join(', ')}.`);
     }
     await moveSafe(v.X, v.Y, v.Z, gotoMode === 'mach');
   }

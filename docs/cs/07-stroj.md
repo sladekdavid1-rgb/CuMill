@@ -69,7 +69,7 @@ Ovládání:
 | **Zrušit G92** | zruší dočasný posun nuly `G92` (kdyby ho tam nechal jiný program) |
 | **Na X0 Y0** | vyjede na bezpečnou výšku a přejede nad nulu XY |
 | **Na X0 Y0 Z0** | totéž a sjede na Z0 |
-| **Přejeď na** | napiš X / Y / Z (stačí jen některé), zvol režim a **Jeď**: *Pracovně* = poloha od nuly desky, *O kolik* = posun od aktuální polohy, *Strojově* = souřadnice stroje (G53). Před přejezdem v XY se nástroj zvedne do bezpečné výšky. |
+| **Přejeď na** | napiš X / Y / Z (stačí jen některé), zvol režim a **Jeď**: *Pracovně* = poloha od nuly desky, *O kolik* = posun od aktuální polohy, *Strojově* = souřadnice stroje (G53) – u osy se záporným rozsahem (např. Z 0 až −80) stačí napsat kladné číslo, Z 30 = Z −30; pod tlačítky je vidět rozsah stroje a mimo něj nikam nejede. Před přejezdem v XY se nástroj zvedne do bezpečné výšky. |
 
 > Nula se ukládá v GRBL (`G54`), takže vydrží i vypnutí stroje. Po zapnutí stačí homing.
 
