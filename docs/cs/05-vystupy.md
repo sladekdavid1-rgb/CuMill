@@ -142,8 +142,9 @@ Tlačítko **Tisk 1:1** v horní liště vytiskne desku (nebo celý panel) **ve 
 
 - **Strana:** *Jak leží na stroji* (první frézovaná strana), *Shora*, nebo *Zespodu (zrcadleně)*.
 - **Obsah:** standardně **jen deska** (u panelu všechny desky) – obrys, měď (šedě, frézovaná strana tmavší),
-  díry, mřížka po 1 cm s popisky a kontrolní úsečka 50 mm. Přidat jde i polotovar (čárkovaně), kolíčky
-  přípravku a nulu stroje – tisk se tím ale může zvětšit.
+  díry, **obrys celého frézování** (oranžový čárkovaný obdélník – kudy všude jede fréza ve všech zapnutých
+  programech včetně ořezu a poloměru nástroje, s rozměrem v mm) a kontrolní úsečka 50 mm. Přidat jde mřížka
+  po 1 cm, polotovar, kolíčky přípravku a nula stroje – tisk se tím ale může zvětšit.
 - Šablona se otevře ve **výchozím prohlížeči** (Edge / Chrome) a hned nabídne běžný **dialog tisku Windows** –
   tam vybereš tiskárnu. Tisk na A4 (na šířku nebo na výšku podle tvaru); když je moc velká, KiMill upozorní.
 

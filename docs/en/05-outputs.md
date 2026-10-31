@@ -141,8 +141,9 @@ template to cut out and lay on the copper-clad blank to see how the board fits.
 
 - **Side:** *Jak leží na stroji* (as it lies on the machine – the first milled side), *Shora* (top) or *Zespodu* (bottom, mirrored).
 - **Content:** by default **only the board** (all boards of a panel) – outline, copper (grey, the milled side darker),
-  holes, a 1 cm grid with labels and a 50 mm check bar. The blank (dashed), fixture pins and the machine zero can be
-  added – the print may get bigger then.
+  holes, the **outline of all milling** (orange dashed rectangle – everywhere the cutter goes in all enabled programs
+  incl. the cut-out and tool radius, with its size in mm) and a 50 mm check bar. A 1 cm grid, the blank, fixture pins
+  and the machine zero can be added – the print may get bigger then.
 - The template opens in the **default browser** (Edge / Chrome) and immediately shows the normal **Windows print dialog**
   where you pick the printer. A4 (landscape or portrait by shape); KiMill warns when it is too big.
 

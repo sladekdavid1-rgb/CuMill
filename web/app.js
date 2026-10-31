@@ -1699,10 +1699,10 @@ function openLaserDlg() {
   document.body.append(d); d.addEventListener('close', () => d.remove()); d.showModal();
 }
 // ---------- tisk 1:1 (papírová šablona na vyzkoušení umístění na cuprextitu) ----------
-const PRINT_LS = 'cumill.print2';
+const PRINT_LS = 'cumill.print3';
 function openPrintDlg() {
   if (!st.board || !st.res) { toast('Nejdřív načti desku.', true); return; }
-  const o = (() => { try { return { side: 'first', blank: false, copper: true, holes: true, pins: false, origin: false, grid: true, scale: true, ...JSON.parse(localStorage.getItem(PRINT_LS) || '{}') }; } catch { return {}; } })();
+  const o = (() => { try { return { side: 'first', blank: false, copper: true, holes: true, pins: false, origin: false, grid: false, extent: true, scale: true, ...JSON.parse(localStorage.getItem(PRINT_LS) || '{}') }; } catch { return {}; } })();
   const d = el('dialog', { class: 'mdlg' });
   const chk = (k, label) => { const i = el('input', { type: 'checkbox' }); i.checked = !!o[k]; i.addEventListener('change', () => o[k] = i.checked); return el('label', { class: 'f check' }, i, label); };
   const two = st.res.ops.some(x => x.side === 'bottom') && st.res.ops.some(x => x.side === 'top');
@@ -1714,7 +1714,7 @@ function openPrintDlg() {
       el('div', { class: 'f wide' }, el('label', {}, 'Strana'), sideSeg),
       two ? el('div', { class: 'muted small' }, 'Deska se frézuje z obou stran – zespodu je obraz zrcadlený (jak bude ležet po otočení).') : null,
       chk('blank', 'Přidat i polotovar (obdélník cuprextitu – zvětší tisk)'), chk('copper', 'Měď (šedě)'), chk('holes', 'Díry'), chk('pins', 'Kolíčky přípravku'),
-      chk('origin', 'Nula stroje (křížek – když je mimo desku, zvětší tisk)'), chk('grid', 'Mřížka po 1 cm s popisky'), chk('scale', 'Kontrolní úsečka 50 mm')),
+      chk('extent', 'Obrys celého frézování (kudy všude jede fréza, se všemi programy)'), chk('origin', 'Nula stroje (křížek – když je mimo desku, zvětší tisk)'), chk('grid', 'Mřížka po 1 cm s popisky'), chk('scale', 'Kontrolní úsečka 50 mm')),
     el('div', { class: 'dlgfoot' }, el('button', { class: 'btn', onclick: () => d.close() }, 'Zrušit'),
       el('button', { class: 'btn primary', onclick: () => { try { localStorage.setItem(PRINT_LS, JSON.stringify(o)); } catch {} d.close(); printBoard(o); } }, 'Tisknout…')));
   document.body.append(d); d.addEventListener('close', () => d.remove()); d.showModal();
@@ -1745,6 +1745,24 @@ function printSvg(o) {
   if (o.pins && res.pinsOn && res.pins?.length) {
     const r = (res.pinDia || 2.5) / 2;
     g.push(`<g fill="none" stroke="#c00" stroke-width="0.25">${res.pins.map(p => { const [x, y] = tf([p.x, p.y]); grow(x - r, y - r); grow(x + r, y + r); return `<circle cx="${f4(x)}" cy="${f4(-y)}" r="${f4(r)}"/><path d="M${f4(x - r * 1.6)},${f4(-y)}H${f4(x + r * 1.6)}M${f4(x)},${f4(-y - r * 1.6)}V${f4(-y + r * 1.6)}"/>`; }).join('')}</g>`);
+  }
+  // obrys celého frézování: všechny řezné pohyby všech zapnutých programů (včetně poloměru nástroje), na tištěné straně
+  if (o.extent) {
+    const pts = [];
+    for (const op of res.ops) {
+      if (st.enabled?.[op.id] === false) continue;
+      const inv = res.sides[op.side].inv, r = (op.toolDia || 0) / 2;
+      const add = q => { const [x, y] = tf(inv(q)); pts.push([x - r, y - r], [x + r, y + r]); };
+      for (const m of op.moves) if (m.t === 'cut') for (const q of m.pts) add(q);
+      for (const q of op.points || []) add([q.x, q.y]);
+    }
+    if (pts.length) {
+      const e = G.bbox([pts]);
+      const rect = [[e.minX, e.minY], [e.maxX, e.minY], [e.maxX, e.maxY], [e.minX, e.maxY]];
+      g.push(`<path d="${pathD([rect], true, q => q)}" fill="none" stroke="#d04000" stroke-width="0.3" stroke-dasharray="2 1"/>`);
+      g.push(`<text x="${f4(e.minX + 0.8)}" y="${f4(-e.maxY - 1)}" font-size="2.6" font-family="sans-serif" fill="#d04000">frézování ${cz(e.maxX - e.minX, 1)} × ${cz(e.maxY - e.minY, 1)} mm</text>`);
+      grow(e.minX, e.maxY + 4);
+    }
   }
   if (o.origin) { grow(-3, -3); grow(3, 3); g.push(`<g stroke="#0a0" stroke-width="0.25" fill="none"><path d="M-4,0H4M0,-4V4"/><circle r="1.2"/></g><text x="1.6" y="-1.6" font-size="2.6" fill="#0a0" font-family="sans-serif">0</text>`); }
   // okraj kolem a místo pro popisky
