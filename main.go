@@ -163,7 +163,7 @@ func openBrowserWindow(url string) *exec.Cmd {
 			}
 		}
 	}
-	_ = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	_ = openWithSystem(url)
 	return nil
 }
 

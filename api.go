@@ -9,7 +9,6 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -160,16 +159,4 @@ func hostOK(h string) bool {
 func writeJSON(w http.ResponseWriter, v any) error {
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(v)
-}
-
-// otevře soubor výchozí aplikací systému
-func openWithSystem(p string) error {
-	switch runtime.GOOS {
-	case "windows":
-		return exec.Command("rundll32", "url.dll,FileProtocolHandler", p).Start()
-	case "darwin":
-		return exec.Command("open", p).Start()
-	default:
-		return exec.Command("xdg-open", p).Start()
-	}
 }
