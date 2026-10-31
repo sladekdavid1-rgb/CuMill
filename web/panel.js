@@ -11,11 +11,13 @@ export const label = i => i < 26 ? LABELS[i] : LABELS[Math.floor(i / 26) - 1] + 
 export function placement(board, inst) {
   const bb = board.bb, cx = (bb.minX + bb.maxX) / 2, cy = (bb.minY + bb.maxY) / 2;
   const r = ((inst.rot || 0) % 360 + 360) % 360, a = r * Math.PI / 180, c = Math.round(Math.cos(a)), s = Math.round(Math.sin(a));
-  const rotP = ([x, y]) => [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c];
+  // zrcadlení (pohled zespodu): přes svislou osu středem desky, před otočením
+  const flip = !!inst.flip;
+  const rotP = ([x, y]) => { if (flip) x = 2 * cx - x; return [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c]; };
   const rb = G.bbox([board.outline.map(rotP)]);
   const dx = inst.x - rb.minX, dy = inst.y - rb.minY;
   const fwd = p => { const q = rotP(p); return [q[0] + dx, q[1] + dy]; };
-  return { fwd, rot: r, w: rb.maxX - rb.minX, h: rb.maxY - rb.minY };
+  return { fwd, rot: r, flip, w: rb.maxX - rb.minX, h: rb.maxY - rb.minY };
 }
 
 // sloučí desky do jedné; insts = [{label, name, x, y, rot, board}] (board = načtená a dokončená deska)
@@ -30,17 +32,25 @@ export function buildPanelBoard(name, insts) {
   };
   for (const inst of insts) {
     const b = inst.board, pl = placement(b, inst), T = pl.fwd, L = inst.label;
-    const pts = a => a.map(T);
+    // zrcadlená deska: obrátit pořadí bodů, ať zůstane směr obrysů (vnější / díry)
+    const pts = a => pl.flip ? a.map(T).reverse() : a.map(T);
     const polys = ps => ps.map(pts);
+    // které vrstvy mědi desky se použijí a kam v panelu padnou (zrcadlená: B.Cu ↔ F.Cu)
+    const keep = inst.cu === 'F.Cu' || inst.cu === 'B.Cu' ? inst.cu : null;
+    const swap = l => l === 'F.Cu' ? 'B.Cu' : l === 'B.Cu' ? 'F.Cu' : l === 'F.SilkS' ? 'B.SilkS' : l === 'B.SilkS' ? 'F.SilkS' : l;
+    const dst = l => pl.flip ? swap(l) : l;
+    const ang = a => (pl.flip ? -(a || 0) : (a || 0)) + pl.rot;
     const net = n => n ? `${L}:${n}` : '';
     const ref = r => r ? `${L}·${r}` : r;
     for (const l of ['F.Cu', 'B.Cu']) {
-      P.copper[l].push(...polys(b.copper[l] || []));
-      for (const e of b.trackEnds?.[l] || []) P.trackEnds[l].push({ ...e, p: T(e.p), net: net(e.net) });
-      for (const z of b.zonesFill?.[l] || []) P.zonesFill[l].push({ ...z, poly: pts(z.poly), net: net(z.net) });
-      P.layerUse[l] += b.layerUse ? b.layerUse[l] || 0 : (b.copper[l]?.length || 0);
-      P.silkAvoid.pads[l].push(...polys(b.silkAvoid?.pads?.[l] || []));
-      P.silkAvoid.tracks[l].push(...polys(b.silkAvoid?.tracks?.[l] || []));
+      if (keep && l !== keep) continue;
+      const d = dst(l);
+      P.copper[d].push(...polys(b.copper[l] || []));
+      for (const e of b.trackEnds?.[l] || []) P.trackEnds[d].push({ ...e, p: T(e.p), net: net(e.net) });
+      for (const z of b.zonesFill?.[l] || []) P.zonesFill[d].push({ ...z, poly: pts(z.poly), net: net(z.net) });
+      P.layerUse[d] += b.layerUse ? b.layerUse[l] || 0 : (b.copper[l]?.length || 0);
+      P.silkAvoid.pads[d].push(...polys(b.silkAvoid?.pads?.[l] || []));
+      P.silkAvoid.tracks[d].push(...polys(b.silkAvoid?.tracks?.[l] || []));
     }
     for (const h of b.holes) {
       const [x, y] = T([h.x, h.y]);
@@ -48,7 +58,7 @@ export function buildPanelBoard(name, insts) {
       if (h.slot) { const a = T([h.slot.x1, h.slot.y1]), c = T([h.slot.x2, h.slot.y2]); hh.slot = { x1: a[0], y1: a[1], x2: c[0], y2: c[1] }; }
       P.holes.push(hh);
     }
-    for (const p of b.pads || []) { const [x, y] = T([p.x, p.y]); P.pads.push({ ...p, x, y, ang: (p.ang || 0) + pl.rot, ref: ref(p.ref), net: net(p.net) }); }
+    for (const p of b.pads || []) { const [x, y] = T([p.x, p.y]); P.pads.push({ ...p, x, y, ang: ang(p.ang), ref: ref(p.ref), net: net(p.net) }); }
     for (const v of b.vias || []) { const [x, y] = T([v.x, v.y]); P.vias.push({ ...v, x, y, net: net(v.net) }); }
     for (const [lay, g] of Object.entries(b.other || {})) {
       const o = P.other[lay] || (P.other[lay] = { lines: [], loops: [] });
@@ -56,13 +66,15 @@ export function buildPanelBoard(name, insts) {
     }
     for (const sl of ['F.SilkS', 'B.SilkS']) {
       const s = b.silk?.[sl]; if (!s) continue;
-      P.silk[sl].lines.push(...polys(s.lines || [])); P.silk[sl].loops.push(...polys(s.loops || []));
-      for (const t of s.texts || []) { const [x, y] = T([t.x, t.y]); P.silk[sl].texts.push({ ...t, x, y, angle: (t.angle || 0) + pl.rot }); }
+      if (keep && (sl === 'F.SilkS') !== (keep === 'F.Cu')) continue; // potisk jen u použité strany
+      const d = dst(sl);
+      P.silk[d].lines.push(...polys(s.lines || [])); P.silk[d].loops.push(...polys(s.loops || []));
+      for (const t of s.texts || []) { const [x, y] = T([t.x, t.y]); P.silk[d].texts.push({ ...t, x, y, angle: ang(t.angle), mirror: pl.flip ? !t.mirror : t.mirror }); }
     }
     for (const w of b.warnings || []) P.warnings.push({ ...w, text: `Deska ${L} (${inst.name}): ${w.text}` });
     const outer = pts(b.outline), inner = (b.inner || []).map(pts);
     P.panelParts.push({ outer, inner, label: L });
-    P.instances.push({ label: L, name: inst.name, outer, w: pl.w, h: pl.h, x: inst.x, y: inst.y, rot: pl.rot });
+    P.instances.push({ label: L, name: inst.name, outer, w: pl.w, h: pl.h, x: inst.x, y: inst.y, rot: pl.rot, flip: pl.flip, cu: keep });
   }
   if (!P.panelParts.length) P.panelParts.push({ outer: [[0, 0], [10, 0], [10, 10], [0, 10]], inner: [], label: '' });
   const out = finalizeBoard(P);

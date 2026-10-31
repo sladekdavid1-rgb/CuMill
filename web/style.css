@@ -478,13 +478,16 @@ dialog.prjdlg { width: min(980px, 95vw); }
 /* panel */
 .panelsec > summary { color: var(--cu); }
 .panellist { display: flex; flex-direction: column; gap: 4px; }
-.pinst { display: grid; grid-template-columns: 26px 1fr auto; grid-template-areas: "l n b" "l xy xy"; gap: 3px 6px; align-items: center; padding: 5px 6px; border: 1px solid var(--line2); border-radius: 6px; }
+.pinst { display: grid; grid-template-columns: 26px 1fr auto; grid-template-areas: "l n b" "l xy xy" "l cu cu"; gap: 3px 6px; align-items: center; padding: 5px 6px; border: 1px solid var(--line2); border-radius: 6px; }
 .pinst.on { border-color: var(--cu); background: var(--cuBg); }
 .pinst .plabel { grid-area: l; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 5px; background: var(--cu); color: var(--onAccent); font-weight: 700; cursor: pointer; }
 .pinst .pname { grid-area: n; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pinst .pbtns { grid-area: b; display: flex; gap: 2px; }
 .pinst .pxy { grid-area: xy; display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 4px; align-items: center; }
 .pinst .pxy .inp { min-width: 0; }
+.pinst .pcurow { grid-area: cu; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.pinst .pcu button { padding: 3px 8px; font-size: 12px; }
+.pinst .pcunote { flex-basis: 100%; }
 .chip.panelchip { background: var(--cuBg); color: var(--cu); }
 .pbar { display: flex; flex-wrap: wrap; gap: 6px; }
 .pbar .btn { flex: 1 1 auto; justify-content: center; }

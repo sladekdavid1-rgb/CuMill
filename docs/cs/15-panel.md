@@ -33,6 +33,7 @@ celé, takže se otevře i tehdy, když původní soubory z KiCadu už nemáš.
 2. **Deska** – písmeno (A, B, C…), název a poloha **X / Y** levého dolního rohu v mm.
    Klik na písmeno desku vybere.
 3. **⟳** otočí desku o 90°, **⧉** přidá další kus téže desky, **✕** ji z panelu odebere.
+   Pod tím **Měď** (*Obě / F.Cu / B.Cu*) – které vrstvy mědi desky se použijí – a **⇋ Zrcadlit**.
 4. **+ Projekt… / + Deska ze souboru…** – přidání desek. Pod tím **Mezera mezi deskami**
    a **Rozmístit** – desky se samy poskládají na polotovar (největší první, co nejníž a nejvíc vlevo).
 5. **Kolíčky automaticky kolem panelu** – vzor 4 kolíčků se sám přizpůsobí velikosti panelu.
@@ -54,6 +55,22 @@ polohy, posun skáče po **0,5 mm** (se `Shift` po 0,1 mm).
 | šipky | posun vybrané desky o 0,5 mm |
 | `Shift` + šipky | posun o 5 mm |
 | `Esc` | zpět na posun pohledu |
+
+### Desky jen s F.Cu a jen s B.Cu v jednom panelu
+
+Každá deska v panelu má vlastní volbu **Měď** a **⇋ Zrcadlit**:
+
+- **Obě** – použije se měď z obou stran desky (výchozí),
+- **F.Cu** / **B.Cu** – jen jedna vrstva mědi (a potisk té strany),
+- **⇋ Zrcadlit** – deska se zrcadlí přes svislou osu (jako bys ji viděl zespodu) a její B.Cu se
+  frézuje **shora** jako F.Cu (a naopak).
+
+Když u desky zvolíš **B.Cu**, zrcadlení se zapne samo. Deska, která má měď jen na spodní straně,
+se tak vyrobí **shora naráz** s deskami, které mají měď nahoře – jednou izolací, bez otáčení
+a bez kolíčků. V náhledu má taková deska u písmena značku **⇋ B.Cu**.
+
+> Zrcadlená deska je hotová „vzhůru nohama“ – součástky THT se pak osazují z té strany,
+> kde není měď, stejně jako u běžné jednostranné desky.
 
 ## Kontroly
 

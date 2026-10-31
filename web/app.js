@@ -247,6 +247,17 @@ function pinsAroundPanel(on) {
   st.panel.pinFit = on;
   if (on) reloadPanel({ keepView: true }); else renderSettings();
 }
+// měď a zrcadlení jedné desky v panelu: např. deska jen s B.Cu se zrcadlí a frézuje shora spolu s deskami F.Cu
+function instLayerRow(it) {
+  const b = panelCache.get(it.id)?.board, used = b?.used || {};
+  const cu = it.cu || 'both';
+  const seg = el('div', { class: 'seg2 pcu' }, ...[['both', 'Obě'], ['F.Cu', 'F.Cu'], ['B.Cu', 'B.Cu']].map(([v, t]) =>
+    el('button', { type: 'button', class: cu === v ? 'on' : '', disabled: v !== 'both' && b && !used[v], title: v === 'both' ? 'Použít obě vrstvy mědi desky' : `Použít jen ${v}` + (b && !used[v] ? ' (deska ji nemá)' : ''),
+      onclick: () => { if (cu === v) return; it.cu = v === 'both' ? undefined : v; if (v === 'B.Cu') it.flip = true; else if (v === 'F.Cu') it.flip = false; panelChanged(true); } }, t)));
+  const fl = el('button', { type: 'button', class: 'btn small' + (it.flip ? ' primary' : ''), title: 'Zrcadlit desku (pohled zespodu): B.Cu se frézuje shora jako F.Cu a naopak', onclick: () => { it.flip = !it.flip; panelChanged(true); } }, '⇋ Zrcadlit');
+  const note = it.flip ? `${cu === 'B.Cu' ? 'B.Cu' : cu === 'F.Cu' ? 'F.Cu' : 'Měď'} se frézuje ${cu === 'F.Cu' ? 'zespodu' : 'shora'} (zrcadleně)` : cu === 'B.Cu' ? 'B.Cu se frézuje zespodu – deska se otáčí' : '';
+  return el('div', { class: 'pcurow' }, el('span', { class: 'muted small' }, 'Měď'), seg, fl, note ? el('span', { class: 'muted small pcunote' }, note) : null);
+}
 function renderPanelSection() {
   const P = st.panel;
   const d = el('details', { class: 'sec panelsec', open: true });
@@ -267,7 +278,8 @@ function renderPanelSection() {
       el('div', { class: 'pbtns' },
         el('button', { class: 'iconbtn', title: `Otočit o 90° (teď ${it.rot || 0}°)`, onclick: () => { it.rot = ((it.rot || 0) + 90) % 360; panelChanged(true); } }, '⟳'),
         el('button', { class: 'iconbtn', title: 'Duplikovat desku', onclick: () => addInstance(it.name, it.files) }, '⧉'),
-        el('button', { class: 'iconbtn', title: 'Odebrat z panelu', onclick: () => { P.insts.splice(i, 1); st.pick = null; panelChanged(true); } }, '✕'))));
+        el('button', { class: 'iconbtn', title: 'Odebrat z panelu', onclick: () => { P.insts.splice(i, 1); st.pick = null; panelChanged(true); } }, '✕')),
+      instLayerRow(it)));
   });
   if (!P.insts.length) list.append(el('div', { class: 'hint' }, 'Panel je prázdný. Přidej uložený projekt nebo desku ze souboru.'));
   box.append(list);
@@ -279,7 +291,7 @@ function renderPanelSection() {
     el('div', { class: 'f mrow', style: 'align-self:end' }, el('button', { class: 'btn small', title: 'Rozmístí desky do řad podle velikosti polotovaru', onclick: arrangePanel }, 'Rozmístit')),
     (() => { const c = el('input', { type: 'checkbox' }); c.checked = P.pinFit !== false; c.addEventListener('change', () => pinsAroundPanel(c.checked)); return el('label', { class: 'f wide check', title: 'Vzor 4 kolíčků se sám přizpůsobí velikosti panelu (4 mm od okraje). Vypni, když chceš kolíčky nastavit ručně v sekci Kolíčky.' }, c, 'Kolíčky automaticky kolem panelu'); })(),
     el('div', { class: 'f wide pbar' }, el('button', { class: 'btn small' + (st.tool === 'panel' ? ' primary' : ''), onclick: () => setTool('panel') }, 'Posouvat desky myší (P)')),
-    el('div', { class: 'hint' }, `Desky posouvej nástrojem Panel (P) – táhni desku, R otočí vybranou o 90°, šipky posunou o 0,5 mm (Shift 5 mm). X / Y = levý dolní roh desky. Nastavení, úpravy a výšková mapa platí pro celý panel; programy jdou po nástrojích přes všechny desky.`));
+    el('div', { class: 'hint' }, `Desky posouvej nástrojem Panel (P) – táhni desku, R otočí vybranou o 90°, šipky posunou o 0,5 mm (Shift 5 mm). X / Y = levý dolní roh desky. Měď / Zrcadlit: deska s mědí jen na B.Cu → zvol B.Cu (zrcadlí se sama) a vyrobí se shora naráz s deskami F.Cu, bez otáčení. Nastavení, úpravy a výšková mapa platí pro celý panel; programy jdou po nástrojích přes všechny desky.`));
   d.append(box);
   return d;
 }

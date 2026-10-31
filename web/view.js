@@ -479,7 +479,8 @@ export class Viewer {
         for (const p of it.outer) { const q = tf ? tf(p) : p; x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
         const sx = ((x0 + x1) / 2 - this.cx) * s + this.w / 2, sy = -((y0 + y1) / 2 - this.cy) * s + this.h / 2;
         ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.65)'; ctx.fillStyle = '#ffd9b0';
-        ctx.strokeText(it.label, sx, sy); ctx.fillText(it.label, sx, sy);
+        const lb = it.label + (it.flip ? ' ⇋' : '') + (it.cu ? ' ' + it.cu : '');
+        ctx.strokeText(lb, sx, sy); ctx.fillText(lb, sx, sy);
       }
       ctx.restore();
     }

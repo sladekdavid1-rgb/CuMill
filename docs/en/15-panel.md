@@ -33,6 +33,7 @@ inside it completely, so it opens even if the original KiCad files are gone.
 2. **Board** – letter (A, B, C…), name and **X / Y** position of the lower-left corner in mm.
    Click the letter to select the board.
 3. **⟳** rotates the board by 90°, **⧉** adds another copy, **✕** removes it from the panel.
+   Below: **Měď** (Copper: *Both / F.Cu / B.Cu*) – which copper layers of the board are used – and **⇋ Zrcadlit** (Mirror).
 4. **+ Projekt… / + Deska ze souboru…** – adding boards. Below: **Mezera mezi deskami** (gap)
    and **Rozmístit** (Arrange) – boards are packed onto the blank automatically (largest first,
    as low and as far left as possible).
@@ -55,6 +56,22 @@ while dragging; the move snaps to **0.5 mm** (0.1 mm with `Shift`).
 | arrows | move the selected board by 0.5 mm |
 | `Shift` + arrows | move by 5 mm |
 | `Esc` | back to view panning |
+
+### F.Cu-only and B.Cu-only boards in one panel
+
+Each board in the panel has its own **Měď** (Copper) and **⇋ Zrcadlit** (Mirror) choice:
+
+- **Obě** (Both) – copper from both sides of the board (default),
+- **F.Cu** / **B.Cu** – only one copper layer (and the silkscreen of that side),
+- **⇋ Zrcadlit** – the board is mirrored across the vertical axis (as seen from below) and its B.Cu is
+  milled **from the top** as F.Cu (and vice versa).
+
+Choosing **B.Cu** turns mirroring on automatically. A board with copper only on the bottom is then made
+**from the top at once** with boards that have copper on top – one isolation, no flipping and no pins.
+In the preview such a board shows **⇋ B.Cu** next to its letter.
+
+> A mirrored board comes out “upside down” – THT parts are then fitted from the side without copper,
+> just like on a regular single-sided board.
 
 ## Checks
 
