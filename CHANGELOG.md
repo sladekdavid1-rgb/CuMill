@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- Height map follows the board / panel shape (“Only over boards”, on by default): points outside the boards are moved
+  onto them or not probed at all and their height is filled in from the neighbours; the reference point is the first
+  probed point near the lower-left corner
 - **Rulers** at the bottom and left of the board preview (cm, mm ticks; zero = lower-left corner of the board,
   in machine view the work zero), cursor position marked; prominent overall size: dimension lines under and left
   of the board (cm · mm) and a “Deska / Panel W × H cm” label above it

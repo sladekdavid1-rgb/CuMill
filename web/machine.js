@@ -49,7 +49,7 @@ export function initMachine(ctx) {
     setter: { on: false, x: null, y: null, z: -5, search: 30, ref: null, ...(saved.setter || {}) },
     lastTool: saved.lastTool || '', zTool: saved.zTool || '',
     lastRun: saved.lastRun || null,
-    mapCfg: { nx: 5, ny: 4, centers: false, holes: true, margin: 0.6, zmin: -1.5, clear: 1, ...(saved.mapCfg || {}) },
+    mapCfg: { nx: 5, ny: 4, centers: false, holes: true, margin: 0.6, zmin: -1.5, clear: 1, onBoard: true, ...(saved.mapCfg || {}) },
     keymap: { ...Object.fromEntries(ACTIONS.map(a => [a[0], a[2]])), ...(saved.keymap || {}) },
     zfeed: 100,
     prog: null, // { src, name, orig, text, op, tool, side }
@@ -652,7 +652,7 @@ export function initMachine(ctx) {
     let zRef = 0;
     if (atRef) {
       if (!M.hmap || !HM.measured(M.hmap)) throw new Error('Výšková mapa není změřená.');
-      const [x, y] = [M.hmap.x0, M.hmap.y0];
+      const ri = HM.refIdx(M.hmap), rp = HM.points(M.hmap)[ri], [x, y] = M.hmap.at[ri] || [rp.x, rp.y];
       await moveSafe(x, y, M.probe.clear);
       await waitIdle();
       zRef = HM.interp(M.hmap, x, y);
@@ -964,7 +964,7 @@ export function initMachine(ctx) {
   const areaInp = { x0: el('input'), y0: el('input'), w: el('input'), h: el('input') };
   function newMapFromForm() {
     const m = planMap();
-    M.hmap = m; M.hmapMeta = { side: M.prog?.op?.side || null, moved: m.moved };
+    M.hmap = m; M.hmapMeta = { side: M.prog?.op?.side || null, moved: m.moved, skipped: m.skipped || 0 };
     return m;
   }
   function fillArea(a) { if (!a) return; for (const k of ['x0', 'y0', 'w', 'h']) areaInp[k].value = fmt(+a[k].toFixed(2)); M.mapCfg.nx = Math.max(2, Math.round(a.w / 10) + 1); M.mapCfg.ny = Math.max(2, Math.round(a.h / 10) + 1); save(); }
@@ -979,8 +979,10 @@ export function initMachine(ctx) {
       await cmd('G21 G90', true);
       const wco = await readOffsets();
       // přeměření jednoho bodu: změří se i referenční bod a hodnota se vezme relativně k němu
-      const order = HM.probeOrder(m).filter(q => onlyIdx == null || q.i === onlyIdx || (onlyIdx !== 0 && q.i === 0));
-      if (onlyIdx != null) order.sort((a, b) => a.i === 0 ? -1 : b.i === 0 ? 1 : 0);
+      const R = HM.refIdx(m);
+      if (onlyIdx != null && HM.skipped(m, onlyIdx)) throw new Error('Tento bod je mimo desku – neměří se, výška se dopočítá z okolí.');
+      const order = HM.probeOrder(m).filter(q => onlyIdx == null || q.i === onlyIdx || (onlyIdx !== R && q.i === R));
+      if (onlyIdx != null) order.sort((a, b) => a.i === R ? -1 : b.i === R ? 1 : 0);
       let refRaw = null;
       const pts = HM.points(m);
       let n = 0;
@@ -993,8 +995,8 @@ export function initMachine(ctx) {
         if (p.double) { await cmd(`G91 G0 Z${fmt(p.retract)}`, true); await cmd('G90', true); prb = await probeOnce(`Z${fmt(c.zmin)}`, p.slow); }
         const zw = prb[2] - wco[2];
         if (onlyIdx != null) {
-          if (q.i === 0) refRaw = zw;
-          if (q.i === onlyIdx) HM.setZ(m, pts[q.i], +(q.i === 0 ? 0 : zw - refRaw).toFixed(4));
+          if (q.i === R) refRaw = zw;
+          if (q.i === onlyIdx) HM.setZ(m, pts[q.i], +(q.i === R ? 0 : zw - refRaw).toFixed(4));
         } else HM.setZ(m, pts[q.i], +zw.toFixed(4));
         n++;
         renderMapTable(); renderMapOverlay();
@@ -1002,12 +1004,13 @@ export function initMachine(ctx) {
       }
       await cmd(`G0 Z${fmt(c.clear)}`, true);
       if (onlyIdx == null) {
+        HM.fillSkipped(m);
         const ref = HM.normalize(m);
         m.time = Date.now();
         // klip na mědi: měřil sám nástroj -> nula Z = povrch v referenčním bodě mapy
         if (p.type === 'clip') { await waitIdle(); await cmd(`G10 L20 P0 Z${fmt(wz() - ref)}`, true); }
-        ctx.toast(`Výšková mapa změřená (${pts.length} bodů, rozptyl ${cz(mapSpread(m), 3)} mm).` + (p.type === 'clip' ? ' Nula Z = povrch v referenčním bodě.' : ' Nasaď nástroj a změř Z v referenčním bodě.'));
-      } else ctx.toast('Bod přeměřen (relativně k referenčnímu bodu).');
+        ctx.toast(`Výšková mapa změřená (${order.length} bodů${m.skipped ? `, ${m.skipped} mimo desku dopočítáno` : ''}, rozptyl ${cz(mapSpread(m), 3)} mm).` + (p.type === 'clip' ? ' Nula Z = povrch v referenčním bodě.' : ' Nasaď nástroj a změř Z v referenčním bodě.'));
+      } else { HM.fillSkipped(m); ctx.toast('Bod přeměřen (relativně k referenčnímu bodu).'); }
       M.wizard.done['map:' + (M.hmapMeta?.side || '')] = true;
       ctx.mapChanged?.();
       rebuildProgram(true);
@@ -1020,7 +1023,8 @@ export function initMachine(ctx) {
     let m = M.hmap, preview = false;
     if ((!m || !HM.measured(m)) && mapPreview && !M.mapping) { try { m = planMap(); preview = true; } catch { m = null; } }
     if (!m) { gv.setHeightMap(null); try { drawHeat(null); } catch { } return; }
-    const pts = HM.points(m).map((p, i) => { const x = m.at[i]?.[0] ?? p.x, y = m.at[i]?.[1] ?? p.y; return { x, y, z: preview ? null : HM.getZ(m, p), moved: Math.hypot(x - p.x, y - p.y) > 1e-6, nx: p.x, ny: p.y }; });
+    let pts = HM.points(m).map((p, i) => { const x = m.at[i]?.[0] ?? p.x, y = m.at[i]?.[1] ?? p.y; return { x, y, z: preview ? null : HM.getZ(m, p), moved: Math.hypot(x - p.x, y - p.y) > 1e-6, nx: p.x, ny: p.y, skip: HM.skipped(m, i) }; });
+    if (preview) pts = pts.filter(q => !q.skip); // body mimo desku se neměří
     const surf = !preview && HM.measured(m) ? HM.surface(m) : null;
     try { drawHeat(surf, pts); } catch { /* ještě před vytvořením panelu */ }
     gv.setHeightMap({ pts, surf, edges: preview ? [] : HM.edges(m), active: M.mapSel, exag: 20, lift: 0.4, preview, rect: { x0: m.x0, y0: m.y0, w: m.w, h: m.h }, vert: { top: M.mapCfg.clear, bottom: M.mapCfg.zmin } });
@@ -1032,6 +1036,11 @@ export function initMachine(ctx) {
     if (Object.values(a).some(v => v == null) || a.w <= 0 || a.h <= 0) throw new Error('Zadej oblast mapy (X, Y, šířka, výška).');
     const m = HM.newMap({ ...a, nx: M.mapCfg.nx, ny: M.mapCfg.ny, centers: M.mapCfg.centers });
     m.moved = M.mapCfg.holes && M.prog?.op ? HM.avoidHoles(m, ctx.boardHoles(M.prog.op.side), M.mapCfg.margin) : 0;
+    // jen nad deskami (panel s mezerami, nepravidelný obrys): body mimo desku posunout dovnitř nebo vynechat
+    if (M.mapCfg.onBoard !== false && M.prog?.op) {
+      const inside = ctx.boardInside?.(M.prog.op.side, 0.5);
+      if (inside) { const r = HM.fitToBoards(m, inside); m.moved += r.moved; m.skipped = r.skipped; }
+    }
     return m;
   }
   // 2D barevný náhled mapy (gradient výšky jako v Candle) nad tabulkou
@@ -1104,9 +1113,10 @@ export function initMachine(ctx) {
         const arr = gridPt ? m.z : m.zc, ai = gridPt ? j * m.nx + i : j * (m.nx - 1) + i;
         const v = arr[ai], p = pts[k], at = m.at[k];
         const moved = at && Math.hypot(at[0] - p.x, at[1] - p.y) > 1e-6;
-        const inp = el('input', { value: v == null ? '' : cz(v, 3), placeholder: '—', style: tint(v),
-          class: [k === 0 ? 'ref' : '', k === M.mapSel ? 'on' : '', cenPt ? 'cen' : '', moved ? 'mov' : ''].join(' '),
-          title: `${cenPt ? 'Střed' : 'Bod'} X ${cz(at?.[0] ?? p.x, 2)}  Y ${cz(at?.[1] ?? p.y, 2)}${k === 0 ? ' – referenční bod' : ''}${moved ? ' (posunut kvůli díře)' : ''}` });
+        const R = HM.refIdx(m), sk = HM.skipped(m, k);
+        const inp = el('input', { value: v == null ? '' : cz(v, 3), placeholder: sk ? '·' : '—', style: tint(v),
+          class: [k === R ? 'ref' : '', k === M.mapSel ? 'on' : '', cenPt ? 'cen' : '', moved ? 'mov' : '', sk ? 'skip' : ''].join(' '),
+          title: `${cenPt ? 'Střed' : 'Bod'} X ${cz(at?.[0] ?? p.x, 2)}  Y ${cz(at?.[1] ?? p.y, 2)}${k === R ? ' – referenční bod' : ''}${sk ? ' – mimo desku, neměří se (výška dopočítaná z okolí)' : moved ? ' (posunut kvůli díře / k desce)' : ''}` });
         inp.addEventListener('focus', () => { M.mapSel = k; renderMapOverlay(); inp.select(); });
         inp.addEventListener('change', () => { const nv = num(inp.value); if (nv === arr[ai]) return; arr[ai] = nv; rebuildProgram(true); ctx.mapChanged?.(); setTimeout(renderMapTable, 0); });
         inp.addEventListener('keydown', e => {
@@ -1127,7 +1137,7 @@ export function initMachine(ctx) {
     box.append(el('div', { class: 'tblwrap' }, t),
       el('div', { class: 'muted small tblinfo' },
         `Změřeno ${nMeas}/${nAll}`, nMeas ? ` · min ${cz(mn, 3)} · max ${cz(mx, 3)} · rozptyl ${cz(mx - mn, 3)} mm` : '',
-        m.z[0] != null ? ` · ref. ${cz(m.z[0], 3)}` : '',
+        m.z[0] != null ? ` · ref. ${cz(HM.getZ(m, HM.points(m)[HM.refIdx(m)]) ?? 0, 3)}` : '',
         el('span', { class: 'lg' }, el('i', { style: 'background:color-mix(in srgb, var(--info) 38%, var(--bg))' }), 'níž', el('i', { style: 'background:color-mix(in srgb, var(--err) 38%, var(--bg))' }), 'výš'),
         m.centers ? ' · menší buňky = středy čtverců' : ''));
     if (hadFocus) box.querySelector('input.on')?.focus();
@@ -1172,6 +1182,7 @@ export function initMachine(ctx) {
       el('h4', {}, 'Body'),
       el('div', { class: 'mgrid' }, fld('Bodů X', c, 'nx', { int: true }), fld('Bodů Y', c, 'ny', { int: true })), pattern,
       chk('Vyhnout se dírám (bod se posune vedle)', c, 'holes'), fld('Odstup od díry', c, 'margin', { unit: 'mm' }),
+      chk('Jen nad deskami (body mimo desku se posunou k desce nebo vynechají)', c, 'onBoard'),
       el('h4', {}, 'Sonda'), ptype,
       el('div', { class: 'mgrid' }, fld('Výška přejezdu', c, 'clear', { unit: 'mm' }), fld('Měřit až do Z', c, 'zmin', { unit: 'mm' }),
         fld('Rychle', p, 'fast', { unit: 'mm/min' }), fld('Pomalu', p, 'slow', { unit: 'mm/min' }), fld('Odjezd', p, 'retract', { unit: 'mm' }), fld('Hledat Z (sonda Z)', p, 'search', { unit: 'mm' }),
@@ -1183,7 +1194,7 @@ export function initMachine(ctx) {
       el('div', { class: 'mrow' },
         el('button', { class: 'btn small', disabled: !m || M.mapping || M.mapSel < 0, onclick: safeRun(() => measureMap(M.mapSel)) }, 'Přeměřit vybraný bod'),
         el('button', { class: 'btn small', disabled: !m || !HM.measured(m), onclick: safeRun(() => probeZ(true)) }, 'Z nástroje v ref. bodě')),
-      m ? el('div', { class: 'muted small' }, `Mapa ${m.nx}×${m.ny}${m.centers ? ' se středy' : ''}, ${HM.points(m).length} bodů${M.hmapMeta?.moved ? `, ${M.hmapMeta.moved} posunuto kvůli dírám` : ''}${HM.measured(m) ? `, rozptyl ${cz(mapSpread(m), 3)} mm` : ''}${M.hmapMeta?.side ? ` · strana ${M.hmapMeta.side === 'bottom' ? 'spodní' : 'horní'}` : ''}. Referenční bod = levý dolní roh.`) : null,
+      m ? el('div', { class: 'muted small' }, `Mapa ${m.nx}×${m.ny}${m.centers ? ' se středy' : ''}, ${HM.points(m).length} bodů${M.hmapMeta?.moved ? `, ${M.hmapMeta.moved} posunuto` : ''}${M.hmapMeta?.skipped ? `, ${M.hmapMeta.skipped} mimo desku (neměří se)` : ''}${HM.measured(m) ? `, rozptyl ${cz(mapSpread(m), 3)} mm` : ''}${M.hmapMeta?.side ? ` · strana ${M.hmapMeta.side === 'bottom' ? 'spodní' : 'horní'}` : ''}. Referenční bod = první měřený bod u levého dolního rohu.`) : null,
       heatBox,
       mapTable,
       el('div', { class: 'mrow' },
@@ -1496,6 +1507,6 @@ export function initMachine(ctx) {
     getMap: () => M.hmap ? { map: M.hmap, meta: M.hmapMeta } : null,
     setMap: m => { if (!m?.map) return; M.hmap = m.map; M.hmapMeta = m.meta || null; if (M.prog) rebuildProgram(true); renderMapOverlay(); },
     openTest(toolId, rec) { if (toolId) M.test.toolId = toolId; if (rec) { M.test.base = { feed: rec.feed, plunge: rec.plunge, spindle: rec.spindle, depth: rec.depth, step: rec.step }; M.test.material = rec.material || M.test.material; } save(); showPane('test'); },
-    get M() { return M; }, gv, act, startProgram, measureMap, skipSelection, renderKeysInto, renderProbeInto, redraw: () => { gv.draw(); renderMapOverlay(); }, _t: { wizardSteps, probeZ, moveSafe, zeroAxes, preChecks, probeSpot, connect },
+    get M() { return M; }, gv, act, startProgram, measureMap, skipSelection, renderKeysInto, renderProbeInto, redraw: () => { gv.draw(); renderMapOverlay(); }, _t: { wizardSteps, probeZ, moveSafe, zeroAxes, preChecks, probeSpot, connect, planMap, measureMap, selectOp },
   };
 }

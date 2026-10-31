@@ -43,6 +43,7 @@ Open the **Mapa** (Map) card on the right:
 | **Bodů X / Bodů Y** (Points X / Y) | grid size (e.g. 10 × 7) |
 | **Mřížka / Mřížka se středy** (Grid / Grid with centers) | *with centers* adds a point in the middle of each square – more accurate on a wavy board |
 | **Vyhnout se dírám** (Avoid holes) | a point that would fall into a hole is moved aside (by *Odstup od díry* – hole clearance) |
+| **Jen nad deskami** (Only over boards) | (on by default) the map follows the shape of the board / panel: a point outside the board is moved onto it (at most half a grid step), otherwise it is **not probed at all** – its height is computed from the surrounding points afterwards. Such points are grey with a dot in the table. Useful for a panel with an empty corner or an irregular board with no copper outside it. |
 | **Klip na mědi / Dotyková sonda** (Copper clip / Touch probe) | probe type |
 | **Výška přejezdu** (Travel height) | how high to move between points |
 | **Měřit až do Z** (Probe down to Z) | the lowest Z where the probe looks for the surface (e.g. −1.5) |

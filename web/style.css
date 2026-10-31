@@ -336,6 +336,7 @@ input.feed { width: 70px; height: 28px; border: 1px solid var(--line2); border-r
 .maptbl td.gap { padding: 0; }
 .maptbl input.cen { width: 48px; height: 20px; font-size: 10px; border-style: dashed; }
 .maptbl input.mov { text-decoration: underline dotted; }
+.maptbl input.skip { opacity: .45; font-style: italic; }
 .maptbl table.big input { width: 66px; height: 28px; font-size: 12px; }
 .maptbl table.big input.cen { width: 58px; height: 24px; }
 .maptbl .tblinfo { margin-top: 4px; }

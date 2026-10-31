@@ -6,7 +6,7 @@ A **panel** is a project with **several boards** on one blank – different ones
 board several times. You arrange the boards with the mouse, KiMill checks that they don't
 overlap and fit the blank, and then everything is made **at once, tool by tool**: one isolation
 over all boards, one drilling per drill, one cut-out of all boards including tabs. The height
-map is measured once over the whole panel.
+map is measured once over the whole panel – only over the boards, empty spots of the panel (no copper) are skipped.
 
 ## Creating a panel
 

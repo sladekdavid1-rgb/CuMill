@@ -43,6 +43,7 @@ Otevři kartu **Mapa** vpravo:
 | **Bodů X / Bodů Y** | počet bodů sítě (např. 10 × 7) |
 | **Mřížka / Mřížka se středy** | *Mřížka se středy* přidá bod doprostřed každého čtverce – přesnější u zvlněné desky |
 | **Vyhnout se dírám** | bod, který by padl do díry, se posune vedle (o *Odstup od díry*) |
+| **Jen nad deskami** | (výchozí zapnuto) mapa kopíruje tvar desky / panelu: bod mimo desku se posune k desce (nejvýš o půl kroku sítě), jinak se **vůbec neměří** – jeho výška se po měření dopočítá z okolních bodů. V tabulce je takový bod šedě s tečkou. Hodí se pro panel s prázdným rohem nebo desku nepravidelného tvaru, kde mimo desku není měď. |
 | **Klip na mědi / Dotyková sonda** | typ sondy |
 | **Výška přejezdu** | jak vysoko se přejíždí mezi body |
 | **Měřit až do Z** | jak hluboko nejvýš sonda hledá povrch (např. −1,5) |

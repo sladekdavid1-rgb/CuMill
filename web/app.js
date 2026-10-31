@@ -1857,6 +1857,14 @@ function getMachine() {
     getS: () => S, getRes: () => st.res, boardName: () => st.board?.name || '',
     isEnabled: op => st.enabled[op.id] !== false, originDesc: originCz,
     boardOutlineBB: side => st.board && st.res ? G.bbox((st.board.outlines || [st.board.outline]).map(l => l.map(st.res.sides[side].fwd))) : null,
+    // je bod (strojové souřadnice strany) na některé desce, aspoň `inset` mm od okraje?
+    boardInside: (side, inset = 1) => {
+      if (!st.board || !st.res) return null;
+      const f = st.res.sides[side].fwd, outer = G.offset((st.board.outlines || [st.board.outline]).map(l => l.map(f)), -inset);
+      const holes = (st.board.inner || []).map(l => l.map(f));
+      if (!outer.length) return null;
+      return (x, y) => outer.filter(o => G.pointInPoly(x, y, o)).length % 2 === 1 && !holes.some(h => G.pointInPoly(x, y, h));
+    },
     boardHoles: side => st.board && st.res ? st.board.holes.filter(h => !h.slot).map(h => { const [x, y] = st.res.sides[side].fwd([h.x, h.y]); return { x, y, d: h.d }; }) : [],
     openGcodeFiles: async () => {
       if (host.native) {

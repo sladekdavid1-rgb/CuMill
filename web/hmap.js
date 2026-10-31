@@ -58,9 +58,54 @@ export function avoidHoles(m, holes, margin = 0.6) {
   return moved;
 }
 
+// mapa jen nad deskami: body mimo desky (inside(x, y) = false) se posunou dovnitř (nejvýš o půl kroku sítě),
+// jinak se neměří – jejich výška se po měření dopočítá z okolních bodů. m.skip[i] = true, m.ref = referenční bod.
+export function fitToBoards(m, inside) {
+  const pts = points(m), dx = m.w / (m.nx - 1), dy = m.h / (m.ny - 1), lim = Math.min(dx, dy) / 2;
+  m.skip = pts.map(() => false);
+  let moved = 0, skipped = 0;
+  pts.forEach((p, i) => {
+    const [x0, y0] = m.at[i] || [p.x, p.y];
+    if (inside(x0, y0)) return;
+    let best = null;
+    for (let r = 0.25; r <= lim + 1e-9 && !best; r += 0.25) {
+      const n = Math.max(8, Math.round(2 * Math.PI * r / 0.25));
+      let bd = Infinity;
+      for (let k = 0; k < n; k++) {
+        const a = k / n * 2 * Math.PI, x = x0 + r * Math.cos(a), y = y0 + r * Math.sin(a);
+        if (inside(x, y)) { const d = Math.hypot(x - p.x, y - p.y); if (d < bd) { bd = d; best = [x, y]; } }
+      }
+    }
+    if (best) { m.at[i] = best; moved++; } else { m.skip[i] = true; skipped++; }
+  });
+  // referenční bod = první měřený bod mřížky (nejblíž levému dolnímu rohu)
+  let ref = 0, rd = Infinity;
+  pts.forEach((p, i) => { if (p.grid && !m.skip[i]) { const d = Math.hypot(p.x - m.x0, p.y - m.y0); if (d < rd - 1e-9) { rd = d; ref = i; } } });
+  m.ref = ref;
+  if (skipped === pts.length) { m.skip = pts.map(() => false); m.ref = 0; skipped = 0; }
+  return { moved, skipped };
+}
+export const refIdx = m => m.ref ?? 0;
+export const skipped = (m, i) => !!m.skip?.[i];
+// dopočítat výšky vynechaných bodů (vážený průměr 4 nejbližších změřených bodů)
+export function fillSkipped(m) {
+  if (!m.skip?.some(Boolean)) return 0;
+  const pts = points(m), meas = [];
+  pts.forEach((p, i) => { const v = getZ(m, p); if (!m.skip[i] && v != null) meas.push({ x: m.at[i]?.[0] ?? p.x, y: m.at[i]?.[1] ?? p.y, v }); });
+  if (!meas.length) return 0;
+  let n = 0;
+  pts.forEach((p, i) => {
+    if (!m.skip[i]) return;
+    const near = meas.map(q => ({ d: Math.hypot(q.x - p.x, q.y - p.y), v: q.v })).sort((a, b) => a.d - b.d).slice(0, 4);
+    let sw = 0, sv = 0; for (const q of near) { const w = 1 / Math.max(1e-6, q.d * q.d); sw += w; sv += w * q.v; }
+    setZ(m, p, +(sv / sw).toFixed(4)); n++;
+  });
+  return n;
+}
+
 // pořadí měření „hadem“, ať se zbytečně nepřejíždí
 export function probeOrder(m) {
-  const pts = points(m).map((p, i) => ({ ...p, i, x: m.at[i]?.[0] ?? p.x, y: m.at[i]?.[1] ?? p.y }));
+  const pts = points(m).map((p, i) => ({ ...p, i, x: m.at[i]?.[0] ?? p.x, y: m.at[i]?.[1] ?? p.y })).filter(p => !m.skip?.[p.i]);
   const rowOf = p => p.grid ? Math.floor(p.k / m.nx) * 2 : Math.floor(p.k / (m.nx - 1)) * 2 + 1;
   const rows = new Map();
   for (const p of pts) { const r = rowOf(p); if (!rows.has(r)) rows.set(r, []); rows.get(r).push(p); }
@@ -71,7 +116,7 @@ export function probeOrder(m) {
 
 // hodnoty relativně k prvnímu bodu (referenční bod = levý dolní roh mapy)
 export function normalize(m) {
-  const ref = m.z[0]; if (ref == null) return 0;
+  const r = points(m)[refIdx(m)], ref = r ? getZ(m, r) : m.z[0]; if (ref == null) return 0;
   m.z = m.z.map(v => v == null ? v : +(v - ref).toFixed(4));
   m.zc = m.zc.map(v => v == null ? v : +(v - ref).toFixed(4));
   return ref;

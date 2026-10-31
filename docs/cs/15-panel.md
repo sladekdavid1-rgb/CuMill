@@ -6,7 +6,7 @@
 několikrát té samé. Desky rozmístíš myší, KiMill zkontroluje, že se nepřekrývají a vejdou
 se na polotovar, a pak se vše vyrobí **najednou po nástrojích**: jedna izolace přes všechny
 desky, jedno vrtání každým vrtákem, jeden ořez všech desek i s můstky. Výšková mapa se měří
-jednou přes celý panel.
+jednou přes celý panel – jen nad deskami, prázdná místa panelu (bez mědi) se neměří.
 
 ## Založení panelu
 
