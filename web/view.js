@@ -125,7 +125,7 @@ export class Viewer {
       this.hoverPt = wp;
       if (!drag && (this.opts.tool || 'pan') === 'tab') this.onTabHover?.(this.toDesign(wp), this.scale);
       if (!drag && this.board?.panel && ['pan', 'panel'].includes(this.opts.tool || 'pan')) c.classList.toggle('overboard', this.onPanelHit?.(this.toDesign(wp)) != null);
-      if (this.draft) this.draw(false);
+      if (this.draft || this.opts.rulers !== false) this.draw(false);
       this.onHover?.(this.hoverPt, this._hitHole(this.hoverPt));
     });
     const end = e => {
@@ -147,7 +147,7 @@ export class Viewer {
       const wasRubber = !!this.rubber; this.rubber = null; drag = null; c.classList.remove('grabbing'); if (wasRubber) this.draw(false);
     };
     c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
-    c.addEventListener('pointerleave', () => { this.onHover?.(null); if (!drag) this.onTabHover?.(null); });
+    c.addEventListener('pointerleave', () => { this.hoverPt = null; this.draw(false); this.onHover?.(null); if (!drag) this.onTabHover?.(null); });
     c.addEventListener('dblclick', () => {
       const tool = this.opts.tool || 'pan';
       if ((tool === 'clear' || tool === 'block') && this.draft) this.finishDraft();
@@ -206,9 +206,9 @@ export class Viewer {
   }
   fit() {
     const bb = this._bounds(); if (!bb || !this.w) return;
-    const m = 30;
-    this.scale = Math.min((this.w - 2 * m) / Math.max(1, bb.maxX - bb.minX), (this.h - 2 * m) / Math.max(1, bb.maxY - bb.minY));
-    this.cx = (bb.minX + bb.maxX) / 2; this.cy = (bb.minY + bb.maxY) / 2;
+    const m = 30, RW = this.opts.rulers === false ? 0 : 30, RH = this.opts.rulers === false ? 0 : 22; // místo pro pravítka
+    this.scale = Math.min((this.w - RW - 2 * m) / Math.max(1, bb.maxX - bb.minX), (this.h - RH - 2 * m) / Math.max(1, bb.maxY - bb.minY));
+    this.cx = (bb.minX + bb.maxX) / 2 - RW / 2 / this.scale; this.cy = (bb.minY + bb.maxY) / 2 - RH / 2 / this.scale;
     this.draw();
   }
   _geom(key, make) { if (!this.cache.has(key)) this.cache.set(key, make()); return this.cache.get(key); }
@@ -256,6 +256,65 @@ export class Viewer {
     ctx.drawImage(this.sc, dx * this.dpr, dy * this.dpr, this.sc.width * k, this.sc.height * k);
     this._overlay(ctx);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this._rulers(ctx);
+  }
+  // pravítka dole a vlevo (cm, dílky po mm); nula = levý dolní roh desky, v režimu stroje nula obrobku
+  _rulers(ctx) {
+    if (!this.board || this.opts.rulers === false) return;
+    const s = this.scale, W = this.w, H = this.h, RW = 30, RH = 22;
+    const t = this._tf(), mach = t && !t.rotOnly;
+    const bb = (() => { const ols = (this.board.outlines || [this.board.outline]).map(l => t ? l.map(t.fwd) : l); return G.bbox(ols); })();
+    const ox = mach ? 0 : bb.minX, oy = mach ? 0 : bb.minY;
+    const X = x => (x - this.cx) * s + W / 2, Y = y => H / 2 - (y - this.cy) * s;
+    // krok popisků (mm) – aspoň ~55 px; dílky – aspoň ~6 px
+    let lab = 1000; for (const k of [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]) if (k * s >= 55) { lab = k; break; }
+    let tick = lab; for (const k of [0.5, 1, 2, 5, 10, 20, 50, 100]) if (k * s >= 6 && lab % k === 0) { tick = k; break; }
+    const fmt = mm => { const v = mm / 10; return (Math.abs(v - Math.round(v)) < 1e-9 ? String(Math.round(v)) : v.toFixed(lab < 10 ? 1 : 0)).replace('.', ',').replace('-', '−'); };
+    ctx.save();
+    ctx.font = '11px system-ui, sans-serif';
+    // podklad
+    ctx.fillStyle = COL.ruler; ctx.fillRect(0, H - RH, W, RH); ctx.fillRect(0, 0, RW, H - RH);
+    ctx.strokeStyle = COL.rulerLine; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(RW + 0.5, 0); ctx.lineTo(RW + 0.5, H - RH + 0.5); ctx.lineTo(W, H - RH + 0.5); ctx.stroke();
+    // rozsah desky
+    const bx0 = Math.max(RW, X(bb.minX)), bx1 = Math.min(W, X(bb.maxX)), by0 = Math.max(0, Y(bb.maxY)), by1 = Math.min(H - RH, Y(bb.minY));
+    ctx.fillStyle = COL.rulerBand;
+    if (bx1 > bx0) ctx.fillRect(bx0, H - RH, bx1 - bx0, 5);
+    if (by1 > by0) ctx.fillRect(RW - 5, by0, 5, by1 - by0);
+    // dílky a popisky – vodorovně
+    ctx.strokeStyle = COL.rulerText; ctx.fillStyle = COL.rulerText; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+    ctx.beginPath();
+    const [wx0] = this.toWorld(RW, 0), [wx1] = this.toWorld(W, 0);
+    for (let v = Math.ceil((wx0 - ox) / tick) * tick; v <= wx1 - ox; v += tick) {
+      const sx = Math.round(X(v + ox)) + 0.5, major = Math.abs(v / lab - Math.round(v / lab)) < 1e-6, half = !major && Math.abs(v / (lab / 2) - Math.round(v / (lab / 2))) < 1e-6;
+      const L = major ? 9 : half ? 6 : 3; ctx.moveTo(sx, H - RH); ctx.lineTo(sx, H - RH + L);
+      if (major && sx > RW + 2) ctx.fillText(fmt(v), sx + 2, H - RH + 9);
+    }
+    // svisle
+    const [, wy1] = this.toWorld(0, 0), [, wy0] = this.toWorld(0, H - RH);
+    for (let v = Math.ceil((wy0 - oy) / tick) * tick; v <= wy1 - oy; v += tick) {
+      const sy = Math.round(Y(v + oy)) + 0.5, major = Math.abs(v / lab - Math.round(v / lab)) < 1e-6, half = !major && Math.abs(v / (lab / 2) - Math.round(v / (lab / 2))) < 1e-6;
+      const L = major ? 9 : half ? 6 : 3; ctx.moveTo(RW - L, sy); ctx.lineTo(RW, sy);
+      if (major && sy < H - RH - 2) { ctx.save(); ctx.translate(RW - 11, sy - 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText(fmt(v), 0, 0); ctx.restore(); }
+    }
+    ctx.stroke();
+    // rozměr desky (cm) uprostřed pásu
+    const cm = v => (v / 10).toFixed(2).replace(/0$/, '').replace('.', ',') + ' cm';
+    ctx.font = '600 11px system-ui, sans-serif'; ctx.fillStyle = COL.rulerAccent;
+    const wTxt = cm(bb.maxX - bb.minX), hTxt = cm(bb.maxY - bb.minY);
+    if (bx1 - bx0 > ctx.measureText(wTxt).width + 8) { ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText(wTxt, (bx0 + bx1) / 2, H - RH - 3); }
+    if (by1 - by0 > ctx.measureText(hTxt).width + 8) { ctx.save(); ctx.translate(RW + 4, (by0 + by1) / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(hTxt, 0, 0); ctx.restore(); }
+    // poloha myši
+    if (this.hoverPt) {
+      const hx = X(this.hoverPt[0]), hy = Y(this.hoverPt[1]);
+      ctx.strokeStyle = COL.sel; ctx.lineWidth = 1.5; ctx.beginPath();
+      if (hx > RW) { ctx.moveTo(hx, H - RH); ctx.lineTo(hx, H); }
+      if (hy < H - RH) { ctx.moveTo(0, hy); ctx.lineTo(RW, hy); }
+      ctx.stroke();
+    }
+    // roh: jednotka
+    ctx.fillStyle = COL.ruler; ctx.fillRect(0, H - RH, RW, RH);
+    ctx.font = '600 11px system-ui, sans-serif'; ctx.fillStyle = COL.rulerStrong; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('cm', RW / 2, H - RH / 2);
+    ctx.restore();
   }
   _render() {
     const ctx = this.sctx;
@@ -451,7 +510,7 @@ export class Viewer {
       ctx.fillStyle = COL.origin; ctx.beginPath(); ctx.arc(o[0], o[1], a * 0.55, 0, Math.PI * 2); ctx.fill();
       // souřadnicový kříž stroje v pravém dolním rohu (směry os X / Y v tomto pohledu)
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      drawAxisGizmo(ctx, this.w - 58, this.h - 58, [ex[0], -ex[1]], [ey[0], -ey[1]], mach ? 'stroj' : t ? 'návrh, otočeno' : 'návrh');
+      drawAxisGizmo(ctx, this.w - 58, this.h - 80, [ex[0], -ex[1]], [ey[0], -ey[1]], mach ? 'stroj' : t ? 'návrh, otočeno' : 'návrh');
     }
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }

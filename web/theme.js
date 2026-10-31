@@ -110,7 +110,7 @@ export function apply() {
     geo: css(c.geo), geoDim: withAlpha(c.geo, 0.35), rapid: css(c.rapid), marker: css(c.marker), pin: css(c.pin), pinFill: withAlpha(c.pin, 0.22), origin: css(c.origin),
     sel: css(c.sel), selFill: withAlpha(c.sel, 0.2), err: css(c.err), errFill: withAlpha(c.err, 0.25),
     areaClear: css(c.areaClear), areaClearFill: withAlpha(c.areaClear, 0.12), areaClearAll: withAlpha(c.areaClear, 0.22), areaBlock: css(c.areaBlock), areaBlockFill: withAlpha(c.areaBlock, 0.13),
-    tab: withAlpha(c.tab, 0.75), axisX: '#ff5c5c', axisY: '#5cff8a', onAccent: css(c.onAccent), mill: css(c.opMill),
+    tab: withAlpha(c.tab, 0.75), ruler: withAlpha(c.panel, 0.92), rulerLine: css(c.line2), rulerText: css(c.muted), rulerStrong: css(c.text), rulerBand: withAlpha(c.cu, 0.28), rulerAccent: css(c.cu), axisX: '#ff5c5c', axisY: '#5cff8a', onAccent: css(c.onAccent), mill: css(c.opMill),
   });
   Object.assign(OPC, { 'iso-F.Cu': css(c.opIsoF), 'iso-B.Cu': css(c.opIsoB), pins: css(c.opPins), drill: css(c.opDrill), mill: css(c.opMill), geo: css(c.opGeo), cut: css(c.opCut), silk: css(c.opSilk || c.opDrill), rest: css(c.opRest || c.opGeo) });
   for (const k of ['bg3d', 'pathAir', 'pathMid', 'pathDeep', 'simCu', 'simFr', 'simFrDeep', 'simThru', 'tool3d', 'rapid', 'sel', 'text']) T3D[k] = rgba(c[k]);

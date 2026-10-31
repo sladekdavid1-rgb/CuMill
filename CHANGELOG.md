@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- **Rulers** at the bottom and left of the board preview (cm, mm ticks; zero = lower-left corner of the board,
+  in machine view the work zero), board size in cm on the rulers and the cursor position marked
+- Fix: with UI zoom the board preview did not fill the whole area
 - Fix: with UI zoom other than 100 % (Settings → zoom) the mouse in the board preview, the 3D G-code view and
   the height-map preview was offset (tabs, pins, areas were placed away from the cursor)
 - Panel: per-board copper choice (both / F.Cu / B.Cu) and mirroring – a B.Cu-only board is mirrored and milled

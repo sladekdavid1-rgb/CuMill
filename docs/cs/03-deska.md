@@ -113,6 +113,12 @@ Seznam kolíčků s polohami je v levém panelu **(2)**. Zelená tečka = kolí�
 
 ![Ruční kolíčky](../img/d_kolicky.png)
 
+### Pravítka
+
+Dole a vlevo v náhledu jsou **pravítka v cm** (dílky po mm). Nula je v levém dolním rohu desky
+(v režimu **Stroj** v nule obrobku). Oranžový pruh na pravítku ukazuje, kde je deska, a nad ním je
+napsaný její **rozměr v cm**. Modrá čárka ukazuje polohu myši.
+
 ### Můstky ořezu (ručně)
 
 Můstky drží desku v polotovaru, aby se při ořezu neutrhla. Nástroj **Můstek** (`M`) **(1)**:

@@ -114,6 +114,12 @@ red = warning (in copper, outside the blank or in the cut-out path).
 
 ![Manual pins](../img/d_kolicky.png)
 
+### Rulers
+
+At the bottom and left of the preview there are **rulers in cm** (mm ticks). Zero is the lower-left corner of the board
+(in **Stroj** (machine) view the work zero). The orange band shows where the board is, with its **size in cm**
+written next to it. A blue mark shows the mouse position.
+
 ### Cut-out tabs (manual)
 
 Tabs hold the board in the blank so it doesn't break loose during the cut-out. **Můstek** (Tab, `M`) tool **(1)**:
