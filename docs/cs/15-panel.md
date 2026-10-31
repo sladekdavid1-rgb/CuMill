@@ -42,7 +42,7 @@ celé, takže se otevře i tehdy, když původní soubory z KiCadu už nemáš.
 
 ### Posouvání myší
 
-Zapni nástroj **Panel** (`P`) a **táhni desku**. Během tažení se ukazuje čárkovaný obrys nové
+**Chyť desku kdekoli myší a táhni ji** – jde to nástrojem **Posun** (výchozí) i nástrojem **Panel** (`P`). Nad deskou se kurzor změní na šipky posunu; tažení mimo desky posouvá pohled (s `Alt` posouvá pohled i nad deskou). Během tažení se ukazuje čárkovaný obrys nové
 polohy, posun skáče po **0,5 mm** (se `Shift` po 0,1 mm).
 
 ![Tažení desky](../img/pn_tahni.png)

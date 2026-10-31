@@ -1149,6 +1149,7 @@ const viewer = new Viewer($('#cv'), (p, hole) => {
   r.textContent = t;
 });
 const snap = (v, k) => Math.round(v / k) * k;
+viewer.onPanelHit = p => instAt(p);
 viewer.onPanelDown = p => { const i = instAt(p); if (i == null) return null; st.pick = { kind: 'inst', idx: i }; showPanelSel(); return i; };
 viewer.onPanelMove = (i, p0, p, fine) => { const part = st.board.panelParts[i]; if (!part) return; const k = fine ? 0.1 : 0.5; const dx = snap(p[0] - p0[0], k), dy = snap(p[1] - p0[1], k); viewer.setOpts({ ghost: [part.outer.map(([x, y]) => [x + dx, y + dy])] }); };
 viewer.onPanelUp = (i, p0, p, moved, fine) => {
@@ -1320,7 +1321,7 @@ function setTool(t) {
   document.querySelectorAll('#toolMode button').forEach(x => x.classList.toggle('on', x.dataset.tool === t));
   viewer.cancelDraft(); viewer.setOpts({ tool: t });
   $('#cv').dataset.tool = t; if (t !== 'tab') { $('#cv').style.cursor = ''; if (viewer.opts.tabPreview) { viewer.opts.tabPreview = null; viewer.draw(false); } }
-  const hint = { pan: '', select: 'Klik = výběr díry, kusu mědi, tvaru nebo oblasti · Shift = přidat · tažení = obdélník děr · Esc = zpět na posun', clear: 'Táhni obdélník, nebo klikej body mnohoúhelníku (uzavři klikem na první bod / Enter) · Esc zruší / zpět na posun', block: 'Oblast, kde se nemá frézovat: obdélník tažením, nebo body klikáním · Enter dokončí · Esc zruší / zpět na posun', pin: 'Klik = přidat kolíček (přichytí se k díře nebo na rastr 0,5 mm) · tažení kolíčku = posun · Del = smazat vybraný · Esc = zpět na posun', panel: 'Táhni desku = posun (rastr 0,5 mm, Shift 0,1 mm) · klik = výběr · R = otočit vybranou o 90° · šipky = posun 0,5 mm (Shift 5 mm) · Esc = zpět na posun', tab: 'Najeď na dráhu ořezu – zvýrazní se, kam se můstek položí, klik = přidat · tažení můstku = posun po dráze · šipky = posun vybraného o 0,5 mm (Shift 5 mm) · Del = smazat · Esc = zpět na posun' }[t];
+  const hint = { pan: '', select: 'Klik = výběr díry, kusu mědi, tvaru nebo oblasti · Shift = přidat · tažení = obdélník děr · Esc = zpět na posun', clear: 'Táhni obdélník, nebo klikej body mnohoúhelníku (uzavři klikem na první bod / Enter) · Esc zruší / zpět na posun', block: 'Oblast, kde se nemá frézovat: obdélník tažením, nebo body klikáním · Enter dokončí · Esc zruší / zpět na posun', pin: 'Klik = přidat kolíček (přichytí se k díře nebo na rastr 0,5 mm) · tažení kolíčku = posun · Del = smazat vybraný · Esc = zpět na posun', panel: 'Táhni desku = posun (rastr 0,5 mm, Shift 0,1 mm; desky jdou táhnout i nástrojem Posun, Alt + tažení = posun pohledu) · klik = výběr · R = otočit vybranou o 90° · šipky = posun 0,5 mm (Shift 5 mm) · Esc = zpět na posun', tab: 'Najeď na dráhu ořezu – zvýrazní se, kam se můstek položí, klik = přidat · tažení můstku = posun po dráze · šipky = posun vybraného o 0,5 mm (Shift 5 mm) · Del = smazat · Esc = zpět na posun' }[t];
   $('#toolHint').textContent = hint; $('#toolHint').classList.toggle('on', !!hint);
 }
 document.querySelectorAll('#toolMode button').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));

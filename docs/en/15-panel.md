@@ -43,7 +43,7 @@ inside it completely, so it opens even if the original KiCad files are gone.
 
 ### Moving with the mouse
 
-Turn on the **Panel** tool (`P`) and **drag a board**. A dashed outline shows the new position
+**Grab a board anywhere and drag it** – with the **Posun** (Pan, default) tool as well as the **Panel** tool (`P`). Over a board the cursor turns into the move arrows; dragging outside the boards pans the view (with `Alt` it pans even over a board). A dashed outline shows the new position
 while dragging; the move snaps to **0.5 mm** (0.1 mm with `Shift`).
 
 ![Dragging a board](../img/pn_tahni.png)

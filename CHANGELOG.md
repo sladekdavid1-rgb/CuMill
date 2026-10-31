@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- Panel: boards can be grabbed and dragged with the default Pan tool too (move cursor over a board; Alt + drag pans)
 - **Remaining copper with a second tool** – after the V-bit isolation an end mill clears large copper areas inside
   the board (per layer, own tool / depth / overlap / overlap into the isolation band / minimum distance of the tool edge
   from tracks, e.g. 2 mm); copper outside the board stays

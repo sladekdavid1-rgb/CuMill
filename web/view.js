@@ -99,9 +99,11 @@ export class Viewer {
       const pan = e.button === 1 || e.button === 2 || (e.button === 0 && tool === 'pan');
       drag = { x: e.clientX, y: e.clientY, cx: this.cx, cy: this.cy, pan, moved: false, w0: this.toWorld(e.clientX - r.left, e.clientY - r.top), btn: e.button, shift: e.shiftKey || e.ctrlKey, pin: null };
       if ((tool === 'pin' || tool === 'tab') && e.button === 0) { const i = this.onPinDown?.(this.toDesign(drag.w0), this.scale); if (i !== null && i !== undefined) drag.pin = i; }
+      // panel: desku jde chytit a táhnout i nástrojem Posun (prázdné místo = posun pohledu)
+      if (tool === 'pan' && e.button === 0 && this.board?.panel && !e.altKey) { const i = this.onPanelDown?.(this.toDesign(drag.w0)); if (i !== null && i !== undefined) { drag.panel = i; drag.pan = false; } }
       if (tool === 'panel' && e.button === 0) { const i = this.onPanelDown?.(this.toDesign(drag.w0)); if (i !== null && i !== undefined) drag.panel = i; else { drag.pan = true; c.classList.add('grabbing'); } }
       c.setPointerCapture(e.pointerId);
-      if (pan) c.classList.add('grabbing');
+      if (drag.pan) c.classList.add('grabbing');
     });
     c.addEventListener('pointermove', e => {
       const r = c.getBoundingClientRect();
@@ -118,6 +120,7 @@ export class Viewer {
       }
       this.hoverPt = wp;
       if (!drag && (this.opts.tool || 'pan') === 'tab') this.onTabHover?.(this.toDesign(wp), this.scale);
+      if (!drag && this.board?.panel && ['pan', 'panel'].includes(this.opts.tool || 'pan')) c.classList.toggle('overboard', this.onPanelHit?.(this.toDesign(wp)) != null);
       if (this.draft) this.draw(false);
       this.onHover?.(this.hoverPt, this._hitHole(this.hoverPt));
     });

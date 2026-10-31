@@ -85,6 +85,7 @@ table.map .auto { color: var(--dim); }
 .stage { position: relative; overflow: hidden; background: var(--bg); }
 #cv { position: absolute; inset: 0; cursor: grab; touch-action: none; }
 #cv.grabbing { cursor: grabbing; }
+#cv.overboard:not(.grabbing) { cursor: move; }
 .toolbar { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; pointer-events: none; }
 .toolbar > * { pointer-events: auto; }
 .seg { display: inline-flex; background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line2); border-radius: 8px; padding: 2px; backdrop-filter: blur(6px); }
