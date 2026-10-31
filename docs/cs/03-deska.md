@@ -116,8 +116,10 @@ Seznam kolíčků s polohami je v levém panelu **(2)**. Zelená tečka = kolí�
 ### Pravítka
 
 Dole a vlevo v náhledu jsou **pravítka v cm** (dílky po mm). Nula je v levém dolním rohu desky
-(v režimu **Stroj** v nule obrobku). Oranžový pruh na pravítku ukazuje, kde je deska, a nad ním je
-napsaný její **rozměr v cm**. Modrá čárka ukazuje polohu myši.
+(v režimu **Stroj** v nule obrobku). Oranžový pruh na pravítku ukazuje, kde je deska, modrá čárka polohu myši.
+
+**Celkový rozměr** desky (u panelu celého panelu) je vidět na první pohled: štítek nad deskou
+(např. *Panel 13,0 × 6,5 cm*) a kóty se šipkami pod deskou a vlevo od ní (v cm i mm).
 
 ### Můstky ořezu (ručně)
 

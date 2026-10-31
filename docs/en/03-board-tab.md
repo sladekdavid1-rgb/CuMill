@@ -117,8 +117,10 @@ red = warning (in copper, outside the blank or in the cut-out path).
 ### Rulers
 
 At the bottom and left of the preview there are **rulers in cm** (mm ticks). Zero is the lower-left corner of the board
-(in **Stroj** (machine) view the work zero). The orange band shows where the board is, with its **size in cm**
-written next to it. A blue mark shows the mouse position.
+(in **Stroj** (machine) view the work zero). The orange band shows where the board is, a blue mark the mouse position.
+
+The **overall size** of the board (of the whole panel for a panel) is visible at a glance: a label above the board
+(e.g. *Panel 13,0 × 6,5 cm*) and dimension lines with arrows below and left of it (in cm and mm).
 
 ### Cut-out tabs (manual)
 

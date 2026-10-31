@@ -206,9 +206,9 @@ export class Viewer {
   }
   fit() {
     const bb = this._bounds(); if (!bb || !this.w) return;
-    const m = 30, RW = this.opts.rulers === false ? 0 : 30, RH = this.opts.rulers === false ? 0 : 22; // místo pro pravítka
-    this.scale = Math.min((this.w - RW - 2 * m) / Math.max(1, bb.maxX - bb.minX), (this.h - RH - 2 * m) / Math.max(1, bb.maxY - bb.minY));
-    this.cx = (bb.minX + bb.maxX) / 2 - RW / 2 / this.scale; this.cy = (bb.minY + bb.maxY) / 2 - RH / 2 / this.scale;
+    const m = 30, on = this.opts.rulers !== false, RW = on ? 30 + 40 : 0, RH = on ? 22 + 40 : 0, TOP = on ? 50 : 0; // místo pro pravítka, kóty a souhrn
+    this.scale = Math.min((this.w - RW - 2 * m) / Math.max(1, bb.maxX - bb.minX), (this.h - RH - TOP - 2 * m) / Math.max(1, bb.maxY - bb.minY));
+    this.cx = (bb.minX + bb.maxX) / 2 - RW / 2 / this.scale; this.cy = (bb.minY + bb.maxY) / 2 - (RH - TOP) / 2 / this.scale;
     this.draw();
   }
   _geom(key, make) { if (!this.cache.has(key)) this.cache.set(key, make()); return this.cache.get(key); }
@@ -297,12 +297,45 @@ export class Viewer {
       if (major && sy < H - RH - 2) { ctx.save(); ctx.translate(RW - 11, sy - 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText(fmt(v), 0, 0); ctx.restore(); }
     }
     ctx.stroke();
-    // rozměr desky (cm) uprostřed pásu
-    const cm = v => (v / 10).toFixed(2).replace(/0$/, '').replace('.', ',') + ' cm';
-    ctx.font = '600 11px system-ui, sans-serif'; ctx.fillStyle = COL.rulerAccent;
-    const wTxt = cm(bb.maxX - bb.minX), hTxt = cm(bb.maxY - bb.minY);
-    if (bx1 - bx0 > ctx.measureText(wTxt).width + 8) { ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText(wTxt, (bx0 + bx1) / 2, H - RH - 3); }
-    if (by1 - by0 > ctx.measureText(hTxt).width + 8) { ctx.save(); ctx.translate(RW + 4, (by0 + by1) / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(hTxt, 0, 0); ctx.restore(); }
+    // kóty celkového rozměru (desky / panelu) – pod deskou a vlevo od ní, výrazně
+    {
+      const bw = bb.maxX - bb.minX, bh = bb.maxY - bb.minY;
+      const x0 = X(bb.minX), x1 = X(bb.maxX), y0 = Y(bb.maxY), y1 = Y(bb.minY);
+      const big = v => (v / 10).toFixed(1).replace('.', ',') + ' cm';
+      const mm = v => (Math.round(v * 10) / 10).toString().replace('.', ',') + ' mm';
+      ctx.strokeStyle = COL.rulerAccent; ctx.fillStyle = COL.rulerAccent; ctx.lineWidth = 1.5;
+      const arrow = (ax, ay, dx, dy) => { const L = 7, w = 3.5; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - dx * L - dy * w, ay - dy * L + dx * w); ctx.lineTo(ax - dx * L + dy * w, ay - dy * L - dx * w); ctx.closePath(); ctx.fill(); };
+      const pill = (txt, cx, cy, rot) => {
+        ctx.save(); ctx.translate(cx, cy); if (rot) ctx.rotate(rot);
+        ctx.font = '700 14px system-ui, sans-serif'; const tw = ctx.measureText(txt).width + 14;
+        ctx.fillStyle = COL.ruler; ctx.strokeStyle = COL.rulerAccent; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.roundRect(-tw / 2, -11, tw, 22, 6); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = COL.rulerAccent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, 0, 1);
+        ctx.restore(); return tw;
+      };
+      // vodorovná kóta pod deskou
+      const dy = Math.min(H - RH - 16, y1 + 26);
+      if (x1 - x0 > 60 && dy > y1 + 8) {
+        ctx.beginPath(); ctx.moveTo(x0, y1 + 4); ctx.lineTo(x0, dy + 6); ctx.moveTo(x1, y1 + 4); ctx.lineTo(x1, dy + 6); ctx.moveTo(x0, dy); ctx.lineTo(x1, dy); ctx.stroke();
+        arrow(x0, dy, -1, 0); arrow(x1, dy, 1, 0);
+        pill(`${big(bw)}  ·  ${mm(bw)}`, (x0 + x1) / 2, dy);
+      }
+      // svislá kóta vlevo od desky
+      const dx = Math.max(RW + 16, x0 - 26);
+      if (y1 - y0 > 60 && dx < x0 - 8) {
+        ctx.beginPath(); ctx.moveTo(x0 - 4, y0); ctx.lineTo(dx - 6, y0); ctx.moveTo(x0 - 4, y1); ctx.lineTo(dx - 6, y1); ctx.moveTo(dx, y0); ctx.lineTo(dx, y1); ctx.stroke();
+        arrow(dx, y0, 0, -1); arrow(dx, y1, 0, 1);
+        pill(`${big(bh)}  ·  ${mm(bh)}`, dx, (y0 + y1) / 2, -Math.PI / 2);
+      }
+      // souhrn nad deskou
+      const title = `${this.board.panel ? 'Panel' : 'Deska'}  ${big(bw)} × ${big(bh)}`;
+      ctx.font = '700 15px system-ui, sans-serif';
+      const tw = ctx.measureText(title).width + 18, tx = Math.max(RW + 6, Math.min(W - tw - 6, x0)), ty = Math.max(96, y0 - 34);
+      if (ty + 26 < y1) {
+        ctx.fillStyle = COL.rulerAccent; ctx.beginPath(); ctx.roundRect(tx, ty, tw, 26, 7); ctx.fill();
+        ctx.fillStyle = COL.onAccent; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(title, tx + 9, ty + 13.5);
+      }
+    }
     // poloha myši
     if (this.hoverPt) {
       const hx = X(this.hoverPt[0]), hy = Y(this.hoverPt[1]);
