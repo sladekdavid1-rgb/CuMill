@@ -45,7 +45,7 @@ export function initMachine(ctx) {
     st: { state: 'Odpojeno', mpos: null, wpos: null, wco: [0, 0, 0], fs: [0, 0], ov: [100, 100, 100], pn: '' },
     settings: {},
     jog: { xy: saved.jog?.xy ?? 1, z: saved.jog?.z ?? 0.1, feed: saved.jog?.feed ?? 1000 },
-    probe: { type: 'clip', fast: 100, slow: 20, search: 10, retract: 0.5, double: true, plate: 0, clear: 2, tipDia: 2, xySearch: 10, cornerOff: 10, spot: 'auto', spotX: 0, spotY: 0, ...(saved.probe || {}) },
+    probe: { type: 'clip', fast: 100, slow: 20, search: 10, retract: 0.5, double: true, plate: 0, clear: 2, tipDia: 2, xySearch: 10, cornerOff: 10, startH: 10, spot: 'auto', spotX: 0, spotY: 0, ...(saved.probe || {}) },
     setter: { on: false, x: null, y: null, z: -5, search: 30, ref: null, ...(saved.setter || {}) },
     lastTool: saved.lastTool || '', zTool: saved.zTool || '',
     lastRun: saved.lastRun || null,
@@ -717,19 +717,27 @@ export function initMachine(ctx) {
     if (!M.on) throw new Error('Stroj není připojen.');
     if (M.st.state !== 'Idle') throw new Error('Stroj není v klidu.');
     let zRef = 0;
+    const p = M.probe, wco = M.st.wco || [0, 0, 0];
+    // jiný nástroj má jinou délku: když je nula Z známá, začne se měřit už z výšky startH nad deskou
+    // (delší nástroj o víc než startH by narazil) a hledá se až do startH + „Hledat Z“ pod tuto výšku
+    const zeroZ = Math.abs(wco[2]) > 1e-6, startH = Math.max(1, +p.startH || 10);
+    const top = zTopWork(), zStart = top != null ? Math.min(startH, top) : startH;
+    if (zeroZ) { await cmd(`G90 G0 Z${fmt(zStart)}`, true); await waitIdle(); }
     if (atRef) {
       if (!M.hmap || !HM.measured(M.hmap)) throw new Error('Výšková mapa není změřená.');
       const ri = HM.refIdx(M.hmap), rp = HM.points(M.hmap)[ri], [x, y] = M.hmap.at[ri] || [rp.x, rp.y];
-      await moveSafe(x, y, M.probe.clear);
+      if (zeroZ) await moveSafe(x, y, null, false, true); else await moveSafe(x, y, p.clear);
       await waitIdle();
       zRef = HM.interp(M.hmap, x, y);
     } else {
-      // najet nad měď, která zůstala (v nule bývá odfrézovaná) – výška zůstane (aspoň bezpečná)
+      // najet nad měď, která zůstala (v nule bývá odfrézovaná) – výška zůstane
       const sp = probeSpot(side);
-      const wco = M.st.wco || [0, 0, 0], zeroXY = Math.abs(wco[0]) + Math.abs(wco[1]) > 1e-6;
-      if (sp && zeroXY) { log(`Měření Z: najíždím nad měď ${spotText(sp)}`, 'info'); await moveSafe(sp.x, sp.y, null); await waitIdle(); }
+      const zeroXY = Math.abs(wco[0]) + Math.abs(wco[1]) > 1e-6;
+      if (sp && zeroXY) { log(`Měření Z: najíždím nad měď ${spotText(sp)}`, 'info'); await moveSafe(sp.x, sp.y, null, false, zeroZ); await waitIdle(); }
     }
-    await probeHere(M.probe.search);
+    const search = zeroZ ? Math.max(0.5, wz()) + (+p.search || 10) : (+p.search || 10);
+    if (zeroZ) log(`Měření Z: hledám od ${cz(wz(), 1)} mm nad deskou, nejvýš ${cz(search, 1)} mm dolů`, 'info');
+    await probeHere(search);
     await cmd(`G10 L20 P0 Z${fmt(zRef + (M.probe.type === 'clip' ? 0 : M.probe.plate))}`, true);
     await cmd(`G91 G0 Z${fmt(M.probe.clear)}`, true); await cmd('G90', true);
     M.zTool = M.prog?.op?.tool || ''; M.zOp = M.prog?.op?.id || ''; save();
@@ -1255,7 +1263,7 @@ export function initMachine(ctx) {
       chk('Jen nad deskami (body mimo desku se posunou k desce nebo vynechají)', c, 'onBoard'),
       el('h4', {}, 'Sonda'), ptype,
       el('div', { class: 'mgrid' }, fld('Výška přejezdu', c, 'clear', { unit: 'mm' }), fld('Měřit až do Z', c, 'zmin', { unit: 'mm' }),
-        fld('Rychle', p, 'fast', { unit: 'mm/min' }), fld('Pomalu', p, 'slow', { unit: 'mm/min' }), fld('Odjezd', p, 'retract', { unit: 'mm' }), fld('Hledat Z (sonda Z)', p, 'search', { unit: 'mm' }),
+        fld('Rychle', p, 'fast', { unit: 'mm/min' }), fld('Pomalu', p, 'slow', { unit: 'mm/min' }), fld('Odjezd', p, 'retract', { unit: 'mm' }), fld('Začít měřit Z nad deskou', p, 'startH', { unit: 'mm' }), fld('Hledat Z (sonda Z)', p, 'search', { unit: 'mm' }),
         p.type === 'probe' ? fld('Tloušťka destičky', p, 'plate', { unit: 'mm' }) : null),
       chk('Měřit dvakrát (rychle, pak pomalu)', p, 'double'),
       el('div', { class: 'mrow' },
@@ -1539,7 +1547,7 @@ export function initMachine(ctx) {
     const chk = (label, obj, key) => { const i = el('input', { type: 'checkbox', checked: !!obj[key] }); i.addEventListener('change', () => { obj[key] = i.checked; save(); }); return el('label', { class: 'f check small' }, i, label); };
     const seg = (opts, obj, key) => el('div', { class: 'seg2' }, ...opts.map(([v, t]) => el('button', { class: obj[key] === v ? 'on' : '', onclick: e => { obj[key] = v; save(); segOn(e.target); } }, t)));
     P.append(el('h4', {}, 'Sonda'), seg([['clip', 'Klip na mědi'], ['probe', 'Dotyková sonda']], p, 'type'),
-      el('div', { class: 'mgrid' }, fld('Rychle', p, 'fast', 'mm/min'), fld('Pomalu', p, 'slow', 'mm/min'), fld('Odjezd', p, 'retract', 'mm'), fld('Hledat Z (sonda Z)', p, 'search', 'mm'), fld('Po změření vyjet o', p, 'clear', 'mm'), fld('Tloušťka destičky', p, 'plate', 'mm')),
+      el('div', { class: 'mgrid' }, fld('Rychle', p, 'fast', 'mm/min'), fld('Pomalu', p, 'slow', 'mm/min'), fld('Odjezd', p, 'retract', 'mm'), fld('Začít měřit Z nad deskou', p, 'startH', 'mm'), fld('Hledat Z (sonda Z)', p, 'search', 'mm'), fld('Po změření vyjet o', p, 'clear', 'mm'), fld('Tloušťka destičky', p, 'plate', 'mm')),
       chk('Měřit dvakrát (rychle, pak pomalu)', p, 'double'),
       el('h4', {}, 'Kde měřit Z nástroje (dotyk na měď)'), seg([['auto', 'Automaticky – měď vně desky'], ['manual', 'Ručně'], ['here', 'Kde stojí nástroj']], p, 'spot'),
       el('div', { class: 'mgrid' }, fld('Místo X (pracovně)', p, 'spotX', 'mm'), fld('Místo Y (pracovně)', p, 'spotY', 'mm')),

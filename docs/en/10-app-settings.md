@@ -55,7 +55,8 @@ operation (e.g. *Isolation × 1.18*). **Vynulovat kalibraci** (Reset calibration
 | **Klip na mědi / Dotyková sonda** | probe type for Z probing and the map (copper clip / touch probe) |
 | **Rychle / Pomalu** (Fast / Slow) | search speed (mm/min) |
 | **Odjezd** (Retract) | lift between fast and slow probing |
-| **Hledat Z (sonda Z)** (Z search distance) | how far down the surface is searched |
+| **Začít měřit Z nad deskou** (Start Z probing above the board) | (default 10 mm) when the Z zero is already set, the tool first goes up to this height above the board and then searches for the surface – a new tool may be longer or shorter than the previous one (longer by at most this value) |
+| **Hledat Z (sonda Z)** (Z search distance) | how far down the surface is searched (with a known zero additionally below the start height, i.e. a tool up to this much shorter) |
 | **Kde měřit Z nástroje** (Where to probe Z) | *Automaticky* – over copper outside the board (blank frame), *Ručně* – given X Y in work coordinates, *Kde stojí nástroj* – no move |
 | **Po změření vyjet o** (Lift after probing) | lift when done |
 | **Tloušťka destičky** (Plate thickness) | for a touch plate – how much its surface is above the board |

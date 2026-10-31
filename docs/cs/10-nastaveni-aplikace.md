@@ -55,7 +55,8 @@ pro daný typ operace upraví (např. *Izolace × 1,18*). **Vynulovat kalibraci*
 | **Klip na mědi / Dotyková sonda** | typ sondy pro měření Z a mapu |
 | **Rychle / Pomalu** | rychlost hledání (mm/min) |
 | **Odjezd** | zvednutí mezi rychlým a pomalým měřením |
-| **Hledat Z (sonda Z)** | jak daleko dolů se hledá povrch |
+| **Začít měřit Z nad deskou** | (výchozí 10 mm) když je nula Z už nastavená, nástroj před měřením vyjede do této výšky nad desku a teprve pak hledá povrch – nový nástroj může být delší i kratší než předchozí (delší nejvýš o tuto hodnotu) |
+| **Hledat Z (sonda Z)** | jak daleko dolů se hledá povrch (při známé nule navíc pod výšku startu, tedy až o tolik mm kratší nástroj) |
 | **Kde měřit Z nástroje** | *Automaticky* – nad měď vně desky (rámeček polotovaru), *Ručně* – zadané X Y v pracovních souřadnicích, *Kde stojí nástroj* – bez přejezdu |
 | **Po změření vyjet o** | zvednutí po dokončení |
 | **Tloušťka destičky** | u dotykové destičky – o kolik je její povrch nad deskou |
