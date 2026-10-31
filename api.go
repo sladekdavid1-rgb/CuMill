@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -77,6 +78,27 @@ func registerAPI(mux *http.ServeMux) {
 		}
 		return writeJSON(w, map[string]any{"path": p})
 	}))
+	// tisk: stránka se uloží do dočasného souboru a otevře ve výchozím prohlížeči Windows,
+	// kde se sama vytiskne běžným dialogem tisku (výběr tiskárny, měřítko 100 %)
+	mux.HandleFunc("/api/print", guard(func(w http.ResponseWriter, r *http.Request) error {
+		var req struct{ HTML string }
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			return err
+		}
+		if req.HTML == "" {
+			return errors.New("prázdný tisk")
+		}
+		dir := filepath.Join(os.TempDir(), "KiMill")
+		_ = os.MkdirAll(dir, 0o755)
+		p := filepath.Join(dir, "tisk_1-1.html")
+		if err := os.WriteFile(p, []byte(req.HTML), 0o644); err != nil {
+			return err
+		}
+		if err := openWithSystem(p); err != nil {
+			return err
+		}
+		return writeJSON(w, map[string]any{"path": p})
+	}))
 	mux.HandleFunc("/api/write", guard(func(w http.ResponseWriter, r *http.Request) error {
 		var req struct {
 			Dir         string
@@ -138,4 +160,16 @@ func hostOK(h string) bool {
 func writeJSON(w http.ResponseWriter, v any) error {
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(v)
+}
+
+// otevře soubor výchozí aplikací systému
+func openWithSystem(p string) error {
+	switch runtime.GOOS {
+	case "windows":
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", p).Start()
+	case "darwin":
+		return exec.Command("open", p).Start()
+	default:
+		return exec.Command("xdg-open", p).Start()
+	}
 }

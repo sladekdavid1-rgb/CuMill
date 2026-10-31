@@ -1772,7 +1772,14 @@ function printBoard(o) {
   const pw = land ? 297 : 210, ph = land ? 210 : 297;
   if (W > pw - 10 || H > ph - 26) toast(`Tisk má ${cz(W / 10, 1)} × ${cz(H / 10, 1)} cm – na A4 se celý nevejde. Vypni polotovar / mřížku, nebo tiskni na větší papír.`, true);
   const head = `<div class="t">${esc(title)}</div>` + (scaleSvg ? `<div class="s">${scaleSvg}<span>← 50 mm – po tisku změř, musí být přesně 5,0 cm (jinak tiskni v měřítku 100 %)</span></div>` : '');
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>KiMill – tisk 1:1</title><style>@page{size:A4 ${land ? 'landscape' : 'portrait'};margin:5mm}html,body{margin:0;background:#fff;color:#000;font:10pt system-ui,Segoe UI,sans-serif}svg{display:block}.t{margin:0 0 1mm}.s{display:flex;align-items:center;gap:2mm;margin:0 0 2mm;font-size:8pt}</style></head><body>${head}${svg}</body></html>`;
+  const auto = host.native ? `<script>addEventListener('load',()=>setTimeout(()=>print(),400))</script>` : '';
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>KiMill – tisk 1:1</title>${auto}<style>@page{size:A4 ${land ? 'landscape' : 'portrait'};margin:5mm}html,body{margin:0;background:#fff;color:#000;font:10pt system-ui,Segoe UI,sans-serif}svg{display:block}.t{margin:0 0 1mm}.s{display:flex;align-items:center;gap:2mm;margin:0 0 2mm;font-size:8pt}</style></head><body>${head}${svg}</body></html>`;
+  // ve vlastním okně KiMillu: otevřít ve výchozím prohlížeči Windows (tam je normální dialog tisku s výběrem tiskárny)
+  if (host.native) {
+    api('print', { html }).then(() => toast('Tisk se otevřel v prohlížeči – vyber tiskárnu a měřítko 100 % (Skutečná velikost).'))
+      .catch(e => toast('Tisk se nepodařilo otevřít: ' + e.message, true));
+    return;
+  }
   const fr = el('iframe', { style: 'position:fixed;right:0;bottom:0;width:0;height:0;border:0' });
   document.body.append(fr);
   fr.addEventListener('load', () => { setTimeout(() => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { toast('Tisk se nepodařil: ' + e.message, true); } setTimeout(() => fr.remove(), 60000); }, 100); });

@@ -142,7 +142,8 @@ template to cut out and lay on the copper-clad blank to see how the board fits.
 - **Side:** *Jak leží na stroji* (as it lies on the machine – the first milled side), *Shora* (top) or *Zespodu* (bottom, mirrored).
 - **Content:** the blank (dashed), copper (grey – the milled side darker), holes, fixture pins, machine zero
   (green cross), a 1 cm grid with labels and a 50 mm check bar.
-- Prints on A4 (landscape or portrait by shape); KiMill warns when it is too big.
+- The template opens in the **default browser** (Edge / Chrome) and immediately shows the normal **Windows print dialog**
+  where you pick the printer. A4 (landscape or portrait by shape); KiMill warns when it is too big.
 
 > In the print dialog set **scale 100 % / Actual size** (not *Fit to page*) and measure the check bar after
 > printing – it must be exactly **5.0 cm**.
