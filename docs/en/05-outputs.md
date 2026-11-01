@@ -8,7 +8,8 @@ The right panel of the **Deska** (Board) tab has three parts: **Výstupy** (Outp
 ## Outputs – list of programs
 
 Each row is one G-code program (one `.nc` file). The order is the production order.
-The total time estimate is at the top right.
+The total time estimate is at the top right – including **height-map probing** for each side with isolation while the map
+is not measured yet (e.g. *celkem ≈ 52 min (z toho mapa ≈ 6)* – total, of which map). Tool changes and Z probing are not included.
 
 ![Outputs](../img/e_vystupy.png)
 

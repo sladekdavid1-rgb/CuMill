@@ -55,6 +55,9 @@ you immediately see whether the area fits the board and the points avoid holes.
 
 ### 3. Probe
 
+Below the button there is an **estimated probing time** beforehand and, while probing, the **number of points, time remaining**
+(refined by the actual pace) and elapsed time.
+
 Click **Změřit mapu** (Probe map). The machine visits all points, goes down in each, touches the copper
 and records the height. Points get colored in the view and the table fills up:
 

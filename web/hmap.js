@@ -103,6 +103,25 @@ export function fillSkipped(m) {
   return n;
 }
 
+// odhad doby měření mapy (s): přejezdy ve výšce clear, sonda rychle dolů, případně odjezd a pomalé měření
+// o = { clear, fast, slow, retract, double, rapidXY, rapidZ, overhead } (mm, mm/min, s)
+export function estimateSeconds(m, o = {}) {
+  const clear = Math.max(0.2, +o.clear || 1), fast = +o.fast || 100, slow = +o.slow || 20, retract = +o.retract || 0.5;
+  const rXY = +o.rapidXY || 1500, rZ = +o.rapidZ || 400, over = o.overhead ?? 1.0;
+  const ord = probeOrder(m);
+  let t = 0, prev = null;
+  for (const q of ord) {
+    t += clear / rZ * 60;                                   // nahoru do výšky přejezdu
+    if (prev) t += Math.hypot(q.x - prev.x, q.y - prev.y) / rXY * 60 + 0.25; // přejezd (+ rozjezd/brzda)
+    t += clear / fast * 60;                                 // sonda rychle dolů
+    if (o.double !== false) t += retract / rZ * 60 + (retract + 0.05) / slow * 60; // odjezd + pomalé měření
+    t += over;                                              // komunikace, čekání na klid
+    prev = q;
+  }
+  return t;
+}
+export const fmtDur = s => { s = Math.max(0, Math.round(s)); const m = Math.floor(s / 60); return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min` : m ? `${m} min ${String(s % 60).padStart(2, '0')} s` : `${s} s`; };
+
 // pořadí měření „hadem“, ať se zbytečně nepřejíždí
 export function probeOrder(m) {
   const pts = points(m).map((p, i) => ({ ...p, i, x: m.at[i]?.[0] ?? p.x, y: m.at[i]?.[1] ?? p.y })).filter(p => !m.skip?.[p.i]);

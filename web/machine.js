@@ -1057,6 +1057,19 @@ export function initMachine(ctx) {
     M.hmap = m; M.hmapMeta = { side: M.prog?.op?.side || null, moved: m.moved, skipped: m.skipped || 0 };
     return m;
   }
+  // parametry pro odhad času mapy (rychlosti stroje z $110/$111/$112, jinak výchozí)
+  function mapEstOpts() {
+    const c = M.mapCfg, p = M.probe, rx = Math.min(+M.settings[110] || 0, +M.settings[111] || 0);
+    return { clear: c.clear, fast: p.fast, slow: p.slow, retract: p.retract, double: p.double, rapidXY: rx > 0 ? rx : (ctx.getS().machine.rapid || 1500), rapidZ: +M.settings[112] || 400 };
+  }
+  const mapEst = m => HM.estimateSeconds(m, mapEstOpts());
+  // odhad mapy pro program (oblast podle desky jako „Nastavit mapu“) – bez změny formuláře
+  function mapEstFor(op) {
+    const a = mapArea({ op }); if (!a) return null;
+    const m = HM.newMap({ ...a, nx: Math.max(2, Math.round(a.w / 10) + 1), ny: Math.max(2, Math.round(a.h / 10) + 1), centers: M.mapCfg.centers });
+    if (M.mapCfg.onBoard !== false) { const inside = ctx.boardInside?.(op.side, 0.5); if (inside) HM.fitToBoards(m, inside); }
+    return mapEst(m);
+  }
   function fillArea(a) { if (!a) return; for (const k of ['x0', 'y0', 'w', 'h']) areaInp[k].value = fmt(+a[k].toFixed(2)); M.mapCfg.nx = Math.max(2, Math.round(a.w / 10) + 1); M.mapCfg.ny = Math.max(2, Math.round(a.h / 10) + 1); save(); }
   async function measureMap(onlyIdx = null) {
     if (!M.on) throw new Error('Stroj není připojen.');
@@ -1076,6 +1089,11 @@ export function initMachine(ctx) {
       let refRaw = null;
       const pts = HM.points(m);
       let n = 0;
+      // čas do konce: odhad na bod, postupně upřesněný podle skutečného tempa
+      const estPer = (onlyIdx == null ? mapEst(m) : mapEst(m) / Math.max(1, HM.probeOrder(m).length) * order.length) / Math.max(1, order.length);
+      const t0 = Date.now(); let lastRem = estPer * order.length, lastAt = t0;
+      const showRem = () => { const left = Math.max(0, lastRem - (Date.now() - lastAt) / 1000); progMap.textContent = `${n} / ${order.length} bodů · zbývá ≈ ${HM.fmtDur(left)} · uběhlo ${HM.fmtDur((Date.now() - t0) / 1000)}`; };
+      showRem(); clearInterval(mapTick); mapTick = setInterval(showRem, 1000);
       for (const q of order) {
         if (M.mapAbort) throw new Error('Měření mapy přerušeno.');
         M.mapSel = q.i; renderMapOverlay();
@@ -1090,8 +1108,10 @@ export function initMachine(ctx) {
         } else HM.setZ(m, pts[q.i], +zw.toFixed(4));
         n++;
         renderMapTable(); renderMapOverlay();
-        progMap.textContent = `${n} / ${order.length} bodů`;
+        { const el_ = (Date.now() - t0) / 1000, w = Math.min(1, n / 6), pace = (el_ / n) * w + estPer * (1 - w); lastRem = (order.length - n) * pace; lastAt = Date.now(); showRem(); }
       }
+      clearInterval(mapTick);
+      progMap.textContent = `${n} / ${order.length} bodů · hotovo za ${HM.fmtDur((Date.now() - t0) / 1000)}`;
       await cmd(`G0 Z${fmt(c.clear)}`, true);
       if (onlyIdx == null) {
         HM.fillSkipped(m);
@@ -1104,7 +1124,7 @@ export function initMachine(ctx) {
       M.wizard.done['map:' + (M.hmapMeta?.side || '')] = true;
       ctx.mapChanged?.();
       rebuildProgram(true);
-    } finally { M.mapping = false; M.mapSel = -1; renderMap(); renderMapOverlay(); }
+    } finally { clearInterval(mapTick); M.mapping = false; M.mapSel = -1; renderMap(); renderMapOverlay(); }
   }
   const mapSpread = m => { const v = [...m.z, ...m.zc].filter(x => x != null); return v.length ? Math.max(...v) - Math.min(...v) : 0; };
   // náhled mapy: změřená mapa, jinak plánované body podle formuláře (svislé čárky jako v Candle)
@@ -1112,6 +1132,8 @@ export function initMachine(ctx) {
   function renderMapOverlay() {
     let m = M.hmap, preview = false;
     if ((!m || !HM.measured(m)) && mapPreview && !M.mapping) { try { m = planMap(); preview = true; } catch { m = null; } }
+    // odhad doby měření podle plánovaných bodů (i když už je mapa změřená – pro nové měření)
+    if (!M.mapping) { let pm = preview ? m : null; if (!pm) try { pm = planMap(); } catch { pm = null; } mapEstLine.textContent = pm ? `Odhad měření mapy: ≈ ${HM.fmtDur(mapEst(pm))} (${HM.probeOrder(pm).length} bodů)` : ''; }
     if (!m) { gv.setHeightMap(null); try { drawHeat(null); } catch { } return; }
     let pts = HM.points(m).map((p, i) => { const x = m.at[i]?.[0] ?? p.x, y = m.at[i]?.[1] ?? p.y; return { x, y, z: preview ? null : HM.getZ(m, p), moved: Math.hypot(x - p.x, y - p.y) > 1e-6, nx: p.x, ny: p.y, skip: HM.skipped(m, i) }; });
     if (preview) pts = pts.filter(q => !q.skip); // body mimo desku se neměří
@@ -1173,7 +1195,8 @@ export function initMachine(ctx) {
     let best = -1, bd = Infinity; heatPts.forEach((p, i) => { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = i; } });
     if (best >= 0) { M.mapSel = best; renderMapOverlay(); renderMapTable(); mapTable.querySelector('input.on')?.focus(); }
   });
-  const progMap = el('span', { class: 'muted small' });
+  const progMap = el('span', { class: 'muted small' }); let mapTick = 0;
+  const mapEstLine = el('div', { class: 'muted small' });
   const mapTable = el('div', { class: 'maptbl' });
   // Tabulka výšek jako v Candlu: sloupce = X, řádky = Y (nahoře nejvyšší Y), buňky = naměřené Z.
   // Středy čtverců se vkládají mezi řádky/sloupce mřížky. Barva = odchylka od průměru.
@@ -1281,6 +1304,7 @@ export function initMachine(ctx) {
       el('div', { class: 'mrow' },
         el('button', { class: 'btn primary small', disabled: M.mapping, onclick: safeRun(() => measureMap()) }, 'Změřit mapu'),
         M.mapping ? el('button', { class: 'btn small', onclick: () => { M.mapAbort = true; } }, 'Přerušit') : null, progMap),
+      mapEstLine,
       el('div', { class: 'mrow' },
         el('button', { class: 'btn small', disabled: !m || M.mapping || M.mapSel < 0, onclick: safeRun(() => measureMap(M.mapSel)) }, 'Přeměřit vybraný bod'),
         el('button', { class: 'btn small', disabled: !m || !HM.measured(m), onclick: safeRun(() => probeZ(true)) }, 'Z nástroje v ref. bodě')),
@@ -1330,7 +1354,8 @@ export function initMachine(ctx) {
         tool = op.tool;
       }
       if (op.kind === 'iso' && !steps.some(s => s.id === 'map:' + op.side)) {
-        steps.push({ id: 'map:' + op.side, title: `Výšková mapa – ${op.side === 'bottom' ? 'spodní' : 'horní'} strana`, text: 'Klip zůstává připnutý. Oblast se vezme z obrysu desky, body se vyhnou dírám. Po změření je nula Z = povrch v referenčním bodě.', acts: [['Nastavit mapu', () => { selectOp(op); fillArea(mapArea()); showPane('map'); }], ['Změřit mapu', () => { selectOp(op); if (!areaInp.w.value) fillArea(mapArea()); return measureMap(); }]], ok: () => hasMap(op.side) });
+        const est = (() => { try { return mapEstFor(op); } catch { return null; } })();
+        steps.push({ id: 'map:' + op.side, title: `Výšková mapa – ${op.side === 'bottom' ? 'spodní' : 'horní'} strana${est ? ` (≈ ${HM.fmtDur(est)})` : ''}`, text: 'Klip zůstává připnutý. Oblast se vezme z obrysu desky, body se vyhnou dírám. Po změření je nula Z = povrch v referenčním bodě.', acts: [['Nastavit mapu', () => { selectOp(op); fillArea(mapArea()); showPane('map'); }], ['Změřit mapu', () => { selectOp(op); if (!areaInp.w.value) fillArea(mapArea()); return measureMap(); }]], ok: () => hasMap(op.side) });
       }
       steps.push({ id: 'run:' + op.id, title: `Spusť ${op.no} · ${op.title}`, text: `${op.tool} · F${op.prm.feed} S${op.prm.spindle} · ≈ ${Math.max(1, Math.round(op.minutes))} min${op.kind === 'iso' || op.kind === 'rest' ? ' · s výškovou mapou' : ''}. Odepni klip!`, acts: [['Načíst program', () => selectOp(op)], ['Spustit', () => { selectOp(op); return startProgram(); }]], ok: () => !!M.wizard.done['run:' + op.id] });
     }
@@ -1596,6 +1621,8 @@ export function initMachine(ctx) {
     show() { renderProgList(); if (!M.prog && ctx.getRes()) { const op = ctx.getRes().ops.find(o => o.kind === 'iso'); if (op) selectOp(op); } else if (M.prog?.op) { const op = ctx.getRes()?.ops.find(o => o.id === M.prog.op.id); if (op && op.gcode !== M.prog.orig && !M.stream.streaming) selectOp(op); } renderWizard(); },
     refresh() { renderProgList(); renderWizard(); },
     getMap: () => M.hmap ? { map: M.hmap, meta: M.hmapMeta } : null,
+    mapEstFor: op => { try { return mapEstFor(op); } catch { return null; } },
+    hasMapFor: side => hasMap(side),
     setMap: m => { if (!m?.map) return; M.hmap = m.map; M.hmapMeta = m.meta || null; if (M.prog) rebuildProgram(true); renderMapOverlay(); },
     openTest(toolId, rec) { if (toolId) M.test.toolId = toolId; if (rec) { M.test.base = { feed: rec.feed, plunge: rec.plunge, spindle: rec.spindle, depth: rec.depth, step: rec.step }; M.test.material = rec.material || M.test.material; } save(); showPane('test'); },
     get M() { return M; }, gv, act, startProgram, measureMap, skipSelection, renderKeysInto, renderProbeInto, redraw: () => { gv.draw(); renderMapOverlay(); }, _t: { wizardSteps, probeZ, moveSafe, zeroAxes, preChecks, probeSpot, connect, planMap, measureMap, selectOp },

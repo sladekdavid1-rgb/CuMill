@@ -8,7 +8,8 @@ a **Postup výroby**.
 ## Výstupy – seznam programů
 
 Každý řádek je jeden G-kód (jeden soubor `.nc`). Pořadí je pořadí výroby.
-Nahoře vpravo je odhad celkového času.
+Nahoře vpravo je odhad celkového času – i s **měřením výškové mapy** pro každou stranu s izolací, dokud mapa
+není změřená (např. *celkem ≈ 52 min (z toho mapa ≈ 6)*). Výměny nástrojů a měření Z v něm nejsou.
 
 ![Výstupy](../img/e_vystupy.png)
 

@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- Height-map time: estimate before probing (map pane, wizard step), remaining / elapsed time while probing, and the map
+  included in the total time of the outputs until it is measured
 - Fix: a project whose KiCad file was moved or deleted did not open (start screen stayed, “loaded” message shown) –
   now the board copy saved in the project is used and the message says so
 - **Print 1:1** – paper template of the board / panel at real size (copper, holes, outline of all milling incl. tool

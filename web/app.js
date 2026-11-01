@@ -11,6 +11,7 @@ import * as T from './theme.js';
 import { textToLines } from './text.js';
 import * as MAT from './materials.js';
 import * as PN from './panel.js';
+import * as HM from './hmap.js';
 T.apply();
 
 const $ = s => document.querySelector(s);
@@ -1081,7 +1082,15 @@ function renderOps() {
       selc ? opEditor(op) : null);
     box.append(card);
   }
-  $('#totalTime').textContent = res.ops.length ? `celkem ≈ ${Math.round(total)} min` : '';
+  // + měření výškové mapy pro každou stranu s izolací (pokud ještě není změřená)
+  let mapSec = 0;
+  for (const side of new Set(res.ops.filter(o => st.enabled[o.id] !== false && (o.kind === 'iso' || o.kind === 'rest' || o.kind === 'silk')).map(o => o.side))) {
+    if (machineUI?.hasMapFor?.(side)) continue;
+    try { mapSec += mapEstimate(res.ops.find(o => o.side === side && (o.kind === 'iso' || o.kind === 'rest' || o.kind === 'silk'))) || 0; } catch {}
+  }
+  const tt = $('#totalTime');
+  tt.textContent = res.ops.length ? (mapSec > 0 ? `celkem ≈ ${Math.round(total + mapSec / 60)} min (z toho mapa ≈ ${Math.max(1, Math.round(mapSec / 60))})` : `celkem ≈ ${Math.round(total)} min`) : '';
+  tt.title = mapSec > 0 ? `Programy ≈ ${Math.round(total)} min + měření výškové mapy ≈ ${HM.fmtDur(mapSec)} (podle nastavení mapy a sondy). Bez výměn nástrojů a měření Z.` : 'Odhad doby programů (bez výměn nástrojů a měření Z).';
   box.parentElement.parentElement.scrollTop = scroll;
 }
 function renderChecks() {
@@ -1968,22 +1977,36 @@ $('#btnPrint').addEventListener('click', () => openPrintDlg());
 
 // ---------- záložka Stroj ----------
 let machineUI = null;
+// je bod (strojové souřadnice strany) na některé desce, aspoň `inset` mm od okraje?
+function boardInside(side, inset = 1) {
+  if (!st.board || !st.res) return null;
+  const f = st.res.sides[side].fwd, outer = G.offset((st.board.outlines || [st.board.outline]).map(l => l.map(f)), -inset);
+  const holes = (st.board.inner || []).map(l => l.map(f));
+  if (!outer.length) return null;
+  return (x, y) => outer.filter(o => G.pointInPoly(x, y, o)).length % 2 === 1 && !holes.some(h => G.pointInPoly(x, y, h));
+}
+// odhad doby měření výškové mapy pro stranu (bez otevření záložky Stroj – nastavení sondy z uložených hodnot)
+function mapEstimate(op) {
+  if (machineUI?.mapEstFor) return machineUI.mapEstFor(op);
+  let cfg = {}; try { cfg = JSON.parse(localStorage.getItem('cumill.machine.v1') || '{}'); } catch {}
+  const c = { clear: 1, centers: false, onBoard: true, ...(cfg.mapCfg || {}) }, p = { fast: 100, slow: 20, retract: 0.5, double: true, ...(cfg.probe || {}) };
+  const b = G.bbox((st.board.outlines || [st.board.outline]).map(l => l.map(st.res.sides[op.side].fwd)));
+  const a = { x0: b.minX + 1, y0: b.minY + 1, w: b.maxX - b.minX - 2, h: b.maxY - b.minY - 2 };
+  if (!(a.w > 0 && a.h > 0)) return null;
+  const m = HM.newMap({ ...a, nx: Math.max(2, Math.round(a.w / 10) + 1), ny: Math.max(2, Math.round(a.h / 10) + 1), centers: c.centers });
+  if (c.onBoard !== false) { const ins = boardInside(op.side, 0.5); if (ins) HM.fitToBoards(m, ins); }
+  return HM.estimateSeconds(m, { clear: c.clear, fast: p.fast, slow: p.slow, retract: p.retract, double: p.double, rapidXY: S.machine.rapid || 1500, rapidZ: 400 });
+}
 function getMachine() {
   if (!machineUI) machineUI = initMachine({
     api, toast, download, fileName, boardSimInfo, timeCal, timeFactor, journal, journalSave,
-    mapChanged: () => autosaveSoon(),
+    mapChanged: () => { autosaveSoon(); renderOps(); },
     applyToolValues: (id, v) => { const t = S.tools.find(x => x.id === id); if (!t) return; Object.assign(t, v); toolsChanged(); flushTools(); },
     getS: () => S, getRes: () => st.res, boardName: () => st.board?.name || '',
     isEnabled: op => st.enabled[op.id] !== false, originDesc: originCz,
     boardOutlineBB: side => st.board && st.res ? G.bbox((st.board.outlines || [st.board.outline]).map(l => l.map(st.res.sides[side].fwd))) : null,
     // je bod (strojové souřadnice strany) na některé desce, aspoň `inset` mm od okraje?
-    boardInside: (side, inset = 1) => {
-      if (!st.board || !st.res) return null;
-      const f = st.res.sides[side].fwd, outer = G.offset((st.board.outlines || [st.board.outline]).map(l => l.map(f)), -inset);
-      const holes = (st.board.inner || []).map(l => l.map(f));
-      if (!outer.length) return null;
-      return (x, y) => outer.filter(o => G.pointInPoly(x, y, o)).length % 2 === 1 && !holes.some(h => G.pointInPoly(x, y, h));
-    },
+    boardInside,
     boardHoles: side => st.board && st.res ? st.board.holes.filter(h => !h.slot).map(h => { const [x, y] = st.res.sides[side].fwd([h.x, h.y]); return { x, y, d: h.d }; }) : [],
     openGcodeFiles: async () => {
       if (host.native) {

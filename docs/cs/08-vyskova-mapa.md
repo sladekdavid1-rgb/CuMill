@@ -56,7 +56,8 @@ hned vidíš, jestli oblast sedí na desku a jestli se body vyhnuly dírám.
 ### 3. Změř
 
 Klikni na **Změřit mapu**. Stroj projede všechny body, v každém sjede dolů, dotkne se mědi
-a zapíše výšku. Body se v náhledu postupně obarvují a tabulka se plní:
+a zapíše výšku. Body se v náhledu postupně obarvují a tabulka se plní. Pod tlačítkem je předem **odhad doby měření**
+a během měření **počet bodů, čas do konce** (upřesňuje se podle skutečného tempa) a uplynulý čas:
 
 ![Měření mapy](../img/m_mapa_mereni.png)
 
