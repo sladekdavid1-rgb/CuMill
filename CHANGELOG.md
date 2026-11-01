@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.5 – 2026-10
+- Fix: “No copper layer to isolate” when the isolation layer choice left over from another board (e.g. only B.Cu) did not
+  exist on the current board or panel (mirrored boards are all F.Cu) – the layers the board has are used then, with a hint
 - Height-map time: estimate before probing (map pane, wizard step), remaining / elapsed time while probing, and the map
   included in the total time of the outputs until it is measured
 - Fix: a project whose KiCad file was moved or deleted did not open (start screen stayed, “loaded” message shown) –

@@ -690,17 +690,22 @@ function renderIsoLayers() {
   for (const [l, t] of [['B.Cu', 'Spodní B.Cu'], ['F.Cu', 'Horní F.Cu']]) {
     const avail = st.board ? st.board.hasCopper[l] : true;
     const usedL = st.board ? st.board.used[l] : true;
-    const on = avail && usedL && S.iso.layers[l] !== false;
+    const on = st.board ? CAM.isoLayersOf(st.board, S).includes(l) : S.iso.layers[l] !== false;
     const b = el('button', { type: 'button', class: on ? 'on' : '', title: !avail ? 'Vrstva nemá měď' : !usedL ? 'Jen pady bez cest – jednostranná deska' : '' }, t + (st.board && avail && !usedL ? ' (jen pady)' : ''));
     if (!avail) b.disabled = true;
     b.addEventListener('click', () => {
       if (st.board && !usedL) { st.board.used[l] = true; S.iso.layers[l] = true; }
-      else S.iso.layers[l] = !(S.iso.layers[l] !== false);
+      else if (on && st.board && CAM.isoLayersOf(st.board, S).length === 1) { toast('Aspoň jedna vrstva mědi se izoluje – deska jinou nemá.', true); return; }
+      else { S.iso.layers[l] = !on; for (const o of ['B.Cu', 'F.Cu']) if (o !== l && st.board && CAM.isoLayersOf(st.board, S).includes(o)) S.iso.layers[o] = true; }
       changed();
     });
     row.append(b);
   }
   box.append(row);
+  const miss = st.board ? ['B.Cu', 'F.Cu'].filter(l => !st.board.hasCopper[l]) : [];
+  if (miss.length === 1) box.append(el('div', { class: 'muted small', style: 'margin-top:4px' }, st.board.panel
+    ? `Panel nemá měď na ${miss[0]} – zrcadlené desky (⇋) se frézují ${miss[0] === 'B.Cu' ? 'shora jako F.Cu' : 'zespodu jako B.Cu'}.`
+    : `Deska nemá měď na ${miss[0]}.`));
 }
 
 // ---------- knihovna nástrojů ----------

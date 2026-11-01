@@ -385,7 +385,11 @@ function orderPoints(pts, start = [0, 0]) {
 // ---------- kolíčky přípravku ----------
 // kolíčky přípravku: režim (auto = jen u oboustranné desky), zdroj (díry desky / vzor / ručně)
 export function isoLayersOf(board, S) {
-  return ['B.Cu', 'F.Cu'].filter(l => board.used[l] && S.iso.layers[l] !== false && board.hasCopper[l]);
+  // vrstvy, které deska opravdu má; když z nich není vybraná žádná (výběr zůstal z jiné desky – např. jen B.Cu,
+  // a tahle deska / panel má měď jen na F.Cu), izolují se všechny, co deska má
+  const avail = ['B.Cu', 'F.Cu'].filter(l => board.used[l] && board.hasCopper[l]);
+  const sel = avail.filter(l => S.iso.layers[l] !== false);
+  return sel.length ? sel : avail;
 }
 // strana pro díry, geometrii a ořez: automaticky ta, ze které se frézuje měď (u jedné frézované
 // vrstvy právě ta – i když je deska v KiCadu dvouvrstvá), u obou stran ta poslední (horní)
