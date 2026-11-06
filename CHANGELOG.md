@@ -9,6 +9,7 @@
 - Prepared for GRBL: `M6` removed (the wizard handles tool changes), drilling cycles `G81/G82/G83/G73` expanded,
   `G98/G99/G64` removed; `G41/G42/G43` block the start, `G28/G30` and several tools in one file are reported
 - Blank and zero (X/Y corner / centre / custom, Z top / bottom / custom) and material for the job
+- **Program offset in the blank** (X/Y, “centre”, “to corner with margin”) – shifts all programs of the job, the machine zero stays as in Fusion
 - **Tool limits** in the Tools tab – max. feed, max. plunge, max. spindle, cutting length, max. slot depth – as tool
   defaults and per material (Aluminium, Brass, Wood, Plastic, own); new tool type **ball end mill**
 - **Material-removal simulation across the whole job** (background worker, ~0.05 mm grid, flat / ball / V / drill

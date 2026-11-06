@@ -72,7 +72,14 @@ where Fusion has the **zero**:
   (X, Y of the blank's front-left corner),
 - **Z zero**: top of the blank, bottom of the blank (table), or custom.
 
-It must match Fusion. KiMill uses it to simulate the material removal. Below the blank it
+It must match Fusion. KiMill uses it to simulate the material removal.
+
+**Placing the program in the blank.** If the blank is larger and you do not want the part
+in the corner, enter **Program offset X / Y**, or click **Na střed** (machined area to the
+centre of the blank) or **K rohu s okrajem…** (to the front-left corner with a margin).
+KiMill recalculates X and Y in all programs of the job, including arcs and drilling. The
+machine zero stays where Fusion has it (e.g. the blank corner). The offset is shown in the
+3D view, in the simulation and in the start dialog. Below the blank it
 shows where the programs actually cut and warns if that is far outside the blank.
 
 ## Checks and material-removal simulation

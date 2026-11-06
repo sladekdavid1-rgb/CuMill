@@ -22,9 +22,11 @@ export function initPart(ctx) {
   // ---------- odvozená data programu ----------
   function info(f) {
     let c = cache.get(f.id);
-    if (c && c.text === f.text) return c;
+    const dx = +job.stock.dx || 0, dy = +job.stock.dy || 0;
+    if (c && c.text === f.text && c.dx === dx && c.dy === dy) return c;
     const hdr = PC.fusionTools(f.text);
     const prep = PC.prepGcode(f.text);
+    if (dx || dy) { prep.text = PC.offsetXY(prep.text, dx, dy); prep.notes.push(`program posunutý v polotovaru o X ${cz(dx)} Y ${cz(dy)} mm`); }
     const g = parseGcode(prep.text, { rapid: ctx.getS().machine.rapid || 1500 });
     const stats = PC.progStats(g);
     const used = prep.tools.length ? prep.tools[0] : null;
@@ -39,7 +41,7 @@ export function initPart(ctx) {
       if (/^\(/.test(t) && /\)$/.test(t)) { if (seenG && !/^\(T\d+\s+D=/i.test(t) && !/rozepsán|výměnu|omezeno/i.test(t)) { const nm = t.slice(1, -1).trim(); if (nm && nm.length < 48 && !ops.includes(nm)) ops.push(nm); } continue; }
       if (/^[GMTSFXYZ]/i.test(t)) seenG = true;
     }
-    c = { text: f.text, hdr, h, prep, g, stats, ops: ops.slice(0, 8), minutes: g.total };
+    c = { text: f.text, dx, dy, hdr, h, prep, g, stats, ops: ops.slice(0, 8), minutes: g.total };
     cache.set(f.id, c);
     return c;
   }
@@ -124,7 +126,7 @@ export function initPart(ctx) {
   let simT = null, worker = null, simId = 0;
   function simKey() {
     const g = geom();
-    return JSON.stringify([g.rect, g.zTop, g.T, job.material, onFiles().map(f => [f.id, f.text.length, f.text.slice(-200), f.toolId, JSON.stringify(toolOf(f)), JSON.stringify(limOf(f))])]);
+    return JSON.stringify([g.rect, g.zTop, g.T, job.material, +job.stock.dx || 0, +job.stock.dy || 0, onFiles().map(f => [f.id, f.text.length, f.text.slice(-200), f.toolId, JSON.stringify(toolOf(f)), JSON.stringify(limOf(f))])]);
   }
   function scheduleSim(now) { clearTimeout(simT); simT = setTimeout(runSim, now ? 30 : 600); }
   function getWorker() {
@@ -178,7 +180,7 @@ export function initPart(ctx) {
   P.isEnabled = op => job.files.find(f => f.id === op.id)?.on !== false;
   P.issues = (op, machine) => { const f = job.files.find(x => x.id === op.id); return f ? issuesOf(f, { machine }) : []; };
   P.originText = () => PC.originText(job.stock);
-  P.stockText = () => { const g = geom(); return `${cz(g.w, 1)} × ${cz(g.h, 1)} × ${cz(g.T, 1)} mm${job.material ? ', ' + job.material : ''}`; };
+  P.stockText = () => { const g = geom(), dx = +job.stock.dx || 0, dy = +job.stock.dy || 0; return `${cz(g.w, 1)} × ${cz(g.h, 1)} × ${cz(g.T, 1)} mm${job.material ? ', ' + job.material : ''}${dx || dy ? `, program posunutý o X ${cz(dx, 1)} Y ${cz(dy, 1)}` : ''}`; };
   // polotovar, nástroj a předchozí programy pro 3D simulaci (Stroj, G-kód)
   const prevObjs = new Map();
   function simInfo(op, withMarks = false) {
@@ -309,6 +311,18 @@ export function initPart(ctx) {
     // rozsah programů vůči polotovaru
     const g = geom(); let bb = null;
     for (const f of onFiles()) { const b = info(f).g.cutBB; if (!b) continue; bb = bb ? { minX: Math.min(bb.minX, b.minX), minY: Math.min(bb.minY, b.minY), maxX: Math.max(bb.maxX, b.maxX), maxY: Math.max(bb.maxY, b.maxY) } : { ...b }; }
+    // posun programu v polotovaru (nula zůstává, kde ji má Fusion)
+    const offRow = el('div', { class: 'pt-grid' },
+      fld('Posun programu X', numInput(() => s.dx || 0, v => { s.dx = v || 0; changed(); }, { unit: 'mm' })),
+      fld('Posun programu Y', numInput(() => s.dy || 0, v => { s.dy = v || 0; changed(); }, { unit: 'mm' })));
+    const center = () => { if (!bb) return; s.dx = Math.round(((g.rect.minX + g.rect.maxX) / 2 - (bb.minX + bb.maxX) / 2 + (+s.dx || 0)) * 10) / 10; s.dy = Math.round(((g.rect.minY + g.rect.maxY) / 2 - (bb.minY + bb.maxY) / 2 + (+s.dy || 0)) * 10) / 10; changed(); };
+    const corner = () => { if (!bb) return; const m = Math.max(0, +prompt('Okraj od rohu polotovaru (mm):', '3')?.replace(',', '.') || 0); s.dx = Math.round((g.rect.minX + m - bb.minX + (+s.dx || 0)) * 10) / 10; s.dy = Math.round((g.rect.minY + m - bb.minY + (+s.dy || 0)) * 10) / 10; changed(); };
+    box.append(el('h3', { style: 'margin-top:6px' }, 'Umístění programu v polotovaru'), offRow,
+      el('div', { class: 'mrow' },
+        el('button', { class: 'btn small', disabled: !bb, onclick: center, title: 'Posunout všechny programy tak, aby obráběná oblast byla uprostřed polotovaru' }, 'Na střed'),
+        el('button', { class: 'btn small', disabled: !bb, onclick: corner, title: 'Posunout k levému přednímu rohu polotovaru se zadaným okrajem' }, 'K rohu s okrajem…'),
+        el('button', { class: 'btn small', disabled: !s.dx && !s.dy, onclick: () => { s.dx = 0; s.dy = 0; changed(); } }, 'Bez posunu')),
+      el('div', { class: 'hint' }, 'Posune všechny programy zakázky v X/Y (G-kód se přepočítá), nula na stroji zůstává tam, kde ji má Fusion. Hodí se, když je polotovar větší a díl nechceš mít v rohu.'));
     if (bb) {
       const out = bb.minX < g.rect.minX - 5 || bb.minY < g.rect.minY - 5 || bb.maxX > g.rect.maxX + 5 || bb.maxY > g.rect.maxY + 5;
       box.append(el('div', { class: 'muted small' + (out ? ' pt-warn' : '') }, `Programy řežou v X ${cz(bb.minX, 1)} … ${cz(bb.maxX, 1)}, Y ${cz(bb.minY, 1)} … ${cz(bb.maxY, 1)} mm${out ? ' – hodně mimo polotovar, sedí nula X/Y a rozměr?' : ''}.`));

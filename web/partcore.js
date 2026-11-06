@@ -100,6 +100,23 @@ export function prepGcode(src) {
   return { text: out.join('\n'), notes, errors, warns, tools: [...tools] };
 }
 
+// ---------- posun programu v polotovaru (X/Y absolutních souřadnic; oblouky I J jsou relativní) ----------
+export function offsetXY(src, dx, dy) {
+  if (!dx && !dy) return src;
+  let abs = true, unit = 1;
+  const sh = (v, d) => (Math.round((parseFloat(v) + d / unit) * 10000) / 10000).toString();
+  return src.split('\n').map(line => {
+    // kód bez komentářů rozdělit, komentáře nechat
+    const parts = line.split(/(\([^)]*\)|;.*$)/);
+    const code = parts.filter((x, i) => i % 2 === 0).join(' ').toUpperCase();
+    const gs = (code.match(/G\s*\d+(\.\d+)?/g) || []).map(g => parseFloat(g.replace(/G\s*/, '')));
+    if (gs.includes(20)) unit = 25.4; if (gs.includes(21)) unit = 1;
+    if (gs.includes(90)) abs = true; if (gs.includes(91)) abs = false;
+    if (!abs || gs.some(g => g === 53 || g === 28 || g === 30 || g === 92 || g === 10 || g === 4)) return line;
+    return parts.map((x, i) => i % 2 ? x : x.replace(/([XY])\s*([-+]?(?:\d+\.?\d*|\.\d+))/gi, (m, a, v) => a + sh(v, a.toUpperCase() === 'X' ? dx : dy))).join('');
+  }).join('\n');
+}
+
 // ---------- statistika programu ----------
 export function progStats(g) {
   let maxF = 0, maxPlunge = 0, maxS = 0, minZcut = Infinity;

@@ -75,6 +75,12 @@ Pod programy zadej **rozměr polotovaru** (X × Y × tloušťka), **materiál** 
 - **Nula Z**: vrch polotovaru, spodek polotovaru (stůl), nebo vlastní.
 
 Musí to sedět s Fusionem. Podle toho KiMill simuluje úběr a pozná, kde ještě materiál je.
+
+**Umístění programu v polotovaru.** Když je polotovar větší a díl nechceš mít v rohu,
+zadej **Posun programu X / Y**, nebo klikni na **Na střed** (obráběná oblast doprostřed
+polotovaru) či **K rohu s okrajem…**. KiMill přepočítá souřadnice X a Y ve všech programech
+zakázky, oblouky i vrtání. Nula na stroji zůstává tam, kde ji má Fusion (třeba v rohu
+polotovaru). Posun je vidět v 3D náhledu, v simulaci i v okně před spuštěním.
 Pod polotovarem uvidíš, kde programy skutečně řežou. Když je to hodně mimo polotovar,
 KiMill na to upozorní.
 
