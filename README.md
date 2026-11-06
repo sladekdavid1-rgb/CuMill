@@ -33,6 +33,12 @@ step-by-step production wizard.
 - **Panel** – several boards (or copies of one) on a single blank: drag and rotate them with the mouse, automatic arrangement, overlap and blank checks, then everything is milled at once, tool by tool, with one height map and one cut-out
 - **Laser export** – SVG of silkscreen / solder-mask openings in machine coordinates (LightBurn colors)
 
+**Part mode (G-code from Fusion 360)**
+- A job of several finished `.nc` programs (one per tool, as the Fusion personal licence saves them): order by drag & drop, tools read from the Fusion header and matched to the library, `M6` removed and drilling cycles expanded for GRBL
+- **Tool limits per material** (max. feed / plunge / spindle, cutting length, max. slot depth) – a program over a limit starts only after explicit confirmation, or limited via feed / spindle override
+- **Material-removal simulation across the whole job** – rapids through material that a previous program did not remove, full-width cuts deeper than allowed, shank contact, suspicious Z zero; findings link to the G-code line and the spot in 3D
+- Wizard in the Machine tab: clamp the blank, zero, then tool → Z → start for each program
+
 **G-code viewer**
 - 3D preview with playback, linked G-code listing, and **material-removal simulation**
   (V-bit cone, flat end mill) on a real board-thickness solid; works with any `.nc` file
@@ -75,6 +81,7 @@ Microsoft Edge WebView2 (preinstalled on current Windows).
 | Two-sided board step by step | [Production walkthrough](docs/en/09-step-by-step.md) | [Výroba krok za krokem](docs/cs/09-vyroba-krok-za-krokem.md) |
 | Material test | [Material test and Tools tab](docs/en/14-material-test.md) | [Test materiálu](docs/cs/14-test-materialu.md) |
 | Panel | [Several boards at once](docs/en/15-panel.md) | [Víc desek naráz](docs/cs/15-panel.md) |
+| Part (Fusion 360) | [Finished G-code from Fusion](docs/en/16-part.md) | [Díl z Fusionu](docs/cs/16-dil.md) |
 
 ## Building from source
 

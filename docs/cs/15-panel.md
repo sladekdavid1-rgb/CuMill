@@ -1,6 +1,6 @@
 # 15. Panel – víc desek naráz
 
-[← Test materiálu](14-test-materialu.md) · [Obsah](README.md)
+[← Test materiálu](14-test-materialu.md) · [Obsah](README.md) · [Díl z Fusionu →](16-dil.md)
 
 **Panel** je projekt, ve kterém je na jednom polotovaru **víc desek** – různých, nebo
 několikrát té samé. Desky rozmístíš myší, KiMill zkontroluje, že se nepřekrývají a vejdou
@@ -97,4 +97,4 @@ nepřenášejí – jen samotné desky.
 > **Tip:** úpravy s pevnou polohou (oblasti, ručně přidané kolíčky a můstky) dělej až po
 > rozmístění desek – když pak desku posuneš, zůstanou na původním místě.
 
-[← Test materiálu](14-test-materialu.md) · [Obsah](README.md)
+[← Test materiálu](14-test-materialu.md) · [Obsah](README.md) · [Díl z Fusionu →](16-dil.md)

@@ -788,6 +788,7 @@ export function initMachine(ctx) {
     p.text = p.orig; p.mapApplied = false;
     const mapOK = M.hmap && HM.measured(M.hmap);
     mapLbl.classList.toggle('dis', !mapOK || !p.iso);
+    mapLbl.hidden = !!p.op?.part;
     if (M.useMap && mapOK && p.iso) {
       if (p.side && M.hmapMeta?.side && M.hmapMeta.side !== p.side) ctx.toast('Výšková mapa je změřená pro druhou stranu desky – na tento program se nepoužije.', true);
       else {
@@ -874,14 +875,59 @@ export function initMachine(ctx) {
     gv.select(null);
     ctx.toast(on ? 'Vybraná část se nepošle – fréza ji přejede nad materiálem.' : 'Vynechání zrušeno.');
   }
-  function confirmDlg(title, rows, okText = 'Spustit') {
+  // opts.block: program nejde spustit (tlačítko je vypnuté); opts.ack: překročení limitů – spustit jen po zaškrtnutí;
+  // opts.limit: {text, covers} – nabídka omezit posuv / otáčky přes override (covers = vyřeší všechna překročení)
+  function confirmDlg(title, rows, okText = 'Spustit', opts = {}) {
     return new Promise(res => {
       const d = el('dialog', { class: 'mdlg' });
-      d.append(el('div', { class: 'dlghead' }, el('b', {}, title)),
-        el('div', { class: 'dlgbody' }, el('table', { class: 'msum' }, ...rows.map(([k, v, warn]) => el('tr', { class: warn ? 'warn' : '' }, el('th', {}, k), el('td', {}, v))))),
-        el('div', { class: 'dlgfoot' }, el('button', { class: 'btn', onclick: () => { d.close(); res(false); } }, 'Zrušit'), el('button', { class: 'btn primary', onclick: () => { d.close(); res(true); } }, okText)));
+      const ok = el('button', { class: 'btn primary' }, opts.block ? 'Nejde spustit' : okText);
+      const body = el('div', { class: 'dlgbody' }, el('table', { class: 'msum' }, ...rows.map(([k, v, warn]) => el('tr', { class: warn === true ? 'warn' : warn || '' }, el('th', {}, k), el('td', {}, v)))));
+      let ackC = null, limC = null;
+      const upd = () => { ok.disabled = !!opts.block || (!!opts.ack && !(ackC?.checked) && !(limC?.checked && opts.limit?.covers)); };
+      if (opts.limit && !opts.block) {
+        limC = el('input', { type: 'checkbox' });
+        body.append(el('label', { class: 'limrow' }, limC, el('span', {}, opts.limit.text)));
+        limC.addEventListener('change', upd);
+      }
+      if (opts.ack && !opts.block) {
+        ackC = el('input', { type: 'checkbox' });
+        body.append(el('label', { class: 'ackrow' }, ackC, el('span', {}, el('b', {}, 'Jsem si vědom překročení limitů'), ' a chci program přesto spustit. Potvrzení platí jen pro toto spuštění.')));
+        ackC.addEventListener('change', upd);
+      }
+      upd();
+      ok.addEventListener('click', () => { if (ok.disabled) return; d.close(); res({ ok: true, limit: !!limC?.checked, ack: !!ackC?.checked }); });
+      d.append(el('div', { class: 'dlghead' }, el('b', {}, title)), body,
+        el('div', { class: 'dlgfoot' }, el('button', { class: 'btn', onclick: () => { d.close(); res(false); } }, 'Zrušit'), ok));
       document.body.append(d); d.addEventListener('close', () => { d.remove(); res(false); }); d.showModal();
     });
+  }
+  // override posuvu / otáček na cílová procenta (GRBL: 100 %, −10 %, −1 %)
+  function overrideBytes(pct, reset, minus10, minus1) {
+    pct = Math.max(10, Math.min(100, Math.floor(pct)));
+    const tens = Math.floor((100 - pct) / 10), ones = (100 - pct) % 10;
+    return [reset, ...Array(tens).fill(minus10), ...Array(ones).fill(minus1)];
+  }
+  // díl: nálezy kontrol (limity nástroje, příkazy, simulace) a nabídka omezení přes override
+  function partCheck(p) {
+    if (!p.op?.part || !ctx.partIssues) return null;
+    const maxS = M.on && M.settings[32] !== '1' && +M.settings[30] > 0 ? +M.settings[30] : 0;
+    const I = ctx.partIssues(p.op, { maxS });
+    const err = I.filter(i => i.level === 'err'), lim = I.filter(i => i.level === 'lim');
+    // omezení: posuv i zanoření jedním override posuvu, otáčky override vřetena (nejméně 10 %)
+    const L = p.op.lim || {}, st = p.op.stats || {};
+    let fF = 1, fS = 1;
+    const fl = lim.filter(i => i.code === 'feed' || i.code === 'plunge'), sl = lim.filter(i => i.code === 'spindle' || i.code === 'spindle$30');
+    for (const i of fl) fF = Math.min(fF, i.max / i.val);
+    for (const i of sl) fS = Math.min(fS, i.max / i.val);
+    let limit = null;
+    if (fl.length || sl.length) {
+      const pF = Math.floor(fF * 100), pS = Math.floor(fS * 100);
+      const possible = (!fl.length || pF >= 10) && (!sl.length || pS >= 10);
+      const others = lim.filter(i => !fl.includes(i) && !sl.includes(i));
+      limit = { pF: fl.length ? Math.max(10, pF) : 100, pS: sl.length ? Math.max(10, pS) : 100, covers: possible && !others.length,
+        text: `Omezit za běhu přes override: ${fl.length ? `posuv na ${Math.max(10, pF)} %` : ''}${fl.length && sl.length ? ', ' : ''}${sl.length ? `otáčky na ${Math.max(10, pS)} %` : ''}${possible ? '' : ' (víc GRBL nedovolí – limit tím nesplníš)'}` };
+    }
+    return { err, lim, limit, info: I.filter(i => i.level === 'warn') };
   }
   // kontroly před startem: rozsah stroje, nula, mapa, nástroj
   function preChecks(p, g, from) {
@@ -943,9 +989,9 @@ export function initMachine(ctx) {
     const rows = [
       ['Program', p.name],
       ['Nástroj', p.op ? p.op.tool : 'neznámý (cizí soubor)'],
-      ['Strana', p.side ? (p.side === 'bottom' ? 'zespodu (deska otočená)' : 'shora') : '—'],
+      ...(p.op?.part ? [['Polotovar', ctx.partStock?.() || '—'], ['Nula', ctx.originDesc()]] : [['Strana', p.side ? (p.side === 'bottom' ? 'zespodu (deska otočená)' : 'shora') : '—']]),
       ['Nula (WCO)', `X ${cz(wco[0])}  Y ${cz(wco[1])}  Z ${cz(wco[2])}`, Math.abs(wco[0]) + Math.abs(wco[1]) + Math.abs(wco[2]) < 1e-6],
-      ['Výšková mapa', p.mapApplied ? `ano (${M.hmap.nx}×${M.hmap.ny}${M.hmap.centers ? ' se středy' : ''})` : p.iso ? (mapOK ? 'ne (vypnuto)' : 'ne – není změřená') : 'ne (netýká se)', p.iso && !p.mapApplied],
+      ...(p.op?.part ? [] : [['Výšková mapa', p.mapApplied ? `ano (${M.hmap.nx}×${M.hmap.ny}${M.hmap.centers ? ' se středy' : ''})` : p.iso ? (mapOK ? 'ne (vypnuto)' : 'ne – není změřená') : 'ne (netýká se)', p.iso && !p.mapApplied]]),
       ['Vynecháno', M.skips.length ? M.skips.map(([a, b]) => a === b ? `${a + 1}` : `${a + 1}–${b + 1}`).join(', ') : 'nic'],
       ['Začátek', from ? `od řádku ${from + 1} (najetí nad místo, pak dolů)` : 'od začátku'],
       ['Odhad času', `${Math.max(1, Math.round(g.total * (ctx.timeFactor?.(p.op?.kind || 'soubor') || 1)))} min${ctx.timeFactor && ctx.timeFactor(p.op?.kind || 'soubor') !== 1 ? ' (podle předchozích běhů)' : ''}`],
@@ -953,13 +999,29 @@ export function initMachine(ctx) {
     if (p.test) rows.splice(1, 0, ['Test', `${p.test.res.run.length} ${p.test.res.run.length === 1 ? 'tvar' : 'tvarů'} · ${TC.SHAPES[p.test.t.shape]} · ${cz(p.test.res.size.w, 1)} × ${cz(p.test.res.size.h, 1)} mm od X ${cz(p.test.t.x, 2)} Y ${cz(p.test.t.y, 2)}`], ['Materiál', p.test.t.material || '—'], ...p.test.res.warn.map(w => ['Pozor', w, true]));
     if (check) rows.unshift(['Režim', 'KONTROLNÍ BĚH – bez pohybu']);
     for (const w of preChecks(p, g, from)) rows.push(['Pozor', w, true]);
-    if (!await confirmDlg(check ? 'Kontrolní běh' : 'Spustit program', rows, check ? 'Zkontrolovat' : 'Spustit')) return;
+    const pc = partCheck(p);
+    if (pc) {
+      for (const i of pc.err) rows.push(['Nejde spustit', i.text, 'err']);
+      for (const i of pc.lim) rows.push(['Limit', (i.line != null ? `řádek ${i.line + 1}: ` : '') + i.text, 'lim']);
+      for (const i of pc.info) rows.push(['Pozor', (i.line != null ? `řádek ${i.line + 1}: ` : '') + i.text, true]);
+    }
+    const dlgOpts = pc && !check ? { block: pc.err.length > 0, ack: pc.lim.length > 0, limit: pc.limit } : pc && check ? { block: pc.err.length > 0 } : {};
+    const ans = await confirmDlg(check ? 'Kontrolní běh' : 'Spustit program', rows, check ? 'Zkontrolovat' : 'Spustit', dlgOpts);
+    if (!ans) return;
     const lines = currentLines();
     await call('load', { lines });
     M.loadedText = p.text;
     if (check) { M.checkRun = true; M.checkErrors = 0; await cmd('$C', true); }
     await call('start', { from, pre: from ? startPre(from) : [] });
     log(`Start: ${p.name}${from ? ' od řádku ' + (from + 1) : ''}${check ? ' (kontrolní běh)' : ''}`, 'info');
+    // díl: omezení posuvu / otáček přes override (jinak vrátit 100 %, pokud zůstalo omezení z dřívějška)
+    if (!check && pc) {
+      if (ans.limit && pc.limit) {
+        await rt(...overrideBytes(pc.limit.pF, 0x90, 0x92, 0x94), ...overrideBytes(pc.limit.pS, 0x99, 0x9B, 0x9D));
+        M.ovLimited = true; log(`Omezeno přes override: posuv ${pc.limit.pF} %, otáčky ${pc.limit.pS} %`, 'info');
+      } else if (M.ovLimited) { await rt(0x90, 0x99); M.ovLimited = false; }
+      if (ans.ack && pc.lim.length) log(`Spuštěno s vědomým překročením: ${pc.lim.map(i => i.text).join(' | ')}`, 'warn');
+    }
     if (!check) {
       if (p.op?.tool) M.lastTool = p.op.tool;
       M.run = { t0: Date.now(), from, paused: 0, pauseT: null, est: g.total, kind: p.op?.kind || 'soubor' };
@@ -1330,6 +1392,7 @@ export function initMachine(ctx) {
   // ---------- průvodce ----------
   function wizardSteps() {
     const res = ctx.getRes(); if (!res) return null;
+    if (res.part) return partSteps(res);
     const ops = res.ops.filter(o => ctx.isEnabled(o));
     const steps = [];
     steps.push({ id: 'conn', title: 'Připoj stroj', text: 'Vyber port a připoj se. Po zapnutí je GRBL v alarmu – udělej homing (nebo jen odemkni).', acts: [['Homing', () => act('home')], ['Odemknout', () => act('unlock')]], ok: () => M.on && !M.st.state.startsWith('Alarm') });
@@ -1362,15 +1425,40 @@ export function initMachine(ctx) {
     steps.push({ id: 'end', title: 'Hotovo', text: 'Vyndej desku, odjehli okraje a zkontroluj izolaci (např. multimetrem mezi sítěmi).' });
     return steps;
   }
+  // průvodce dílem: polotovar, nula, pro každý program nástroj → Z → spuštění (bez výškové mapy)
+  function partSteps(res) {
+    const ops = res.ops.filter(o => ctx.isEnabled(o));
+    const steps = [];
+    steps.push({ id: 'conn', title: 'Připoj stroj', text: 'Vyber port a připoj se. Po zapnutí je GRBL v alarmu – udělej homing (nebo jen odemkni).', acts: [['Homing', () => act('home')], ['Odemknout', () => act('unlock')]], ok: () => M.on && !M.st.state.startsWith('Alarm') });
+    steps.push({ id: 'fix', title: 'Upni polotovar', text: `Polotovar ${ctx.partStock?.() || ''}. Upni ho tak, aby fréza nenarazila do upínek – dráhy jsou v náhledu G-kódu.` });
+    steps.push({ id: 'xy', title: 'Nastav nulu X Y', text: `Nula musí sedět s Fusionem (Setup → WCS). ${ctx.originDesc()}. Najeď nástrojem na místo nuly a vynuluj X a Y.`, acts: [['Nulovat X Y tady', () => zeroAxes('XY')]] });
+    let tool = null, first = true;
+    for (const op of ops) {
+      if (op.tool !== tool) {
+        steps.push({ id: 'tool:' + op.id, title: `Nasaď nástroj: ${op.tool}`, text: 'Vyměň nástroj a dotáhni ho. Vřeteno musí stát.' });
+        const setterOK = M.setter.on && M.setter.x != null && M.setter.ref;
+        const zActs = [[M.probe.type === 'clip' ? 'Změřit Z tady' : 'Změřit Z destičkou tady', () => { selectOp(op); return probeZ(false, 'top'); }]];
+        if (setterOK && !first) zActs.unshift(['Změřit na Z sondě', () => { selectOp(op); return setterMeasure(false); }]);
+        if (!first) zActs.push(['Z stejné jako předchozí', () => { selectOp(op); sameZ(op); }]);
+        const zTop = /spodek/.test(ctx.originDesc()) ? 'Nula Z je dole (stůl) – pokud měříš na vrchu polotovaru, posuň potom nulu o tloušťku polotovaru, nebo měř na stole.' : 'Nula Z = vrch polotovaru.';
+        steps.push({ id: 'z:' + op.id, title: first ? 'Nula Z prvního nástroje' : 'Změř Z nástroje', text: (first ? zTop + ' ' : '') + (M.probe.type === 'clip' ? 'Klipem: jen u vodivého materiálu (hliník, mosaz) – připni klip na nástroj, druhý vodič na polotovar.' : 'Polož destičku na polotovar pod nástroj.') + (setterOK && !first ? ' Nejrychleji na pevné Z sondě (nula zůstane).' : '') + (M.setter.on && first ? ' Po změření prvního nástroje udělej „Referenční měření“ na Z sondě.' : ''), acts: zActs, ok: () => M.zOp === op.id });
+        tool = op.tool; first = false;
+      }
+      const iss = ctx.partIssues ? ctx.partIssues(op).filter(i => i.level === 'err' || i.level === 'lim') : [];
+      steps.push({ id: 'run:' + op.id, title: `Spusť ${op.no} · ${op.title}`, text: `${op.tool} · F${op.prm.feed} S${op.prm.spindle} · ≈ ${Math.max(1, Math.round(op.minutes))} min.${iss.length ? ` Pozor: ${iss.length} ${iss.length === 1 ? 'nález vyžaduje' : 'nálezy vyžadují'} potvrzení – ${iss[0].text}${iss.length > 1 ? ' …' : ''}` : ''}${M.probe.type === 'clip' ? ' Odepni klip!' : ''}`, acts: [['Načíst program', () => selectOp(op)], ['Spustit', () => { selectOp(op); return startProgram(); }]], ok: () => !!M.wizard.done['run:' + op.id] });
+    }
+    steps.push({ id: 'end', title: 'Hotovo', text: 'Vyndej díl, odjehli hrany a zkontroluj rozměry.' });
+    return steps;
+  }
   const hasMap = side => M.hmap && HM.measured(M.hmap) && (M.hmapMeta?.side || null) === side;
   function selectOp(op) { const id = 'op:' + op.id; renderProgList(); progSel.value = id; selectProgram(id); }
   function renderWizard() {
     const P = panes.wiz; P.innerHTML = '';
     const steps = wizardSteps();
-    if (!steps) { P.append(el('p', { class: 'muted' }, 'Průvodce vede výrobou desky načtené v KiMillu (záložka Deska). Pro cizí program použij ovládání vlevo a program nahoře.')); return; }
+    if (!steps) { P.append(el('p', { class: 'muted' }, ctx.partMode?.() ? 'Průvodce vede výrobou dílu – nejdřív přidej programy v záložce Díl.' : 'Průvodce vede výrobou desky načtené v KiMillu (záložka Deska). Pro cizí program použij ovládání vlevo a program nahoře.')); return; }
     const W = M.wizard;
     if (W.i >= steps.length) W.i = steps.length - 1;
-    P.append(el('div', { class: 'muted small' }, `Deska ${ctx.boardName()} · ${steps.length} kroků`));
+    P.append(el('div', { class: 'muted small' }, `${ctx.partMode?.() ? 'Díl' : 'Deska'} ${ctx.boardName()} · ${steps.length} kroků`));
     steps.forEach((s, i) => {
       const done = W.done[s.id] || (s.ok && s.ok() && i < W.i);
       const cur = i === W.i;
@@ -1618,8 +1706,14 @@ export function initMachine(ctx) {
   showPane('wiz');
   refreshPorts().then(openEvents).catch(e => log('Porty: ' + e.message, 'err'));
   return {
-    show() { renderProgList(); if (!M.prog && ctx.getRes()) { const op = ctx.getRes().ops.find(o => o.kind === 'iso'); if (op) selectOp(op); } else if (M.prog?.op) { const op = ctx.getRes()?.ops.find(o => o.id === M.prog.op.id); if (op && op.gcode !== M.prog.orig && !M.stream.streaming) selectOp(op); } renderWizard(); },
+    show() { renderProgList(); if (M.prog?.op && !M.stream.streaming && !ctx.getRes()?.ops.some(o => o.id === M.prog.op.id)) { M.prog = null; gv.clear('Vyber program nahoře.'); renderStream(); } if (!M.prog && ctx.getRes()) { const r = ctx.getRes(); const op = r.part ? r.ops.find(o => ctx.isEnabled(o)) : r.ops.find(o => o.kind === 'iso'); if (op) selectOp(op); } else if (M.prog?.op) { const op = ctx.getRes()?.ops.find(o => o.id === M.prog.op.id); if (op && op.gcode !== M.prog.orig && !M.stream.streaming) selectOp(op); } renderWizard(); },
     refresh() { renderProgList(); renderWizard(); },
+    // změna zakázky dílu / přepnutí režimu: seznam programů, průvodce, případně nová verze vybraného programu
+    refreshProgs() {
+      renderProgList();
+      if (M.prog?.op && !M.stream.streaming) { const op = ctx.getRes()?.ops.find(o => o.id === M.prog.op.id); if (!op) { M.prog = null; gv.clear('Vyber program nahoře.'); renderStream(); } else if (op.gcode !== M.prog.orig || (op.part && JSON.stringify(op.lim) !== JSON.stringify(M.prog.op.lim))) selectOp(op); }
+      if (!panes.wiz.hidden) renderWizard();
+    },
     getMap: () => M.hmap ? { map: M.hmap, meta: M.hmapMeta } : null,
     mapEstFor: op => { try { return mapEstFor(op); } catch { return null; } },
     hasMapFor: side => hasMap(side),

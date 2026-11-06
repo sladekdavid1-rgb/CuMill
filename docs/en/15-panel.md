@@ -1,6 +1,6 @@
 # 15. Panel – several boards at once
 
-[← Material test](14-material-test.md) · [Contents](README.md)
+[← Material test](14-material-test.md) · [Contents](README.md) · [Part from Fusion →](16-part.md)
 
 A **panel** is a project with **several boards** on one blank – different ones, or the same
 board several times. You arrange the boards with the mouse, KiMill checks that they don't
@@ -98,4 +98,4 @@ are not carried over – only the boards themselves.
 > **Tip:** make position-bound edits (areas, manually added pins and tabs) after arranging the
 > boards – if you move a board later, they stay where they were.
 
-[← Material test](14-material-test.md) · [Contents](README.md)
+[← Material test](14-material-test.md) · [Contents](README.md) · [Part from Fusion →](16-part.md)

@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.6 – 2026-11
+- **Part mode** (switch **DPS | Díl** next to the logo) – a job made of finished G-code programs from Fusion 360
+  (one file per tool, Grbl post): add all `.nc` at once or drop them in, reorder by drag & drop or ▲ ▼, same file name
+  = new version (reload after re-export), job remembered between runs and saved as a project (`.kimill` with `part`)
+- Fusion header read (`(T1 D=6 CR=0 - ZMIN=… - flat end mill)`): tool type and diameter, operations (Face1, Adaptive2…);
+  the tool is matched to the library by type and diameter, or created from the header with **+ Do knihovny**
+- Prepared for GRBL: `M6` removed (the wizard handles tool changes), drilling cycles `G81/G82/G83/G73` expanded,
+  `G98/G99/G64` removed; `G41/G42/G43` block the start, `G28/G30` and several tools in one file are reported
+- Blank and zero (X/Y corner / centre / custom, Z top / bottom / custom) and material for the job
+- **Tool limits** in the Tools tab – max. feed, max. plunge, max. spindle, cutting length, max. slot depth – as tool
+  defaults and per material (Aluminium, Brass, Wood, Plastic, own); new tool type **ball end mill**
+- **Material-removal simulation across the whole job** (background worker, ~0.05 mm grid, flat / ball / V / drill
+  shapes): rapids through material a previous program did not remove, full-width cuts deeper than the slot limit,
+  material above the cutting length (shank), vertical plunges, programs cutting air, suspicious Z zero, cuts below the
+  blank; findings link to the line and show red / orange marks in the 3D view
+- A program over a limit **starts only after explicit confirmation** (“I am aware the limits are exceeded…”, valid
+  for that one start), or with **“Limit via override”** that sets feed / spindle override to stay within the limit;
+  confirmed findings are logged; S over the machine `$30` is checked too
+- Machine wizard for parts: clamp the blank, zero X Y (as in Fusion), then tool → Z (touch plate / clip / tool setter /
+  same as previous) → start for each program; no height map in Part mode
+- G-code and Machine 3D views show the blank after all previous programs of the job (also with Z zero at the bottom)
+
 ## 1.5 – 2026-10
 - Fix: “No copper layer to isolate” when the isolation layer choice left over from another board (e.g. only B.Cu) did not
   exist on the current board or panel (mirrored boards are all F.Cu) – the layers the board has are used then, with a hint

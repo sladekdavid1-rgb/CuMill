@@ -26,6 +26,7 @@ mapy, průvodce výrobou a ovládání pendantem. Nahrazuje tak trojici FlatCAM 
 | 13 | [Slovníček pojmů](13-slovnicek.md) | V-fréza, nula, homing, GRBL… pro úplné začátečníky |
 | 14 | [Test materiálu a záložka Nástroje](14-test-materialu.md) | zkušební řezy F / S / Z, knihovna nástrojů a výsledků |
 | 15 | [Panel – víc desek naráz](15-panel.md) | několik desek na jednom polotovaru, rozmístění myší, výroba po nástrojích |
+| 16 | [Díl – hotové G-kódy z Fusionu 360](16-dil.md) | zakázka z více programů, nástroje, limity, simulace úběru, potvrzení |
 
 ## Pro koho to je
 

@@ -29,7 +29,7 @@ void main() {
   if (aK > 1.5) { vC = vec4(uRap, 0.3); return; }              // vynecháno
   if (aK < 0.5) { vC = vec4(uRap, uRapid * (done > 0.5 ? 0.6 : 0.2)); return; }
   float d = clamp((aPos.z - uZ.y) / max(uZ.x - uZ.y, 1e-4), 0.0, 1.0); // 1 = nahoře, 0 = nejhlouběji
-  vec3 c = aPos.z > 0.0 ? uAir : mix(uDeep, uMid, d);
+  vec3 c = aPos.z > uZ.x ? uAir : mix(uDeep, uMid, d);
   vC = done > 0.5 ? vec4(c, 1.0) : vec4(c * uDimK, 0.3);
 }`;
 const FS_COL = `precision mediump float; varying vec4 vC; void main() { gl_FragColor = vC; }`;
@@ -41,7 +41,7 @@ const FS_TEX = `precision mediump float; uniform sampler2D uTex; uniform float u
 // deska jako výšková mapa (WebGL2): síť posunutá podle výšky, detail a barva z textury po pixelech
 const VS_SIM = `#version 300 es
 precision highp float; precision highp int; precision highp sampler2D;
-in vec2 aUV; uniform sampler2D uH; uniform mat4 uM; uniform vec4 uRect; uniform ivec2 uN; uniform int uK;
+in vec2 aUV; uniform sampler2D uH; uniform mat4 uM; uniform vec4 uRect; uniform ivec2 uN; uniform int uK; uniform float uZ0;
 out vec3 vP; out vec2 vUV;
 void main() {
   // výška bodu sítě = nejvyšší místo v jeho okolí (mělké drážky jen stínováním, průchozí řezy jako stěny)
@@ -50,16 +50,17 @@ void main() {
   for (int y = 0; y < 8; y++) { if (y >= uK) break;
     for (int x = 0; x < 8; x++) { if (x >= uK) break;
       h = max(h, texelFetch(uH, clamp(c0 + ivec2(x, y), ivec2(0), uN - 1), 0).r); } }
-  vP = vec3(uRect.x + aUV.x * uRect.z, uRect.y + aUV.y * uRect.w, h); vUV = aUV;
+  vP = vec3(uRect.x + aUV.x * uRect.z, uRect.y + aUV.y * uRect.w, h + uZ0); vUV = aUV;
   gl_Position = uM * vec4(vP, 1.0);
 }`;
 const FS_SIM = `#version 300 es
 precision highp float; precision highp int; precision highp sampler2D;
-in vec3 vP; in vec2 vUV; uniform sampler2D uH; uniform ivec2 uN; uniform float uT; uniform float uCell; uniform float uZs;
-uniform vec3 uCu, uFr, uFrD, uThru;
+in vec3 vP; in vec2 vUV; uniform sampler2D uH; uniform ivec2 uN; uniform float uT; uniform float uCell; uniform float uZs; uniform float uZ0; uniform int uPart;
+uniform vec3 uCu, uFr, uFrD, uThru, uPt, uPd;
 out vec4 o;
 float H(ivec2 c) { return texelFetch(uH, clamp(c, ivec2(0), uN - 1), 0).r; }
 vec3 col(float z) {
+  if (uPart == 1) { if (z <= -uT + 0.002) return uThru; return mix(uPt, uPd, clamp(-z / uT, 0.0, 1.0)); } // díl: materiál podle hloubky
   if (z > -0.035) return uCu;                                      // měď
   if (z <= -uT + 0.002) return uThru;                              // proříznuto skrz (podložka)
   float d = clamp(-z / uT, 0.0, 1.0);
@@ -70,9 +71,10 @@ void main() {
   float h = H(c);
   vec3 n;
   float z = h;
-  if (abs(vP.z - h) > 0.05 && h <= -uT + 0.002 || abs(vP.z - h) > 0.3) {
+  float vz = vP.z - uZ0;
+  if (abs(vz - h) > 0.05 && h <= -uT + 0.002 || abs(vz - h) > 0.3) {
     // stěna mezi body sítě (okraj ořezu / díry)
-    n = normalize(cross(dFdx(vP), dFdy(vP))); if (n.z < 0.0) n = -n; z = vP.z;
+    n = normalize(cross(dFdx(vP), dFdy(vP))); if (n.z < 0.0) n = -n; z = vz;
   } else {
     float hl = H(c - ivec2(1, 0)), hr = H(c + ivec2(1, 0)), hd = H(c - ivec2(0, 1)), hu = H(c + ivec2(0, 1));
     n = normalize(vec3(-(hr - hl) * uZs / (2.0 * uCell), -(hu - hd) * uZs / (2.0 * uCell), 1.0));
@@ -226,10 +228,11 @@ export class GcodeViewer {
   // opts.tool: nástroj z knihovny ({type, dia, vTip, vAngle}); opts.T: tloušťka desky;
   // opts.stock: polotovar {minX,minY,maxX,maxY}; opts.prev: [{text, tool}] dřívější programy na téže straně;
   // opts.motif: Float32Array úseček (x,y,z…) motivu mědi z KiCadu
-  load(text, { name = '', tool = null, T = null, stock = null, prev = [], motif = null, keepView = false } = {}) {
+  load(text, { name = '', tool = null, T = null, stock = null, prev = [], motif = null, keepView = false, zTop = 0, part = false, marks = null, g: pre = null } = {}) {
     this.pause();
-    const g = parseGcode(text, { rapid: this.rapid });
+    const g = pre || parseGcode(text, { rapid: this.rapid });
     this.g = g; this.name = name; this.stock = stock; this.prevSrc = prev; this.motif = motif;
+    this.z0 = zTop || 0; this.part = !!part; this.marks = marks || null; this.prevKey = null;
     this.ext = !tool;
     if (tool) this.simToolDef = tool;
     if (T) this.T = T;
@@ -293,7 +296,7 @@ export class GcodeViewer {
     const rect = this._stockRect();
     if (!rect || !this.gl2) { this._simFull = true; return; }
     const T = this.ext ? this.extT : (this.T || 1.6);
-    this.sim = new HeightSim(rect, T);
+    this.sim = new HeightSim(rect, T, this.part ? 2e6 : 3e6, this.z0 || 0, this.part ? 0.05 : 0.02);
     this.simTool = this.extTool();
     // dřívější programy na téže straně (díry, ořez…) – jednou do základu
     if (this.show.prev && this.prevSrc?.length) for (const p of this.prevSrc) { const g = p.g || (p.g = parseGcode(p.text, { rapid: this.rapid })); this.sim.run(g, simTool(p.tool)); }
@@ -346,7 +349,7 @@ export class GcodeViewer {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.bufSimIdx); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
     this.simIdxN = n; this.simK = k;
     // boky polotovaru
-    const x0 = sim.minX, y0 = sim.minY, x1 = sim.minX + sim.W, y1 = sim.minY + sim.H, z0 = 0, z1 = -sim.T;
+    const x0 = sim.minX, y0 = sim.minY, x1 = sim.minX + sim.W, y1 = sim.minY + sim.H, z0 = sim.z0 || 0, z1 = z0 - sim.T;
     const q = (ax, ay, bx, by) => [ax, ay, z0, bx, by, z0, bx, by, z1, ax, ay, z0, bx, by, z1, ax, ay, z1];
     this.sideV = [q(x0, y0, x1, y0), q(x1, y0, x1, y1), q(x1, y1, x0, y1), q(x0, y1, x0, y0)];
     gl.bindBuffer(gl.ARRAY_BUFFER, this.bufSides); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.sideV.flat()), gl.STATIC_DRAW);
@@ -638,6 +641,27 @@ export class GcodeViewer {
     gl.disableVertexAttribArray(aC);
   }
   // ---------- kreslení ----------
+  // značky problémů ze simulace dílu: svislá čára nad místem + křížek (červená = kolize, oranžová = varování)
+  setMarks(list) { this.marks = list || null; this.draw(); }
+  _drawMarks(gl, M) {
+    const L = this.marks; if (!L?.length) return;
+    const hgt = Math.max(4, this.cam.dist * 0.05) / (this.zs || 1), r = Math.max(0.6, this.cam.dist * 0.008);
+    const byLvl = { err: [], warn: [] };
+    for (const m of L) {
+      const v = byLvl[m.level === 'err' ? 'err' : 'warn'], z = m.z ?? 0;
+      v.push(m.x, m.y, z, m.x, m.y, z + hgt, m.x - r, m.y, z, m.x + r, m.y, z, m.x, m.y - r, z, m.x, m.y + r, z);
+      if (m.sel) v.push(m.x - r * 2, m.y - r * 2, z, m.x + r * 2, m.y + r * 2, z, m.x - r * 2, m.y + r * 2, z, m.x + r * 2, m.y - r * 2, z);
+    }
+    gl.useProgram(this.pS);
+    const uM = gl.getUniformLocation(this.pS, 'uM'), uC = gl.getUniformLocation(this.pS, 'uC'), aPs = gl.getAttribLocation(this.pS, 'aPos');
+    gl.uniformMatrix4fv(uM, false, M);
+    for (const [k, c] of [['warn', [1, 0.62, 0.15, 1]], ['err', [1, 0.22, 0.25, 1]]]) {
+      const v = byLvl[k]; if (!v.length) continue;
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.bufMarks || (this.bufMarks = gl.createBuffer())); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.DYNAMIC_DRAW);
+      gl.enableVertexAttribArray(aPs); gl.vertexAttribPointer(aPs, 3, gl.FLOAT, false, 0, 0);
+      gl.uniform4f(uC, ...c); gl.drawArrays(gl.LINES, 0, v.length / 3);
+    }
+  }
   draw() { if (this._drawQ) return; this._drawQ = requestAnimationFrame(() => { this._drawQ = 0; this._draw(); }); }
   // souřadnicový kříž X / Y / Z v rohu podle natočení kamery
   _drawGizmo() {
@@ -681,8 +705,10 @@ export class GcodeViewer {
       gl.uniform4f(U('uRect'), sim.minX, sim.minY, sim.W, sim.H);
       gl.uniform2i(U('uN'), sim.nx, sim.ny); gl.uniform1i(U('uK'), this.simK);
       gl.uniform1f(U('uT'), sim.T); gl.uniform1f(U('uCell'), sim.cell); gl.uniform1f(U('uZs'), this.zs || 1);
-      const c3 = (n, k) => { const v = T3D[k]; gl.uniform3f(U(n), v[0], v[1], v[2]); };
+      gl.uniform1f(U('uZ0'), sim.z0 || 0); gl.uniform1i(U('uPart'), this.part ? 1 : 0);
+      const c3 = (n, k, d) => { const v = T3D[k] || d; gl.uniform3f(U(n), v[0], v[1], v[2]); };
       c3('uCu', 'simCu'); c3('uFr', 'simFr'); c3('uFrD', 'simFrDeep'); c3('uThru', 'simThru');
+      c3('uPt', 'simPartTop', [0.78, 0.8, 0.82]); c3('uPd', 'simPartDeep', [0.45, 0.48, 0.53]);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.texH); gl.uniform1i(U('uH'), 0);
       const aU = gl.getAttribLocation(this.pSim, 'aUV');
       gl.bindBuffer(gl.ARRAY_BUFFER, this.bufSimUV); gl.enableVertexAttribArray(aU); gl.vertexAttribPointer(aU, 2, gl.FLOAT, false, 0, 0);
@@ -695,7 +721,7 @@ export class GcodeViewer {
       const aS = gl.getAttribLocation(this.pSide, 'aPos');
       gl.bindBuffer(gl.ARRAY_BUFFER, this.bufSides); gl.enableVertexAttribArray(aS); gl.vertexAttribPointer(aS, 3, gl.FLOAT, false, 0, 0);
       const shades = [0.62, 0.78, 0.5, 0.42];
-      const fr = T3D.simFr; for (let i = 0; i < 4; i++) { const k = shades[i] * 0.95; gl.uniform4f(gl.getUniformLocation(this.pSide, 'uC'), fr[0] * k, fr[1] * k, fr[2] * k, 1); gl.drawArrays(gl.TRIANGLES, i * 6, 6); }
+      const fr = this.part ? (T3D.simPartDeep || [0.45, 0.48, 0.53]) : T3D.simFr; for (let i = 0; i < 4; i++) { const k = shades[i] * 0.95; gl.uniform4f(gl.getUniformLocation(this.pSide, 'uC'), fr[0] * k, fr[1] * k, fr[2] * k, 1); gl.drawArrays(gl.TRIANGLES, i * 6, 6); }
       gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND);
     }
     // mřížka a osy
@@ -712,7 +738,7 @@ export class GcodeViewer {
     gl.useProgram(this.pL);
     gl.uniformMatrix4fv(gl.getUniformLocation(this.pL, 'uM'), false, M);
     gl.uniform1f(gl.getUniformLocation(this.pL, 'uTime'), this.time);
-    gl.uniform2f(gl.getUniformLocation(this.pL, 'uZ'), 0, Math.min(-0.05, this.g.bb.minZ));
+    { const z0 = this.z0 || 0; gl.uniform2f(gl.getUniformLocation(this.pL, 'uZ'), z0, Math.min(z0 - 0.05, this.g.bb.minZ)); }
     gl.uniform1f(gl.getUniformLocation(this.pL, 'uRapid'), this.show.rapid ? 1 : 0);
     for (const [n, k] of [['uAir', 'pathAir'], ['uMid', 'pathMid'], ['uDeep', 'pathDeep'], ['uSel', 'sel'], ['uRap', 'rapid']]) { const v = T3D[k]; gl.uniform3f(gl.getUniformLocation(this.pL, n), v[0], v[1], v[2]); }
     gl.uniform1f(gl.getUniformLocation(this.pL, 'uDimK'), T3D.light ? 1.0 : 0.55);
@@ -725,6 +751,7 @@ export class GcodeViewer {
     // nástroj
     const p = this.machine ? this.live : this.tool;
     this._drawMap(gl, M);
+    this._drawMarks(gl, M);
     if (p) {
       const r = Math.max(this.sim ? this.simTool.r : 0.1, 0.15), hgt = Math.max(6, this.cam.dist * 0.06) / (this.zs || 1), v = [];
       const N = 20;
@@ -734,7 +761,7 @@ export class GcodeViewer {
         v.push(p.x + r * 2.2 * Math.cos(a0), p.y + r * 2.2 * Math.sin(a0), p.z + hgt, p.x + r * 2.2 * Math.cos(a1), p.y + r * 2.2 * Math.sin(a1), p.z + hgt);
       }
       for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; v.push(p.x + r * Math.cos(a), p.y + r * Math.sin(a), p.z, p.x + r * 2.2 * Math.cos(a), p.y + r * 2.2 * Math.sin(a), p.z + hgt); }
-      v.push(p.x, p.y, p.z, p.x, p.y, Math.min(p.z, 0)); // svislice k povrchu
+      v.push(p.x, p.y, p.z, p.x, p.y, Math.min(p.z, this.z0 || 0)); // svislice k povrchu
       gl.useProgram(this.pS); gl.uniformMatrix4fv(uM, false, M);
       gl.bindBuffer(gl.ARRAY_BUFFER, this.bufTool); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.DYNAMIC_DRAW);
       gl.enableVertexAttribArray(aPs); gl.vertexAttribPointer(aPs, 3, gl.FLOAT, false, 0, 0);

@@ -12,6 +12,7 @@ import { textToLines } from './text.js';
 import * as MAT from './materials.js';
 import * as PN from './panel.js';
 import * as HM from './hmap.js';
+import { initPart } from './part.js';
 T.apply();
 
 const $ = s => document.querySelector(s);
@@ -746,9 +747,9 @@ function buildToolTable(body, changedFn) {
     }
     body.append(t);
     body.append(el('div', { class: 'tadd' },
-      ...[['v', '+ V-fréza'], ['end', '+ Fréza'], ['drill', '+ Vrták']].map(([ty, txt]) => el('button', { class: 'btn small', onclick: () => {
+      ...[['v', '+ V-fréza'], ['end', '+ Fréza'], ['ball', '+ Kulová fréza'], ['drill', '+ Vrták']].map(([ty, txt]) => el('button', { class: 'btn small', onclick: () => {
         const id = ty[0] + Date.now().toString(36);
-        const base = ty === 'v' ? { dia: 0.1, vTip: 0.1, vAngle: 30, feed: 400, plunge: 100, step: 0.05 } : ty === 'end' ? { dia: 1.0, feed: 100, plunge: 50, step: 0.3 } : { dia: 0.8, feed: 300, plunge: 300, step: 0.5 };
+        const base = ty === 'v' ? { dia: 0.1, vTip: 0.1, vAngle: 30, feed: 400, plunge: 100, step: 0.05 } : ty === 'end' || ty === 'ball' ? { dia: ty === 'ball' ? 3 : 1.0, feed: 100, plunge: 50, step: 0.3 } : { dia: 0.8, feed: 300, plunge: 300, step: 0.5 };
         S.tools.push({ id, name: '', type: ty, spindle: 12000, ...base }); changedFn(); draw();
       } }, txt))),
       el('p', { class: 'muted small' }, 'Název můžeš nechat prázdný – vytvoří se z průměru. Hodnoty F, S, zanoření a krok se použijí ve všech programech s tímto nástrojem, pokud je u programu nepřepíšeš. Tlačítkem Test vyzkoušíš nástroj na novém materiálu (Stroj → Test).'));
@@ -758,7 +759,7 @@ function buildToolTable(body, changedFn) {
 }
 // ---------- záložka Nástroje: knihovna nástrojů a výsledky testů materiálů ----------
 let toolsDirty = false, toolsFilter = { tool: '', q: '' };
-function toolsChanged() { toolsDirty = true; saveSettings(); renderToolList(); }
+function toolsChanged() { toolsDirty = true; saveSettings(); renderToolList(); PART?.toolsChanged(); }
 function flushTools() { if (!toolsDirty) return; toolsDirty = false; renderSettings(); recompute(); }
 function renderToolsTab() {
   const root = $('#toolsTab'); root.innerHTML = '';
@@ -767,6 +768,7 @@ function renderToolsTab() {
     el('div', { class: 'tt-head' }, el('h2', {}, 'Knihovna nástrojů'), el('span', { class: 'muted small' }, `${S.tools.length} ${pl(S.tools.length, 'nástroj', 'nástroje', 'nástrojů')} · změny platí hned pro všechny programy`)),
     tblBox));
   buildToolTable(tblBox, () => { toolsChanged(); });
+  root.append(limitsCard());
   // výsledky testů
   const resBox = el('div', { class: 'tt-body' });
   const toolSel = el('select', {}, el('option', { value: '' }, 'Všechny nástroje'), ...S.tools.map(t => el('option', { value: t.id, selected: toolsFilter.tool === t.id }, CAM.toolLabel(t))));
@@ -806,6 +808,34 @@ function renderToolsTab() {
 }
 MAT.onChange(() => { if (gvs.tab === 'tools') renderToolsTab(); });
 function openToolDialog() { setTab('tools'); }
+// limity nástrojů (režim Díl): výchozí u nástroje, pro materiál zvlášť; prázdné = nehlídá se / platí výchozí
+let limMat = '';
+function limitsCard() {
+  S.limits = S.limits || { mats: [], by: {} };
+  const L = S.limits, body = el('div', { class: 'tt-body' });
+  const draw = () => {
+    body.innerHTML = '';
+    if (limMat && !L.mats.includes(limMat)) limMat = '';
+    const matSel = el('select', {}, el('option', { value: '' }, 'Výchozí (všechny materiály)'), ...L.mats.map(m => el('option', { value: m, selected: m === limMat }, m)));
+    matSel.addEventListener('change', () => { limMat = matSel.value; draw(); });
+    body.append(el('div', { class: 'mrow' }, el('span', { class: 'muted small' }, 'Materiál:'), el('div', { class: 'inp' }, matSel),
+      el('button', { class: 'btn small', onclick: () => { const n = (prompt('Název materiálu (např. Hliník 6061, Mosaz, Buk):') || '').trim(); if (!n || L.mats.includes(n)) return; L.mats.push(n); limMat = n; saveSettings(); PART?.toolsChanged(); draw(); } }, '+ Materiál'),
+      limMat ? el('button', { class: 'btn small', onclick: () => { if (!confirm(`Smazat materiál „${limMat}“ i s jeho limity?`)) return; L.mats = L.mats.filter(m => m !== limMat); delete L.by[limMat]; limMat = ''; saveSettings(); PART?.toolsChanged(); draw(); } }, 'Smazat materiál') : null));
+    const keys = [['maxFeed', 'Max. posuv F', 'mm/min'], ['maxPlunge', 'Max. zanoření F', 'mm/min'], ['maxSpindle', 'Max. otáčky S', ''], ['cutLen', 'Řezná délka', 'mm'], ['slotDoc', 'Max. hloubka v drážce', 'mm']];
+    const t = el('table', { class: 'ttable limtable' });
+    t.append(el('tr', {}, el('th', {}, 'Typ'), el('th', {}, 'Nástroj'), ...keys.map(([, h]) => el('th', {}, h))));
+    for (const tool of S.tools) {
+      const ov = limMat ? ((L.by[limMat] ||= {})[tool.id] ||= {}) : null;
+      t.append(el('tr', {}, el('td', {}, el('span', { class: 'ttype ' + tool.type }, CAM.TOOL_TYPES[tool.type])), el('td', {}, CAM.toolLabel(tool)),
+        ...keys.map(([k, , u]) => el('td', {}, numInput(() => ov ? ov[k] ?? '' : tool[k] ?? '', v => { if (ov) { if (v == null) delete ov[k]; else ov[k] = v; } else { if (v == null) delete tool[k]; else tool[k] = v; } saveSettings(); PART?.toolsChanged(); }, { unit: u, placeholder: ov ? (tool[k] != null ? String(tool[k]).replace('.', ',') : '—') : '—', int: k === 'maxSpindle' })))));
+    }
+    body.append(t, el('p', { class: 'muted small' }, limMat
+      ? `Hodnoty pro ${limMat}. Prázdné políčko = platí výchozí limit nástroje (šedě). Program, který limit překročí, se v režimu Díl spustí jen po tvém výslovném potvrzení.`
+      : 'Výchozí limity nástroje platí pro všechny materiály, pokud materiál nemá vlastní. Prázdné = nehlídá se. Řezná délka = jak hluboko smí nástroj do materiálu, než se dotkne stopka. Max. hloubka v drážce = nejhlubší řez plnou šířkou nástroje.'));
+  };
+  draw();
+  return el('section', { class: 'tt-card' }, el('div', { class: 'tt-head' }, el('h2', {}, 'Limity nástrojů'), el('span', { class: 'muted small' }, 'hlídají se v režimu Díl u programů z Fusionu')), body);
+}
 $('#toolClose').addEventListener('click', () => $('#toolDlg').close());
 
 
@@ -1035,7 +1065,7 @@ function renderGeoLayers() {
 }
 
 // ---------- pravý panel: programy ----------
-function fileName(op) { return `${CAM.fileSafe(st.board.name)}_${op.no}_${op.short}.nc`; }
+function fileName(op) { if (op.part) return op.fileName; return `${CAM.fileSafe(st.board.name)}_${op.no}_${op.short}.nc`; }
 const ICO_EYE = '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICO_CODE = '<svg viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>';
 const ICO_DL = '<svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14"/></svg>';
@@ -1153,6 +1183,14 @@ function originCz() {
 function renderSteps() { const ol = $('#steps'); ol.innerHTML = ''; for (const s of buildSteps()) ol.append(el('li', { html: s.h + (s.tag ? `<span class="tag">${s.tag}</span>` : '') })); }
 function renderBoardInfo() {
   const b = st.board, box = $('#boardInfo'); box.innerHTML = '';
+  if (appMode === 'part') {
+    const j = PART?.job();
+    if (st.partProject) box.append(el('span', { class: 'chip prjchip', title: 'Otevřený projekt – ukládá se průběžně (klik = Projekty)', onclick: openProjectsDlg }, '▣ ' + st.partProject.name));
+    box.append(el('span', { class: 'name' }, j?.name || 'Díl'));
+    if (j?.files.length) box.append(el('span', { class: 'chip' }, `${j.files.length} ${pl(j.files.length, 'program', 'programy', 'programů')}`), el('span', { class: 'chip' }, PART.stockText()));
+    else box.append(el('span', { class: 'muted' }, 'Žádné programy'));
+    return;
+  }
   if (!b) { box.append(el('span', { class: 'muted' }, 'Žádná deska')); return; }
   if (st.project) box.append(el('span', { class: 'chip prjchip', title: 'Otevřený projekt – ukládá se průběžně (klik = Projekty)', onclick: openProjectsDlg }, '▣ ' + st.project.name));
   box.append(el('span', { class: 'name', title: b.fileName }, b.name));
@@ -1436,7 +1474,7 @@ $('#btnOpen').addEventListener('click', openDialog);
 $('#btnOpen2').addEventListener('click', openDialog);
 $('#fileInput').addEventListener('change', e => { const fs = [...e.target.files]; if (fs.length) loadSources(pickSources(fs.map(f => ({ file: f, name: f.name })))); e.target.value = ''; });
 $('#btnReload').addEventListener('click', reloadCurrent);
-function reloadCurrent() { if (st.panel) { panelCache.clear(); reloadPanel({ keepView: true }); } else if (st.sources.length) loadSources(st.sources, { keepView: true }); }
+function reloadCurrent() { if (appMode === 'part') { getPart().reload(); return; } if (st.panel) { panelCache.clear(); reloadPanel({ keepView: true }); } else if (st.sources.length) loadSources(st.sources, { keepView: true }); }
 $('#btnSave').addEventListener('click', () => saveAll(false));
 const stage = $('#stage');
 stage.addEventListener('dragover', e => { e.preventDefault(); stage.classList.add('dragover'); });
@@ -1461,15 +1499,15 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettingsDlg(); }
   else if ((e.ctrlKey || e.metaKey) && !typing && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y') && gvs.tab !== 'machine') { e.preventDefault(); undoRedo(e.key.toLowerCase() === 'y' || e.shiftKey ? 1 : -1); }
   else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') { e.preventDefault(); saveProject(); }
-  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); gvs.tab === 'gcode' ? openGcodeDialog() : openDialog(); }
-  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveAll(e.shiftKey); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); appMode === 'part' ? getPart().openFiles() : gvs.tab === 'gcode' ? openGcodeDialog() : openDialog(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (appMode === 'part') saveProject(); else saveAll(e.shiftKey); }
   else if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) { e.preventDefault(); reloadCurrent(); }
-  else if (e.key === 'F2') { e.preventDefault(); setTab('board'); }
+  else if (e.key === 'F2') { e.preventDefault(); setTab(appMode === 'part' ? 'part' : 'board'); }
   else if (e.key === 'F3') { e.preventDefault(); setTab('gcode'); }
   else if (e.key === 'F4') { e.preventDefault(); setTab('machine'); }
   else if (e.key === 'F6') { e.preventDefault(); setTab('tools'); }
   else if (typing) return;
-  else if (gvs.tab === 'machine') { /* klávesy řeší záložka Stroj */ }
+  else if (gvs.tab === 'machine' || gvs.tab === 'part' || gvs.tab === 'tools') { /* klávesy řeší záložka */ }
   else if (gvs.tab === 'gcode') { if ([' ', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key) && !$('#gcode').contains(document.activeElement)) { e.preventDefault(); $('#gcode').dispatchEvent(new KeyboardEvent('keydown', { key: e.key, bubbles: false })); } }
   else if (e.key === 'Escape') {
     // 1. rozkreslená oblast, 2. návrat z nástroje (kolíček, oblast, výběr) na posun, 3. zrušení výběru
@@ -1533,22 +1571,25 @@ function setTab(tab) {
   $('#gcode').hidden = tab !== 'gcode';
   $('#machine').hidden = tab !== 'machine';
   $('#toolsTab').hidden = tab !== 'tools';
-  document.querySelector('main.layout').classList.toggle('mmode', tab === 'machine' || tab === 'tools');
+  $('#partTab').hidden = tab !== 'part';
+  document.querySelector('main.layout').classList.toggle('mmode', tab === 'machine' || tab === 'tools' || tab === 'part' || (appMode === 'part' && tab === 'gcode'));
   if (tab === 'tools') renderToolsTab(); else flushTools();
+  if (tab === 'part') getPart().show();
   if (tab === 'machine') getMachine().show();
-  if (tab === 'gcode') { getGv(); showGcode(gvs.cur && findGSource(gvs.cur) ? gvs.cur : (st.sel ? 'op:' + st.sel : gvs.ext[0]?.id)); }
+  if (tab === 'gcode') { getGv(); const r = curRes(); showGcode(gvs.cur && findGSource(gvs.cur) ? gvs.cur : appMode === 'part' ? (r?.ops.find(o => o.id === PART.job().sel) ? 'op:' + PART.job().sel : r?.ops[0] ? 'op:' + r.ops[0].id : gvs.ext[0]?.id) : (st.sel ? 'op:' + st.sel : gvs.ext[0]?.id)); }
   else viewer.draw();
 }
 $('#mainTab').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTab(b.dataset.tab); });
 function gSources() {
   const list = [];
-  if (st.res) for (const op of st.res.ops) list.push({ id: 'op:' + op.id, label: `${op.no} · ${op.title}` });
+  const r = curRes();
+  if (r) for (const op of r.ops) list.push({ id: 'op:' + op.id, label: `${op.no} · ${op.title}` });
   for (const x of gvs.ext) list.push({ id: x.id, label: `Soubor · ${x.name}` });
   return list;
 }
 function findGSource(id) {
   if (!id) return null;
-  if (id.startsWith('op:')) { const op = st.res?.ops.find(o => o.id === id.slice(3)); return op ? { op } : null; }
+  if (id.startsWith('op:')) { const op = curRes()?.ops.find(o => o.id === id.slice(3)); return op ? { op } : null; }
   const x = gvs.ext.find(e => e.id === id); return x ? { ext: x } : null;
 }
 // ---------- kalibrace odhadu času (podle skutečných běhů na stroji) ----------
@@ -1609,7 +1650,10 @@ async function saveProjectNow(quiet) {
   finally { prjSaving = false; }
 }
 function autosaveSoon() { if (!st.project || !st.board) return; clearTimeout(prjTimer); prjTimer = setTimeout(() => saveProjectNow(true), 1500); }
-async function saveProject() { if (st.project && st.board) return saveProjectNow(false); openProjectsDlg(); }
+async function saveProject() {
+  if (appMode === 'part') { if (st.partProject) { try { await api('projects/save', { path: st.partProject.path, text: partProjectText(st.partProject.name) }); toast(`Projekt „${st.partProject.name}“ uložen.`); } catch (e) { toast(e.message, true); } return; } return openProjectsDlg(); }
+  if (st.project && st.board) return saveProjectNow(false); openProjectsDlg();
+}
 async function openProjectFile(path) {
   const r = await api('read?path=' + encodeURIComponent(path));
   await openProject(await r.text(), path);
@@ -1625,7 +1669,16 @@ async function openProjectsDlg({ pickForPanel = false } = {}) {
     d.append(el('div', { class: 'dlghead' }, el('b', {}, pickForPanel ? 'Přidat projekt do panelu' : 'Projekty'), el('button', { class: 'iconbtn', title: 'Zavřít (Esc)', onclick: () => d.close() }, '✕')), body);
     // aktuální deska
     if (pickForPanel) body.append(el('p', { class: 'muted small' }, 'Vyber projekt – jeho deska se přidá do panelu (můžeš přidat i víckrát).'));
-    if (st.board && !pickForPanel) {
+    if (appMode === 'part' && !pickForPanel) {
+      const pp = st.partProject, j = getPart().job();
+      if (pp) body.append(el('div', { class: 'prjcur' }, el('span', {}, 'Otevřený díl: ', el('b', {}, pp.name), el('span', { class: 'muted' }, ' – ukládá se průběžně')),
+        el('button', { class: 'btn small', onclick: async () => { await saveProject(); draw(); } }, 'Uložit teď')));
+      const nm = el('input', { type: 'text', value: pp ? pp.name + ' (kopie)' : (j.name || 'Díl'), placeholder: 'název projektu' });
+      const go = async () => { try { await savePartProjectAs(nm.value.trim()); draw(); } catch (e) { toast(e.message, true); } };
+      nm.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') go(); });
+      body.append(el('div', { class: 'prjnew' }, el('span', {}, pp ? 'Uložit jako nový projekt' : 'Uložit díl jako projekt'), el('div', { class: 'inp' }, nm), el('button', { class: 'btn primary small', disabled: !j.files.length, onclick: go }, 'Uložit')));
+    }
+    if (st.board && !pickForPanel && appMode !== 'part') {
       if (st.project) body.append(el('div', { class: 'prjcur' }, el('span', {}, 'Otevřený projekt: ', el('b', {}, st.project.name), el('span', { class: 'muted' }, ' – ukládá se průběžně')),
         el('button', { class: 'btn small', onclick: async () => { await saveProjectNow(false); draw(); } }, 'Uložit teď')));
       const nm = el('input', { type: 'text', value: st.project ? st.project.name + ' (kopie)' : st.board.name, placeholder: 'název projektu' });
@@ -1633,7 +1686,7 @@ async function openProjectsDlg({ pickForPanel = false } = {}) {
       const go = async () => { try { await saveProjectAs(nm.value.trim()); draw(); } catch (e) { toast(e.message, true); } };
       body.append(el('div', { class: 'prjnew' }, el('span', {}, st.project ? 'Uložit jako nový projekt' : 'Uložit desku jako projekt'), el('div', { class: 'inp' }, nm), el('button', { class: 'btn primary small', onclick: go }, 'Uložit')));
     }
-    if (!pickForPanel) body.append(el('div', { class: 'prjnew prjpanel' }, el('span', {}, 'Panel – víc desek na jednom polotovaru'), el('span', { class: 'muted small' }, st.board && !st.panel ? 'otevřená deska se vloží jako první' : 'desky přidáš v sekci Panel vlevo'), el('button', { class: 'btn small', onclick: () => { d.close(); newPanel().catch(e => toast(e.message, true)); } }, 'Nový panel…')));
+    if (!pickForPanel && appMode !== 'part') body.append(el('div', { class: 'prjnew prjpanel' }, el('span', {}, 'Panel – víc desek na jednom polotovaru'), el('span', { class: 'muted small' }, st.board && !st.panel ? 'otevřená deska se vloží jako první' : 'desky přidáš v sekci Panel vlevo'), el('button', { class: 'btn small', onclick: () => { d.close(); newPanel().catch(e => toast(e.message, true)); } }, 'Nový panel…')));
     // složka
     body.append(el('div', { class: 'prjdir' }, el('span', { class: 'muted small' }, 'Složka projektů: '), el('code', {}, data.dir),
       host.native ? el('button', { class: 'btn small', onclick: async () => { try { const j = await (await api('pick-dir', { start: data.dir })).json(); if (j.path) { localStorage.setItem(PRJ_DIR_LS, j.path); draw(); } } catch (e) { toast(e.message, true); } } }, 'Změnit…') : null,
@@ -1643,17 +1696,17 @@ async function openProjectsDlg({ pickForPanel = false } = {}) {
     if (!data.projects.length) list.append(el('p', { class: 'muted' }, data.missing ? 'Složka zatím neexistuje – vytvoří se při uložení prvního projektu.' : 'Zatím žádné projekty.'));
     for (const p of data.projects) {
       let meta = {}; try { meta = typeof p.meta === 'string' ? JSON.parse(p.meta) : (p.meta || {}); } catch {}
-      const name = prjBase(p.path), cur = st.project && st.project.path === p.path;
+      const name = prjBase(p.path), cur = (st.project && st.project.path === p.path) || (st.partProject && st.partProject.path === p.path);
       list.append(el('div', { class: 'prjcard' + (cur ? ' cur' : '') },
-        el('button', { class: 'prjthumb', title: 'Otevřít', onclick: async () => { d.close(); try { await openProjectFile(p.path); } catch (e) { toast(e.message, true); } } }, meta.thumb ? el('img', { src: meta.thumb, alt: '' }) : el('span', { class: 'muted' }, 'bez náhledu')),
-        el('div', { class: 'prjinfo' }, el('b', {}, name), el('span', { class: 'muted small' }, [meta.panel ? `Panel · ${meta.panel} ${pl(meta.panel, 'deska', 'desky', 'desek')}` : (p.board || meta.board), meta.size ? `${cz(meta.size.w)} × ${cz(meta.size.h)} mm` : null, meta.map ? 's mapou' : null].filter(Boolean).join(' · ')),
+        el('button', { class: 'prjthumb', title: 'Otevřít', onclick: async () => { d.close(); try { await openProjectFile(p.path); } catch (e) { toast(e.message, true); } } }, meta.thumb ? el('img', { src: meta.thumb, alt: '' }) : el('span', { class: 'muted' }, meta.part ? 'Díl (G-kódy)' : 'bez náhledu')),
+        el('div', { class: 'prjinfo' }, el('b', {}, name), el('span', { class: 'muted small' }, [meta.part ? `Díl · ${meta.programs} ${pl(meta.programs, 'program', 'programy', 'programů')}` : meta.panel ? `Panel · ${meta.panel} ${pl(meta.panel, 'deska', 'desky', 'desek')}` : (p.board || meta.board), meta.part ? meta.stock : null, meta.size ? `${cz(meta.size.w)} × ${cz(meta.size.h)} mm` : null, meta.map ? 's mapou' : null].filter(Boolean).join(' · ')),
           el('span', { class: 'muted small' }, new Date(p.mtime).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + (cur ? ' · otevřený' : ''))),
         el('div', { class: 'prjbtns' },
-          st.panel && !meta.panel ? el('button', { class: 'btn small' + (pickForPanel ? ' primary' : ''), title: 'Přidat desku z projektu do otevřeného panelu', onclick: async () => { try { await addProjectToPanel(p.path); toast(`${name} přidán do panelu.`); } catch (e) { toast(e.message, true); } } }, '+ Do panelu') : null,
+          st.panel && !meta.panel && !meta.part ? el('button', { class: 'btn small' + (pickForPanel ? ' primary' : ''), title: 'Přidat desku z projektu do otevřeného panelu', onclick: async () => { try { await addProjectToPanel(p.path); toast(`${name} přidán do panelu.`); } catch (e) { toast(e.message, true); } } }, '+ Do panelu') : null,
           pickForPanel ? null : el('button', { class: 'btn small primary', onclick: async () => { d.close(); try { await openProjectFile(p.path); } catch (e) { toast(e.message, true); } } }, 'Otevřít'),
-          el('button', { class: 'btn small', onclick: async () => { const n = prompt('Nový název projektu:', name); if (!n || n === name) return; try { const j = await (await api('projects/rename', { dir: data.dir, path: p.path, name: n.trim() })).json(); if (cur) { st.project = { path: j.path, name: prjBase(j.path) }; renderBoardInfo(); } draw(); } catch (e) { toast(e.message, true); } } }, 'Přejmenovat'),
+          el('button', { class: 'btn small', onclick: async () => { const n = prompt('Nový název projektu:', name); if (!n || n === name) return; try { const j = await (await api('projects/rename', { dir: data.dir, path: p.path, name: n.trim() })).json(); if (cur) { if (meta.part) st.partProject = { path: j.path, name: prjBase(j.path) }; else st.project = { path: j.path, name: prjBase(j.path) }; renderBoardInfo(); } draw(); } catch (e) { toast(e.message, true); } } }, 'Přejmenovat'),
           el('button', { class: 'btn small', onclick: async () => { const n = prompt('Název kopie:', name + ' (kopie)'); if (!n) return; try { const t = await (await api('read?path=' + encodeURIComponent(p.path))).text(); await api('projects/save', { dir: data.dir, name: n.trim(), text: t, noOverwrite: true }); draw(); } catch (e) { toast(e.message, true); } } }, 'Duplikovat'),
-          el('button', { class: 'iconbtn', title: 'Smazat projekt', onclick: async () => { if (!confirm(`Smazat projekt „${name}“? Soubor se smaže ze složky projektů.`)) return; try { await api('projects/delete', { dir: data.dir, path: p.path }); if (cur) { st.project = null; renderBoardInfo(); } draw(); } catch (e) { toast(e.message, true); } } }, '✕'))));
+          el('button', { class: 'iconbtn', title: 'Smazat projekt', onclick: async () => { if (!confirm(`Smazat projekt „${name}“? Soubor se smaže ze složky projektů.`)) return; try { await api('projects/delete', { dir: data.dir, path: p.path }); if (cur) { if (meta.part) st.partProject = null; else st.project = null; renderBoardInfo(); } draw(); } catch (e) { toast(e.message, true); } } }, '✕'))));
     }
     body.append(list);
     if (st.board) body.append(el('div', { class: 'mrow' }, el('button', { class: 'btn small', onclick: async () => { download(`${CAM.fileSafe(st.project?.name || st.board.name)}.kimill`, await projectText(st.project?.name || st.board.name)); } }, 'Uložit kopii jinam (stáhnout)…'), el('span', { class: 'muted small' }, 'Projekt = deska, nastavení, úpravy, zaškrtnuté programy a výšková mapa.')));
@@ -1675,6 +1728,8 @@ async function renderRecentProjects(box) {
 async function openProject(text, path = null) {
   const prj = JSON.parse(text);
   if (!prj.kimillProject && !prj.cumillProject) throw new Error('Soubor není projekt KiMillu.');
+  if (prj.part) return openPartProject(prj, path);
+  if (appMode === 'part') setMode('pcb', { tab: false });
   S = migrateS(merge(CAM.defaults(), prj.S)); saveSettings();
   try { localStorage.setItem('cumill.board.' + prj.board, JSON.stringify(prj.B)); } catch {}
   // deska: aktuální soubor z KiCadu, pokud ještě existuje (a jde sledovat změny), jinak uložená kopie
@@ -1984,7 +2039,7 @@ $('#btnPrint').addEventListener('click', () => openPrintDlg());
 let machineUI = null;
 // je bod (strojové souřadnice strany) na některé desce, aspoň `inset` mm od okraje?
 function boardInside(side, inset = 1) {
-  if (!st.board || !st.res) return null;
+  if (appMode === 'part' || !st.board || !st.res) return null;
   const f = st.res.sides[side].fwd, outer = G.offset((st.board.outlines || [st.board.outline]).map(l => l.map(f)), -inset);
   const holes = (st.board.inner || []).map(l => l.map(f));
   if (!outer.length) return null;
@@ -2007,24 +2062,20 @@ function getMachine() {
     api, toast, download, fileName, boardSimInfo, timeCal, timeFactor, journal, journalSave,
     mapChanged: () => { autosaveSoon(); renderOps(); },
     applyToolValues: (id, v) => { const t = S.tools.find(x => x.id === id); if (!t) return; Object.assign(t, v); toolsChanged(); flushTools(); },
-    getS: () => S, getRes: () => st.res, boardName: () => st.board?.name || '',
-    isEnabled: op => st.enabled[op.id] !== false, originDesc: originCz,
-    boardOutlineBB: side => st.board && st.res ? G.bbox((st.board.outlines || [st.board.outline]).map(l => l.map(st.res.sides[side].fwd))) : null,
+    getS: () => S, getRes: () => curRes(), boardName: () => appMode === 'part' ? (PART?.job().name || 'Díl') : st.board?.name || '',
+    isEnabled: op => op.part ? getPart().isEnabled(op) : st.enabled[op.id] !== false, originDesc: () => appMode === 'part' ? getPart().originText() : originCz(),
+    partIssues: (op, machine) => getPart().issues(op, machine), partStock: () => getPart().stockText(), partMode: () => appMode === 'part',
+    boardOutlineBB: side => appMode !== 'part' && st.board && st.res ? G.bbox((st.board.outlines || [st.board.outline]).map(l => l.map(st.res.sides[side].fwd))) : null,
     // je bod (strojové souřadnice strany) na některé desce, aspoň `inset` mm od okraje?
     boardInside,
-    boardHoles: side => st.board && st.res ? st.board.holes.filter(h => !h.slot).map(h => { const [x, y] = st.res.sides[side].fwd([h.x, h.y]); return { x, y, d: h.d }; }) : [],
-    openGcodeFiles: async () => {
-      if (host.native) {
-        const j = await (await api('open', { start: '', kind: 'gcode' })).json();
-        return j.paths?.length ? Promise.all(j.paths.map(p => readSource({ path: p, name: p.split(/[\\/]/).pop() }))) : [];
-      }
-      return new Promise(res => { const i = el('input', { type: 'file', multiple: true, accept: '.nc,.ngc,.gcode,.gc,.tap,.cnc,.txt' }); i.addEventListener('change', async () => res(await Promise.all([...i.files].map(async f => ({ name: f.name, text: await f.text() }))))); i.click(); });
-    },
+    boardHoles: side => appMode !== 'part' && st.board && st.res ? st.board.holes.filter(h => !h.slot).map(h => { const [x, y] = st.res.sides[side].fwd([h.x, h.y]); return { x, y, d: h.d }; }) : [],
+    openGcodeFiles: pickGcodeFiles,
   });
   return machineUI;
 }
 // polotovar a motiv mědi ve strojových souřadnicích strany, na které program běží
 function boardSimInfo(op) {
+  if (op.part) return getPart().simInfo(op);
   const b = st.board, res = st.res; if (!b || !res) return {};
   const tf = res.sides[op.side].fwd;
   const obb = G.bbox((b.outlines || [b.outline]).map(l => l.map(tf)));
@@ -2055,7 +2106,8 @@ function showGcode(id) {
     if (keepView && gvs.lastText === op.gcode) return;
     gvs.lastText = op.gcode;
     gv.load(op.gcode, { name: fileName(op), ...boardSimInfo(op), keepView });
-    if (st.sel !== op.id) { st.sel = op.id; viewer.setOpts({ opId: op.id }); renderOps(); }
+    if (op.part) { if (PART.job().sel !== op.id) PART.job().sel = op.id; }
+    else if (st.sel !== op.id) { st.sel = op.id; viewer.setOpts({ opId: op.id }); renderOps(); }
   } else {
     if (keepView && gvs.lastText === src.ext.text) return;
     gvs.lastText = src.ext.text;
@@ -2142,9 +2194,79 @@ viewer.onPinAdd = (p, scale) => {
 
 }
 bindPinHandlers();
-window._cm = { printSvg, newPanel, addInstance, arrangePanel, reloadPanel, pinsAroundPanel, saveProject, openProject, exportLaser, undoRedo, getMachine: () => getMachine(), recompute, gvs, setTab, addGcodeFiles, st, viewer, hitTest, loadSources, saveAll, host, get B() { return B; }, get S() { return S; } }; // ladění
+// ---------- režim DPS / Díl ----------
+async function pickGcodeFiles() {
+  if (host.native) {
+    const j = await (await api('open', { start: '', kind: 'gcode' })).json();
+    return j.paths?.length ? Promise.all(j.paths.map(async p => { const r = await readSource({ path: p, name: p.split(/[\\/]/).pop() }); return { ...r, path: p }; })) : [];
+  }
+  return new Promise(res => { const i = el('input', { type: 'file', multiple: true, accept: '.nc,.ngc,.gcode,.gc,.tap,.cnc,.txt' }); i.addEventListener('change', async () => res(await Promise.all([...i.files].map(async f => ({ name: f.name, text: await f.text(), mtime: f.lastModified }))))); i.click(); });
+}
+const MODE_LS = 'cumill.mode';
+let appMode = (() => { try { return localStorage.getItem(MODE_LS) === 'part' ? 'part' : 'pcb'; } catch { return 'pcb'; } })();
+let PART = null;
+function getPart() {
+  if (!PART) {
+    PART = initPart({
+      root: $('#partTab'), el, numInput, selectBox, toast, db, getS: () => S, toolLabel: CAM.toolLabel,
+      toolsChanged: () => { toolsChanged(); }, openGcodeFiles: pickGcodeFiles, openProjects: () => openProjectsDlg(),
+      readPath: path => readSource({ path, name: path.split(/[\\/]/).pop() }),
+      onJobChange: () => { renderBoardInfo(); autosavePart(); machineUI?.refreshProgs?.(); },
+      newJob: () => { st.partProject = null; },
+    });
+    PART.restore();
+  }
+  return PART;
+}
+const curRes = () => appMode === 'part' ? getPart().res() : st.res;
+function setMode(m, { tab = true } = {}) {
+  appMode = m === 'part' ? 'part' : 'pcb';
+  try { localStorage.setItem(MODE_LS, appMode); } catch {}
+  document.body.classList.toggle('mode-part', appMode === 'part');
+  for (const b of $('#modeSeg').querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === appMode);
+  $('#mainTab [data-tab="board"]').hidden = appMode === 'part';
+  $('#mainTab [data-tab="part"]').hidden = appMode !== 'part';
+  if (appMode === 'part') getPart();
+  gvs.cur = null; gvs.lastText = null;
+  renderBoardInfo();
+  machineUI?.refreshProgs?.();
+  if (tab) setTab(appMode === 'part' ? (gvs.tab === 'board' ? 'part' : gvs.tab) : (gvs.tab === 'part' ? 'board' : gvs.tab));
+}
+$('#modeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.mode !== appMode) setMode(b.dataset.mode); });
+$('#btnOpen').addEventListener('click', e => { if (appMode === 'part') { e.stopImmediatePropagation(); getPart().openFiles(); } }, true);
+// projekt dílu (.kimill s „part“): programy, pořadí, nástroje, polotovar
+function partProjectText(name) {
+  const j = getPart().job();
+  const meta = { name, part: true, board: j.name || name, programs: j.files.length, stock: getPart().stockText() };
+  return JSON.stringify({ kimillProject: 1, meta, version: CAM.VERSION, saved: new Date().toISOString(), board: j.name || name, part: j });
+}
+async function savePartProjectAs(name) {
+  if (!getPart().job().files.length) throw new Error('Zakázka nemá žádné programy.');
+  const j = await (await api('projects/save', { dir: prjDir(), name, text: partProjectText(name), noOverwrite: true })).json();
+  st.partProject = { path: j.path, name: prjBase(j.path) }; renderBoardInfo();
+  toast(`Projekt „${st.partProject.name}“ uložen – změny se teď ukládají průběžně.`);
+}
+let partPrjT = null;
+function autosavePart() {
+  if (!st.partProject) return;
+  clearTimeout(partPrjT);
+  partPrjT = setTimeout(async () => { try { await api('projects/save', { path: st.partProject.path, text: partProjectText(st.partProject.name) }); } catch (e) { toast('Projekt se nepodařilo uložit: ' + e.message, true); } }, 1500);
+}
+async function openPartProject(prj, path) {
+  setMode('part', { tab: false });
+  // programy: aktuální soubory z disku, pokud ještě existují, jinak kopie z projektu
+  const job = prj.part; let missing = 0;
+  if (host.native) for (const f of job.files) if (f.path) { try { const j = await (await api('stat?path=' + encodeURIComponent(f.path))).json(); if (j.mtime > 0) { const r = await readSource({ path: f.path, name: f.name }); f.text = r.text; } else missing++; } catch { missing++; } }
+  st.partProject = null;
+  getPart().setJob(job);
+  st.partProject = path ? { path, name: prjBase(path) } : null;
+  renderBoardInfo(); setTab('part');
+  toast(`Díl „${st.partProject?.name || job.name}“ načten${st.partProject ? ' – změny se ukládají průběžně' : ''}.` + (missing ? ` ${missing} ${pl(missing, 'program na disku chybí', 'programy na disku chybí', 'programů na disku chybí')} – použity kopie z projektu.` : ''), !!missing);
+}
+window._cm = { getPart, setMode, curRes, savePartProjectAs, openProjectFile, toolsChanged, printSvg, newPanel, addInstance, arrangePanel, reloadPanel, pinsAroundPanel, saveProject, openProject, exportLaser, undoRedo, getMachine: () => getMachine(), recompute, gvs, setTab, addGcodeFiles, st, viewer, hitTest, loadSources, saveAll, host, get B() { return B; }, get S() { return S; } }; // ladění
 (async () => {
   await detectHost();
+  setMode(appMode, { tab: false }); if (appMode === 'part') setTab('part');
   renderSettings();
   renderLayerChips();
   viewer.setOpts({ layers: st.layers });

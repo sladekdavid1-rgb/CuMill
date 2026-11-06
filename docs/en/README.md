@@ -30,6 +30,7 @@ FlatCAM + UGS + Candle trio.
 | 13 | [Glossary](13-glossary.md) | V-bit, zero, homing, GRBL… for complete beginners |
 | 14 | [Material test and Tools tab](14-material-test.md) | test cuts for F / S / Z, tool library and results |
 | 15 | [Panel – several boards at once](15-panel.md) | several boards on one blank, mouse arrangement, tool-by-tool production |
+| 16 | [Part – finished G-code from Fusion 360](16-part.md) | job of several programs, tools, limits, material-removal simulation, confirmation |
 
 ## Who is it for
 

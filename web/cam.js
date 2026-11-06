@@ -3,9 +3,9 @@ import * as G from './geom.js';
 import { textToLines } from './text.js';
 
 export const APP = 'KiMill';
-export const VERSION = '1.5';
+export const VERSION = '1.6';
 
-export const TOOL_TYPES = { v: 'V-fréza', end: 'Fréza', drill: 'Vrták' };
+export const TOOL_TYPES = { v: 'V-fréza', end: 'Fréza', ball: 'Kulová fréza', drill: 'Vrták' };
 export function defaultTools() {
   return [
     { id: 'v30', name: 'V-fréza 30° hrot 0,1', type: 'v', dia: 0.1, vTip: 0.1, vAngle: 30, feed: 400, plunge: 100, spindle: 12000, step: 0.05 },
@@ -29,6 +29,7 @@ export function defaults() {
     rest: { F: false, B: false, tool: 'e18', depth: 0.1, overlap: 40, isoOverlap: 0.1, minDist: 0 },
     silk: { F: false, B: false, tool: 'v30', depth: 0.08, texts: true, graphics: true, avoid: 'tracks', margin: 0.15 },
     ov: {}, // přepsané parametry jednotlivých operací {klíč: {feed, plunge, spindle, step, depth}}
+    limits: { mats: ['Hliník', 'Mosaz', 'Dřevo', 'Plast'], by: {} }, // režim Díl: limity nástrojů podle materiálu {materiál: {idNástroje: {maxFeed…}}}
   };
 }
 // nastavení vázané na konkrétní desku (pamatuje se u desky, přežije změny v KiCadu)
