@@ -3,7 +3,7 @@ import * as G from './geom.js';
 import { textToLines } from './text.js';
 
 export const APP = 'KiMill';
-export const VERSION = '1.6';
+export const VERSION = '1.6.1';
 
 export const TOOL_TYPES = { v: 'V-fréza', end: 'Fréza', ball: 'Kulová fréza', drill: 'Vrták' };
 export function defaultTools() {
@@ -561,17 +561,9 @@ export function probePoints(board, S, sides, pins = []) {
     const tf = sides[sd]; if (!tf) continue;
     let best = null, bd = Infinity;
     for (const p of good) { const q = tf.fwd(p), dd = Math.hypot(q[0], q[1]); if (dd < bd) { bd = dd; best = q; } }
+    // bez rámečku (polotovar ≈ deska) se bod nevolí: měď uvnitř desky nemusí být spojená s klipem
+    // (měřilo by se do izolovaného ostrůvku a nástroj by tlačil do desky) – měří se po potvrzení tam, kde stojí nástroj
     if (best) out[sd] = { x: Math.round(best[0] * 10) / 10, y: Math.round(best[1] * 10) / 10, where: 'frame' };
-    else {
-      // bez rámečku (polotovar = deska): největší kus mědi, bod hluboko uvnitř
-      let pt = null, area = 0;
-      for (const L of [sd === 'bottom' ? 'B.Cu' : 'F.Cu']) for (const it of board.islands?.[L] || []) {
-        const a = Math.abs(G.area(it.outer)); if (a <= area) continue;
-        const inner = G.offset([it.outer], -Math.min(1.5, Math.sqrt(a) / 4));
-        if (inner.length && inner[0].length) { area = a; pt = inner[0][0]; }
-      }
-      if (pt) { const q = tf.fwd(pt); out[sd] = { x: Math.round(q[0] * 10) / 10, y: Math.round(q[1] * 10) / 10, where: 'copper' }; }
-    }
   }
   return out;
 }

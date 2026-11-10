@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.1 – 2026-11
+- Z probing: no fallback to a copper area inside the board when the blank has no frame (that copper may not be
+  connected to the clip) – KiMill asks and probes where the tool stands; with a known zero the search goes at most
+  3 mm below it (new setting “Hledat nejvýš pod deskou”), so a missing contact stops GRBL instead of pushing into the board
+- Design view: a note when the board is milled from the bottom (mirrored on the machine) with a jump to the Machine view
+- Part: start waits for the material-removal simulation; a .kimill part project can be dropped on the Part tab
+- “+ Projekt…” in a panel: clicking the thumbnail adds the board (did open the project); part and panel projects are not offered
+
 ## 1.6 – 2026-11
 - **Part mode** (switch **DPS | Díl** next to the logo) – a job made of finished G-code programs from Fusion 360
   (one file per tool, Grbl post): add all `.nc` at once or drop them in, reorder by drag & drop or ▲ ▼, same file name

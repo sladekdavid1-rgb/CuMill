@@ -405,6 +405,8 @@ export function initPart(ctx) {
     root.classList.remove('dragover');
     if (![...e.dataTransfer.types].includes('Files')) return;
     e.preventDefault();
+    const prj = [...e.dataTransfer.files].find(f => /\.kimill$/i.test(f.name));
+    if (prj) { ctx.openProjectText?.(await prj.text()); return; }
     const fs = [...e.dataTransfer.files].filter(f => /\.(nc|ngc|gcode|gc|tap|cnc|txt)$/i.test(f.name));
     if (!fs.length) { ctx.toast('Přetáhni soubory .nc (G-kód z Fusionu).', true); return; }
     addFiles(await Promise.all(fs.map(async f => ({ name: f.name, text: await f.text(), path: f.path || null, mtime: f.lastModified }))));

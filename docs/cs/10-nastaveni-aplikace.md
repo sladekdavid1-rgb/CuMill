@@ -56,7 +56,8 @@ pro daný typ operace upraví (např. *Izolace × 1,18*). **Vynulovat kalibraci*
 | **Rychle / Pomalu** | rychlost hledání (mm/min) |
 | **Odjezd** | zvednutí mezi rychlým a pomalým měřením |
 | **Začít měřit Z nad deskou** | (výchozí 10 mm) když je nula Z už nastavená, nástroj před měřením vyjede do této výšky nad desku a teprve pak hledá povrch – nový nástroj může být delší i kratší než předchozí (delší nejvýš o tuto hodnotu) |
-| **Hledat Z (sonda Z)** | jak daleko dolů se hledá povrch (při známé nule navíc pod výšku startu, tedy až o tolik mm kratší nástroj) |
+| **Hledat nejvýš pod deskou** | (výchozí 3 mm) při známé nule Z se hledá od výšky startu nejvýš o tolik pod dosavadní nulu – nový nástroj smí být o tolik kratší; když se nedotkne (klip nemá kontakt), GRBL zastaví s alarmem a nástroj netlačí do desky |
+| **Hledat Z (sonda Z)** | jak daleko dolů se hledá povrch při prvním měření (nula Z ještě není známá) |
 | **Kde měřit Z nástroje** | *Automaticky* – nad měď vně desky (rámeček polotovaru), *Ručně* – zadané X Y v pracovních souřadnicích, *Kde stojí nástroj* – bez přejezdu |
 | **Po změření vyjet o** | zvednutí po dokončení |
 | **Tloušťka destičky** | u dotykové destičky – o kolik je její povrch nad deskou |

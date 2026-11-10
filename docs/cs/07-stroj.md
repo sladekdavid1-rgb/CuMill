@@ -103,7 +103,9 @@ Ovládání:
 - **Změřit Z sondou** – změří povrch desky a nastaví Z0 (klipem na mědi nebo dotykovou sondou,
   podle *Nastavení → Sonda*). Nástroj nejdřív **najede nad měď, která zůstala** – v nule bývá
   měď už odfrézovaná a nástroj by neměl kam ťuknout. Automaticky je to rámeček polotovaru vně
-  desky (za ořezem) co nejblíž nule; když rámeček není, velký kus mědi na desce. Jde to změnit
+  desky (za ořezem) co nejblíž nule. Když rámeček není (polotovar je skoro stejně velký jako deska),
+  KiMill uvnitř desky neměří – měď tam nemusí být spojená s klipem. Zeptá se a změří až tam, kam nástroj
+  sám najedeš. Při známé nule hledá nejvýš 3 mm pod ni (bez kontaktu GRBL zastaví). Jde to změnit
   v *Nastavení → Sonda → Kde měřit Z nástroje* (automaticky / ručně X Y / kde stojí nástroj).
 
 ---

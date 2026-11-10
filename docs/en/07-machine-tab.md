@@ -102,7 +102,9 @@ Buttons:
   per *Settings → Probe*).
   The tool first **moves over copper that is left** – at the zero the copper is often already milled
   away and the tool would have nothing to touch. Automatically it is the blank frame outside the board
-  (beyond the cut-out) nearest to the zero; without a frame, a large copper area on the board. Change it in
+  (beyond the cut-out) nearest to the zero. Without a frame (blank about as large as the board) KiMill does not
+  probe inside the board – that copper may not be connected to the clip; it asks and probes where you move the
+  tool. With a known zero it searches at most 3 mm below it (no contact = GRBL stops). Change it in
   *Nastavení → Sonda → Kde měřit Z nástroje* (where to probe Z: automatic / manual X Y / where the tool is).
 
 ---

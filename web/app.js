@@ -425,7 +425,20 @@ function applyResult(res) {
   renderOps(); renderChecks(); renderSteps(); renderHoleTable(); renderCopperEdits(); renderGeoLayers(); renderPinList(); renderTabList(); refreshVisibility(); renderSummaries(); renderBoardInfo(); renderInspector();
   if (gvs.tab === 'gcode') showGcode(gvs.cur?.startsWith('op:') ? 'op:' + st.sel : gvs.cur);
   if (machineUI) machineUI.refresh();
+  updMirrorHint();
 }
+// v Návrhu je deska jako v KiCadu (shora, nezrcadlená) – spodní strana se ale frézuje zrcadleně: upozornit a nabídnout pohled Stroj
+function updMirrorHint() {
+  const h = $('#mirHint'); if (!h) return;
+  const bot = st.res?.ops.find(o => o.side === 'bottom');
+  h.hidden = !(bot && st.mode !== 'machine' && !st.panel);
+  if (!h.hidden) h.textContent = `${st.res.ops.every(o => o.side === 'bottom') ? 'Deska se frézuje jen zespodu' : 'Spodní strana se frézuje'} – na stroji bude zrcadleně (osa ${S.setup.mirrorAxis === 'h' ? 'vodorovná' : 'svislá'}). Ukázat ve Stroji →`;
+}
+$('#mirHint')?.addEventListener('click', () => {
+  const bot = st.res?.ops.find(o => o.side === 'bottom'); if (!bot) return;
+  st.sel = bot.id; viewer.setOpts({ opId: st.sel }); renderOps();
+  document.querySelector('#viewMode [data-mode="machine"]').click();
+});
 function boardChanged() { saveBoardSettings(); recompute(); }
 
 // ---------- formulář nastavení ----------
@@ -1394,7 +1407,7 @@ document.querySelectorAll('#toolMode button').forEach(b => b.addEventListener('c
 document.querySelectorAll('#viewMode button').forEach(b => b.addEventListener('click', () => {
   st.mode = b.dataset.mode;
   document.querySelectorAll('#viewMode button').forEach(x => x.classList.toggle('on', x === b));
-  viewer.setOpts({ mode: st.mode }); viewer.fit();
+  viewer.setOpts({ mode: st.mode }); viewer.fit(); updMirrorHint();
 }));
 $('#btnFit').addEventListener('click', () => viewer.fit());
 
@@ -1696,9 +1709,12 @@ async function openProjectsDlg({ pickForPanel = false } = {}) {
     if (!data.projects.length) list.append(el('p', { class: 'muted' }, data.missing ? 'Složka zatím neexistuje – vytvoří se při uložení prvního projektu.' : 'Zatím žádné projekty.'));
     for (const p of data.projects) {
       let meta = {}; try { meta = typeof p.meta === 'string' ? JSON.parse(p.meta) : (p.meta || {}); } catch {}
+      if (pickForPanel && (meta.part || meta.panel)) continue; // do panelu jde jen deska
       const name = prjBase(p.path), cur = (st.project && st.project.path === p.path) || (st.partProject && st.partProject.path === p.path);
       list.append(el('div', { class: 'prjcard' + (cur ? ' cur' : '') },
-        el('button', { class: 'prjthumb', title: 'Otevřít', onclick: async () => { d.close(); try { await openProjectFile(p.path); } catch (e) { toast(e.message, true); } } }, meta.thumb ? el('img', { src: meta.thumb, alt: '' }) : el('span', { class: 'muted' }, meta.part ? 'Díl (G-kódy)' : 'bez náhledu')),
+        el('button', { class: 'prjthumb', title: pickForPanel ? 'Přidat do panelu' : 'Otevřít', onclick: async () => {
+          if (pickForPanel) { try { await addProjectToPanel(p.path); toast(`${name} přidán do panelu.`); } catch (e) { toast(e.message, true); } return; }
+          d.close(); try { await openProjectFile(p.path); } catch (e) { toast(e.message, true); } } }, meta.thumb ? el('img', { src: meta.thumb, alt: '' }) : el('span', { class: 'muted' }, meta.part ? 'Díl (G-kódy)' : 'bez náhledu')),
         el('div', { class: 'prjinfo' }, el('b', {}, name), el('span', { class: 'muted small' }, [meta.part ? `Díl · ${meta.programs} ${pl(meta.programs, 'program', 'programy', 'programů')}` : meta.panel ? `Panel · ${meta.panel} ${pl(meta.panel, 'deska', 'desky', 'desek')}` : (p.board || meta.board), meta.part ? meta.stock : null, meta.size ? `${cz(meta.size.w)} × ${cz(meta.size.h)} mm` : null, meta.map ? 's mapou' : null].filter(Boolean).join(' · ')),
           el('span', { class: 'muted small' }, new Date(p.mtime).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + (cur ? ' · otevřený' : ''))),
         el('div', { class: 'prjbtns' },
@@ -2064,7 +2080,7 @@ function getMachine() {
     applyToolValues: (id, v) => { const t = S.tools.find(x => x.id === id); if (!t) return; Object.assign(t, v); toolsChanged(); flushTools(); },
     getS: () => S, getRes: () => curRes(), boardName: () => appMode === 'part' ? (PART?.job().name || 'Díl') : st.board?.name || '',
     isEnabled: op => op.part ? getPart().isEnabled(op) : st.enabled[op.id] !== false, originDesc: () => appMode === 'part' ? getPart().originText() : originCz(),
-    partIssues: (op, machine) => getPart().issues(op, machine), partStock: () => getPart().stockText(), partMode: () => appMode === 'part',
+    partIssues: (op, machine) => getPart().issues(op, machine), partWaitSim: () => getPart().waitSim(20000), partStock: () => getPart().stockText(), partMode: () => appMode === 'part',
     boardOutlineBB: side => appMode !== 'part' && st.board && st.res ? G.bbox((st.board.outlines || [st.board.outline]).map(l => l.map(st.res.sides[side].fwd))) : null,
     // je bod (strojové souřadnice strany) na některé desce, aspoň `inset` mm od okraje?
     boardInside,
@@ -2213,6 +2229,7 @@ function getPart() {
       readPath: path => readSource({ path, name: path.split(/[\\/]/).pop() }),
       onJobChange: () => { renderBoardInfo(); autosavePart(); machineUI?.refreshProgs?.(); },
       newJob: () => { st.partProject = null; },
+      openProjectText: async text => { try { await openProject(text, null); } catch (e) { toast(e.message, true); } },
     });
     PART.restore();
   }
