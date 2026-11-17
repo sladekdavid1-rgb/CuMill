@@ -284,6 +284,8 @@ export function initMachine(ctx) {
     portSel.innerHTML = '';
     for (const p of M.ports) portSel.append(el('option', { value: p, selected: p === M.port }, p === 'SIMULÁTOR' ? 'Simulátor (bez stroje)' : p));
     if (!M.port && M.ports.length) M.port = M.ports[0];
+    portSel.title = /Linux/i.test(navigator.platform || navigator.userAgent) && !M.ports.some(p => p !== 'SIMULÁTOR')
+      ? 'Žádný /dev/ttyUSB* ani /dev/ttyACM* – je frézka zapnutá a připojená USB kabelem?' : '';
   }
   async function connect() {
     M.port = portSel.value; save();

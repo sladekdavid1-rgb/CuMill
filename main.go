@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -103,7 +104,18 @@ func main() {
 	if runWindow(url) {
 		os.Exit(0)
 	}
-	webviewMode.Store(os.Getenv("KIMILL_NATIVE") == "1") // jen pro testy API
+	// Linux: dialogy přes zenity / kdialog -> soubory přes cesty jako ve Windows (KIMILL_NATIVE=0/1 vynutí)
+	switch os.Getenv("KIMILL_NATIVE") {
+	case "1":
+		webviewMode.Store(true)
+	case "0":
+		webviewMode.Store(false)
+	default:
+		webviewMode.Store(hostDialogs())
+	}
+	if runtime.GOOS != "windows" {
+		fmt.Printf("KiMill běží na %s (okno zavřeš normálně, server se pak sám ukončí)\n", url)
+	}
 
 	// 2) záloha: okno prohlížeče v režimu aplikace
 	lastPing.Store(time.Now().UnixNano())
@@ -132,15 +144,31 @@ func main() {
 // okno Edge / Chrome v režimu --app s vlastním profilem
 func openBrowserWindow(url string) *exec.Cmd {
 	if runtime.GOOS != "windows" {
-		for _, b := range []string{"chromium", "google-chrome", "microsoft-edge"} {
-			if p, err := exec.LookPath(b); err == nil {
-				cmd := exec.Command(p, appArgs(url)...)
-				if cmd.Start() == nil {
-					return cmd
+		// Chromium / Chrome / Edge / Brave v režimu aplikace (samostatné okno bez lišty prohlížeče)
+		for _, b := range []string{"chromium", "chromium-browser", "google-chrome", "google-chrome-stable", "microsoft-edge", "microsoft-edge-stable", "brave-browser", "vivaldi"} {
+			p, err := exec.LookPath(b)
+			if err != nil {
+				continue
+			}
+			args := append(appArgs(url), "--class=KiMill") // ikona z nabídky aplikací (StartupWMClass)
+			// chromium ze snapu nesmí do skrytých složek v domovské – profil do ~/snap/chromium/common
+			if real, _ := filepath.EvalSymlinks(p); strings.Contains(real, "/snap/") || strings.HasPrefix(p, "/snap/") {
+				h, _ := os.UserHomeDir()
+				d := filepath.Join(h, "snap", "chromium", "common", "KiMill-okno")
+				_ = os.MkdirAll(d, 0o755)
+				for i, a := range args {
+					if strings.HasPrefix(a, "--user-data-dir=") {
+						args[i] = "--user-data-dir=" + d
+					}
 				}
 			}
+			cmd := exec.Command(p, args...)
+			if cmd.Start() == nil {
+				return cmd
+			}
 		}
-		_ = exec.Command("xdg-open", url).Start()
+		// jinak výchozí prohlížeč (Firefox…) – KiMill funguje i v něm, jen jako karta
+		_ = openWithSystem(url)
 		return nil
 	}
 	var cands []string
@@ -181,6 +209,13 @@ func appArgs(url string) []string {
 
 func dataDir(name string) string {
 	dir := os.Getenv("LOCALAPPDATA")
+	if dir == "" && runtime.GOOS == "linux" {
+		// ~/.local/share (data, profil okna s nastavením a knihovnou nástrojů – ne do mezipaměti)
+		if dir = os.Getenv("XDG_DATA_HOME"); dir == "" {
+			h, _ := os.UserHomeDir()
+			dir = filepath.Join(h, ".local", "share")
+		}
+	}
 	if dir == "" {
 		dir, _ = os.UserCacheDir()
 	}
@@ -191,7 +226,7 @@ func dataDir(name string) string {
 }
 
 func fatal(msg string) {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "linux" {
 		showError(msg)
 	} else {
 		fmt.Fprintln(os.Stderr, msg)

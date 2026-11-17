@@ -5,6 +5,7 @@
 ## What you need
 
 - **Windows 10 or 11** (64-bit). KiMill is a single file `KiMill.exe`; nothing is installed.
+  Or **Linux** (PC and Raspberry Pi) – see [Linux](#linux) below.
 - **Microsoft Edge WebView2** – almost always already present on Windows 10/11 (Office and Teams use it).
 - For machine control: a CNC with **GRBL 1.1** connected via USB (COM serial port, 115200 baud).
 - Boards from **KiCad 6 to 10** (`.kicad_pcb`), or Gerbers and a drill file from any other program.
@@ -36,6 +37,30 @@ opens a board. You can also **drag the board file** from Explorer into the windo
 **(2)** Below the button are your **saved projects** with thumbnails (click = open, everything as you left it)
 and the **recently opened boards**. All projects are under the **Projekt** button at the top
 (see [chapter 5](05-outputs.md#projects)).
+
+## Linux
+
+KiMill also runs on Linux: on a PC (amd64), a Raspberry Pi 4/5 with a 64-bit OS (arm64) and older
+Pis with a 32-bit OS (armv7). It does everything the Windows version does.
+
+1. Download `KiMill-linux.tar.gz` from **Releases** and unpack it.
+2. Run `./install.sh` in that folder. It installs KiMill into your home folder (no sudo) and adds it
+   to the application menu. Uninstall: `./install.sh --remove`.
+3. The installer checks and tells you what is missing:
+   - the **`dialout` group** for access to the machine (`/dev/ttyUSB0`, `/dev/ttyACM0`):
+     `sudo usermod -aG dialout $USER`, then log out and in,
+   - **zenity** (or kdialog on KDE) for file dialogs: `sudo apt install zenity`. Without it files
+     are opened only as copies and *Watch changes* and *Reload* do not work,
+   - **Chromium or Chrome**: KiMill opens in it as its own window. If neither is installed,
+     it opens in the default browser as a tab.
+
+Differences from Windows:
+
+- The machine is listed as `/dev/ttyUSB0` (CH340/FTDI adapter) or `/dev/ttyACM0` (Arduino), not `COM3`.
+- Projects are in **Documents/KiMill/Projekty** as set in the system (`~/Dokumenty` in Czech),
+  settings and the window profile in `~/.local/share/KiMill`.
+- Move settings and the tool library from Windows with **Settings → Backup everything → Export / Import**.
+  Just copy the `.kimill` projects.
 
 ## What KiMill remembers
 

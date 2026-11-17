@@ -3,7 +3,7 @@ import * as G from './geom.js';
 import { textToLines } from './text.js';
 
 export const APP = 'KiMill';
-export const VERSION = '1.6.1';
+export const VERSION = '1.7';
 
 export const TOOL_TYPES = { v: 'V-fréza', end: 'Fréza', ball: 'Kulová fréza', drill: 'Vrták' };
 export function defaultTools() {

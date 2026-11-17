@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build !windows && !linux
 
 package main
 
@@ -14,3 +14,5 @@ func openFilesDialog(start, kind string) ([]string, error) {
 func pickFolderDialog(start string) (string, error) {
 	return "", errors.New("dialog je jen ve Windows")
 }
+
+func hostDialogs() bool { return false }

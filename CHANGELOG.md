@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7 – 2026-11
+- **Linux** (PC amd64, Raspberry Pi arm64 / armv7): serial port via termios (`/dev/ttyUSB*`, `/dev/ttyACM*`,
+  `/dev/ttyAMA*`, exclusive lock, clear messages for missing `dialout` group / busy / unplugged port),
+  file and folder dialogs via zenity or kdialog (paths like on Windows – watch changes, reload, projects),
+  window = Chromium / Chrome / Edge / Brave / Vivaldi in app mode (snap Chromium supported), otherwise the default
+  browser; documents folder from XDG (`~/Dokumenty`), data in `~/.local/share/KiMill`, start-up errors in a dialog
+- `linux/install.sh` (per-user install with menu entry and icon, checks for dialout / zenity / Chromium,
+  `--remove`), `linux/build.sh` builds `dist/KiMill-linux.tar.gz`
+- Go tests of the Linux serial path against the GRBL simulator over a pseudo-terminal (streaming, exclusive access,
+  unplug)
+
 ## 1.6.1 – 2026-11
 - Z probing: no fallback to a copper area inside the board when the blank has no frame (that copper may not be
   connected to the clip) – KiMill asks and probes where the tool stands; with a known zero the search goes at most

@@ -1,0 +1,44 @@
+KiMill pro Linux
+================
+
+Instalace (bez sudo, do domovské složky):
+    tar xzf KiMill-linux.tar.gz
+    cd KiMill-linux
+    ./install.sh
+
+KiMill se objeví v nabídce aplikací. Z terminálu: ~/.local/bin/kimill
+Odinstalace: ./install.sh --remove   (projekty a nastavení zůstanou)
+
+Balíček obsahuje verze pro PC (amd64), Raspberry Pi 4/5 s 64bit systémem (arm64)
+a starší Raspberry Pi / 32bit systém (armv7). Instalátor vybere správnou sám.
+
+Co je potřeba
+-------------
+1. Přístup k sériovému portu frézky (/dev/ttyUSB0 u CH340/FTDI, /dev/ttyACM0 u Arduina):
+       sudo usermod -aG dialout $USER        (Arch/Manjaro: skupina uucp)
+   a pak se odhlásit a přihlásit. Bez toho KiMill při připojení napíše, že nemá oprávnění.
+2. Dialogy pro otevření souborů: zenity (GNOME, Xfce, Cinnamon, MATE) nebo kdialog (KDE)
+       sudo apt install zenity
+   Bez nich KiMill funguje, ale soubory otevírá jen jako kopii (nefunguje sledování změn
+   desky v KiCadu ani „Načíst znovu“).
+3. Okno aplikace: Chromium, Chrome, Edge, Brave nebo Vivaldi (KiMill se otevře jako
+   samostatné okno). Když žádný není, otevře se ve výchozím prohlížeči jako karta.
+       sudo apt install chromium      (Debian, Raspberry Pi OS)
+       sudo snap install chromium     (Ubuntu)
+
+Kde co je
+---------
+Projekty:    ~/Dokumenty/KiMill/Projekty   (podle složky Dokumenty v systému)
+Nastavení:   ~/.local/share/KiMill          (profil okna – knihovna nástrojů, témata…)
+
+Nastavení a knihovna nástrojů se z Windows nepřenáší samo – v KiMillu je
+Nastavení (ozubené kolo) → Záloha všeho → Export / Import (soubor .json);
+projekty (.kimill) stačí zkopírovat.
+
+Tipy
+----
+- KiMill běží jako malý lokální server (127.0.0.1:47823) a okno je Chromium v režimu
+  aplikace. Po zavření okna se server sám ukončí.
+- Spouštění s výpisem do terminálu (při potížích): ~/.local/bin/kimill
+- Raspberry Pi jako počítač u frézky: stačí Pi 4 (4 GB) a víc; simulace a 3D náhledy
+  jsou pomalejší než na PC, ale řízení stroje je stejné.

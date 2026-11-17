@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=KiMill
+GenericName=Frézování DPS a dílů (GRBL)
+Comment=Frézování desek z KiCadu a dílů z Fusionu 360 na CNC s GRBL
+Exec=@BIN@
+Icon=kimill
+Terminal=false
+Categories=Development;Electronics;Engineering;
+Keywords=CNC;GRBL;PCB;KiCad;CAM;G-code;
+StartupWMClass=KiMill

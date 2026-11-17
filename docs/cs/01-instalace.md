@@ -5,6 +5,7 @@
 ## Co potřebuješ
 
 - **Windows 10 nebo 11** (64bit). KiMill je jeden soubor `KiMill.exe`, nic se neinstaluje.
+  Nebo **Linux** (PC i Raspberry Pi) – viz [Linux](#linux) níže.
 - **Microsoft Edge WebView2** – ve Windows 10/11 už skoro vždy je (používá ho i Office a Teams).
 - Pro práci se strojem: frézku s **GRBL 1.1** připojenou přes USB (sériový port COM, 115200 Bd).
 - Desky z **KiCadu 6 až 10** (`.kicad_pcb`), nebo gerbery a vrtací soubor z jiného programu.
@@ -36,6 +37,31 @@ Desku můžeš také **přetáhnout myší** z Průzkumníka přímo do okna.
 **(2)** Pod tlačítkem jsou **uložené projekty** s náhledem (klik = otevřít, vše jak jsi to nechal)
 a **naposledy otevřené desky**. Všechny projekty najdeš tlačítkem **Projekt** nahoře
 (viz [kapitola 5](05-vystupy.md#projekty)).
+
+## Linux
+
+KiMill běží i na Linuxu: na PC (amd64), na Raspberry Pi 4/5 s 64bit systémem (arm64)
+i na starších Pi s 32bit systémem (armv7). Umí totéž co ve Windows.
+
+1. Z **Releases** stáhni `KiMill-linux.tar.gz` a rozbal ho.
+2. Ve složce spusť `./install.sh`. Nainstaluje KiMill do domovské složky (bez sudo)
+   a přidá ho do nabídky aplikací. Odinstalace: `./install.sh --remove`.
+3. Instalátor zkontroluje a napíše, co případně chybí:
+   - **skupina `dialout`** pro přístup k frézce (`/dev/ttyUSB0`, `/dev/ttyACM0`):
+     `sudo usermod -aG dialout $USER`, pak se odhlásit a přihlásit,
+   - **zenity** (nebo kdialog na KDE) pro dialogy otevření souboru: `sudo apt install zenity`.
+     Bez nich se soubory otevírají jen jako kopie a nefunguje *Sledovat změny* ani *Načíst znovu*,
+   - **Chromium nebo Chrome**: KiMill se v něm otevře jako samostatné okno. Když žádný není,
+     otevře se ve výchozím prohlížeči jako karta.
+
+Rozdíly proti Windows:
+
+- Frézka je v seznamu portů jako `/dev/ttyUSB0` (převodník CH340/FTDI) nebo `/dev/ttyACM0`
+  (Arduino), ne `COM3`.
+- Projekty jsou ve složce **Dokumenty/KiMill/Projekty** podle systému (v češtině `~/Dokumenty`),
+  nastavení a profil okna v `~/.local/share/KiMill`.
+- Nastavení a knihovnu nástrojů z Windows přeneseš přes **Nastavení → Záloha všeho → Export / Import**.
+  Projekty `.kimill` stačí zkopírovat.
 
 ## Kde si KiMill co pamatuje
 

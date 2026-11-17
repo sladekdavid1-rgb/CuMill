@@ -2,7 +2,7 @@
 
 *(formerly CuMill)*
 
-**PCB milling from KiCad to a GRBL CNC – CAM, G-code sender and height map in one Windows app.**
+**PCB milling from KiCad to a GRBL CNC – CAM, G-code sender and height map in one app for Windows and Linux.**
 
 KiMill turns a KiCad board (`.kicad_pcb`) into milling programs for a small hobby CNC
 (e.g. CNC 3018 with GRBL 1.1) and sends them straight to the machine. It replaces the usual
@@ -72,6 +72,11 @@ Get `KiMill.exe` and `WebView2Loader.dll` from **[Releases](https://github.com/s
 put both in one folder and run `KiMill.exe`. Nothing is installed. Windows 10/11 x64 with
 Microsoft Edge WebView2 (preinstalled on current Windows).
 
+**Linux** (PC amd64, Raspberry Pi arm64 / armv7): get `KiMill-linux.tar.gz`, unpack it and run
+`./install.sh` (per-user, adds a menu entry). You need to be in the `dialout` group for the serial port,
+`zenity` or `kdialog` for file dialogs and preferably Chromium / Chrome for an app window – the installer
+checks all of it. See [Installation → Linux](docs/en/01-installation.md#linux).
+
 ## Documentation
 
 | | English | Česky |
@@ -92,8 +97,11 @@ Requires Go 1.24+. All dependencies are vendored in `third_party/` (go-webview2,
 GOFLAGS=-mod=mod GOPROXY=off GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
   go build -trimpath -ldflags "-H windowsgui -s -w" -o KiMill.exe .
 
-# Linux/macOS development build – serves the UI on http://127.0.0.1:47823/
-# (only the simulator port is available there)
+# Linux release package (amd64, arm64, armv7 + install.sh) -> dist/KiMill-linux.tar.gz
+GOFLAGS=-mod=mod GOPROXY=off sh linux/build.sh
+
+# development build – serves the UI on http://127.0.0.1:47823/
+# (on macOS only the simulator port is available)
 GOFLAGS=-mod=mod GOPROXY=off go build -o kimill .
 KIMILL_SIM_SPEED=10 ./kimill     # optional: speed up the GRBL simulator 10×
 

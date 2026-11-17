@@ -42,3 +42,6 @@ func runWindow(url string) (ok bool) {
 	w.Destroy()
 	return true
 }
+
+// záložní okno prohlížeče ve Windows: dialogy bez vlastníka okna nepoužívat
+func hostDialogs() bool { return false }
