@@ -54,6 +54,10 @@ i na starších Pi s 32bit systémem (armv7). Umí totéž co ve Windows.
    - **Chromium nebo Chrome**: KiMill se v něm otevře jako samostatné okno. Když žádný není,
      otevře se ve výchozím prohlížeči jako karta.
 
+Na **Raspberry Pi OS** (Raspbian) to platí stejně. Potřebuješ verzi s plochou, Chromium i zenity
+v ní obvykle už jsou. Doporučené je Pi 4 (4 GB) nebo Pi 5. Pi 3 zvládne řízení stroje, ale výpočty
+a 3D náhledy jsou na něm pomalé. Podrobnosti jsou v `CTI_ME.txt` v balíčku.
+
 Rozdíly proti Windows:
 
 - Frézka je v seznamu portů jako `/dev/ttyUSB0` (převodník CH340/FTDI) nebo `/dev/ttyACM0`

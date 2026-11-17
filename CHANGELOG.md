@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.7 – 2026-11
-- **Linux** (PC amd64, Raspberry Pi arm64 / armv7): serial port via termios (`/dev/ttyUSB*`, `/dev/ttyACM*`,
+- **Linux** (PC amd64, Raspberry Pi arm64 / arm32 – 32-bit built for ARMv6, so it runs on any Pi): serial port via termios (`/dev/ttyUSB*`, `/dev/ttyACM*`,
   `/dev/ttyAMA*`, exclusive lock, clear messages for missing `dialout` group / busy / unplugged port),
   file and folder dialogs via zenity or kdialog (paths like on Windows – watch changes, reload, projects),
   window = Chromium / Chrome / Edge / Brave / Vivaldi in app mode (snap Chromium supported), otherwise the default

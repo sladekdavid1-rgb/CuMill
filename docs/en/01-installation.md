@@ -54,6 +54,10 @@ Pis with a 32-bit OS (armv7). It does everything the Windows version does.
    - **Chromium or Chrome**: KiMill opens in it as its own window. If neither is installed,
      it opens in the default browser as a tab.
 
+The same applies to **Raspberry Pi OS** (Raspbian). Use the desktop edition – Chromium and zenity
+are usually already there. A Pi 4 (4 GB) or Pi 5 is recommended; a Pi 3 can control the machine,
+but calculations and 3D views are slow. Details are in `CTI_ME.txt` in the package.
+
 Differences from Windows:
 
 - The machine is listed as `/dev/ttyUSB0` (CH340/FTDI adapter) or `/dev/ttyACM0` (Arduino), not `COM3`.

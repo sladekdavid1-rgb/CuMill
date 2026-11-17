@@ -10,7 +10,7 @@ KiMill se objeví v nabídce aplikací. Z terminálu: ~/.local/bin/kimill
 Odinstalace: ./install.sh --remove   (projekty a nastavení zůstanou)
 
 Balíček obsahuje verze pro PC (amd64), Raspberry Pi 4/5 s 64bit systémem (arm64)
-a starší Raspberry Pi / 32bit systém (armv7). Instalátor vybere správnou sám.
+a starší Raspberry Pi / 32bit systém (arm32 – od Pi Zero a Pi 1 výš). Instalátor vybere správnou sám.
 
 Co je potřeba
 -------------
@@ -34,6 +34,22 @@ Nastavení:   ~/.local/share/KiMill          (profil okna – knihovna nástroj�
 Nastavení a knihovna nástrojů se z Windows nepřenáší samo – v KiMillu je
 Nastavení (ozubené kolo) → Záloha všeho → Export / Import (soubor .json);
 projekty (.kimill) stačí zkopírovat.
+
+Raspberry Pi OS (Raspbian)
+--------------------------
+- Potřebuješ verzi s plochou (Raspberry Pi OS with desktop), ne Lite.
+- 64bit systém (doporučený, Pi 3/4/5) použije kimill-linux-arm64, 32bit kimill-linux-arm32.
+  Instalátor to pozná sám (i 32bit systém s 64bit jádrem na Pi 4/5 je v pořádku).
+- Chromium i zenity v Raspberry Pi OS s plochou obvykle už jsou. Když ne:
+      sudo apt install chromium zenity          (Bookworm a novější)
+      sudo apt install chromium-browser zenity  (starší Bullseye)
+- Uživatel vytvořený při instalaci bývá ve skupině dialout. Instalátor to ověří.
+- Frézka (CH340) se objeví jako /dev/ttyUSB0. GPIO UART Pi (/dev/ttyAMA0) KiMill
+  nabídne taky, kdybys GRBL připojil přímo na piny (pozor na 3,3 V logiku Pi).
+- Výkon: Pi 4 (4 GB) nebo Pi 5 je pohodlné. Pi 3 zvládne řízení stroje a G-kód, ale výpočet
+  izolace velké desky, simulace dílu a 3D náhledy jsou pomalé. Pi Zero / Pi 1 na KiMill nestačí.
+- Napájej Pi kvalitním zdrojem – podpětí (blesk na obrazovce) umí shodit USB i spojení s frézkou
+  uprostřed programu.
 
 Tipy
 ----

@@ -18,7 +18,7 @@ fi
 case "$(uname -m)" in
   x86_64|amd64) EXE=kimill-linux-amd64 ;;
   aarch64|arm64) EXE=kimill-linux-arm64 ;;
-  armv7l|armv6l|armhf) EXE=kimill-linux-armv7 ;;
+  armv7l|armv6l|armhf|armv8l) EXE=kimill-linux-arm32 ;;
   *) echo "Nepodporovaná architektura: $(uname -m)"; exit 1 ;;
 esac
 [ -f "$DIR/$EXE" ] || { echo "Chybí $DIR/$EXE"; exit 1; }
